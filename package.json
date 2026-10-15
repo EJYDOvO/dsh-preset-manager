@@ -1,0 +1,22 @@
+{
+  "name": "@local/dsh-preset-manager",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Prototype: view and manage Agent presets (modes) from Settings.",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./container": "./container.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": ["index.js", "container.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings"]
+    }
+  }
+}
