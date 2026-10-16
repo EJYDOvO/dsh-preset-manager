@@ -4,6 +4,8 @@
 
 View and manage DeepSeek Harness agent modes (presets) in Web Settings: toggle the plugins each mode loads, edit its system prompt, and create modes from starter templates. The page follows dsh's language setting (Chinese or English).
 
+<img src="assets/screenshot-modes.png" alt="设置 → 模式管理页面 / Settings → Modes page" width="600">
+
 ## 兼容性
 
 | dsh 版本 | 验证方式 | 结果 |
