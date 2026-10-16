@@ -14,6 +14,12 @@ const CONTAINER_ID = 'preset-manager-custom'
 const REGISTRY_SETTINGS = 'agent-preset-registry'
 const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
 const CUSTOM_ORDER_BASE = 100
+const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
+const PROMPT_MAX_CHARS = 20000
+const PROMPT_EXCERPT_CHARS = 160
+/** The prompt registry's reference syntax (`dsh-system-prompt` GROUP_AT / VARIABLE_NAME). */
+const VARIABLE_GROUP = /^\{\{([^{}]*)\}\}/
+const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
 export const name = 'preset-manager'
 export const inject = ['agentPresets', 'configEditor']
@@ -52,7 +58,11 @@ const ACTIONS = {
   update: (ctx, body) => update(ctx, body),
   remove: (ctx, body) => remove(ctx, String(body.id)),
   setDefault: (ctx, body) => setDefault(ctx, String(body.id)),
+  prompt: (ctx, body) => readPrompt(ctx, String(body.id)),
+  setPrompt: (ctx, body) => setPrompt(ctx, String(body.id), body.prefix),
 }
+/** Actions that answer with their own value instead of the refreshed list. */
+const READS = new Set(['list', 'read', 'prompt'])
 
 async function handle(ctx, request) {
   let body
@@ -65,7 +75,7 @@ async function handle(ctx, request) {
   if (action === undefined) return reply({ ok: false, code: 'bad-request', error: `Unknown action: ${String(body?.action)}` })
   try {
     const value = await action(ctx, body)
-    return reply({ ok: true, value: body.action === 'list' || body.action === 'read' ? value : await list(ctx) })
+    return reply({ ok: true, value: READS.has(body.action) ? value : await list(ctx) })
   } catch (error) {
     return reply({
       ok: false,
@@ -195,11 +205,13 @@ async function list(ctx) {
       meta,
       ...declaration?.overridden === true ? { inherited: declaration.inherited } : {},
     })
+    const prefix = plugins === undefined ? undefined : findPersona(plugins)?.config?.prefix
     return {
       ...row,
       isDefault: row.id === presets.defaultId,
       source: own !== undefined ? 'custom' : declaration === undefined ? 'external' : declaration.overridden ? 'overridden' : 'builtin',
       usage: usage.get(row.id) ?? 0,
+      ...typeof prefix === 'string' ? { promptExcerpt: prefix.slice(0, PROMPT_EXCERPT_CHARS) } : {},
       rows: flat,
     }
   })
@@ -320,4 +332,111 @@ async function setDefault(ctx, id) {
   if (preset === undefined) throw new ActionError('not-found', `Unknown preset ${id}`, { id })
   if (preset.broken !== undefined) throw new ActionError('broken', `Preset ${id} cannot compose a session`, { id })
   await settings.update(REGISTRY_SETTINGS, { selectedDefault: id })
+}
+
+/** The first persona row, which owns the prompt prefix; nested group rows included. */
+function findPersona(rows) {
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (row.group === true) {
+      const nested = findPersona(row.config)
+      if (nested !== undefined) return nested
+    } else if (row.name === PERSONA_MODULE) return row
+  }
+  return undefined
+}
+
+/**
+ * The first reference the prompt registry would refuse to render, mirroring
+ * `dsh-system-prompt` interpolation: a render failure fails every model step.
+ * @param text - persona prefix template.
+ * @param variables - names registered for the preset's scope, or undefined when unknown.
+ * @returns the refusal, or undefined when the template renders.
+ */
+function templateProblem(text, variables) {
+  let last = 0
+  for (let open = text.indexOf('{{'); open >= 0; open = text.indexOf('{{', last)) {
+    const group = VARIABLE_GROUP.exec(text.slice(open))
+    if (group === null) {
+      if (text.indexOf('}}', open + 2) >= 0) return { code: 'prompt-malformed', reference: text.slice(open, open + 16) }
+      last = open + 2
+      continue
+    }
+    const name = group[1]
+    if (!VARIABLE_NAME.test(name)) return { code: 'prompt-malformed', reference: group[0] }
+    if (variables !== undefined && !variables.includes(name)) return { code: 'prompt-unknown-variable', reference: group[0], variables }
+    last = open + group[0].length
+  }
+  return undefined
+}
+
+/** Render assembled sections like `renderPrompt`, keeping references with no value in this preview visible. */
+function renderPreview(assembly) {
+  return assembly.sections
+    .map(section => section.interpolate === false
+      ? section.text
+      : section.text.replace(/\{\{([a-z][a-z0-9_]*)\}\}/g, (match, name) => assembly.variables[name] ?? match))
+    .filter(text => text.length > 0)
+    .join('\n\n')
+}
+
+/** Assemble the preset's current revision without an Agent: its sections, variables, and complete-prompt state. */
+async function assemblePreset(ctx, id) {
+  const prompts = ctx.get('systemPrompt')
+  if (prompts === undefined) return { error: 'The system prompt service is not composed' }
+  let lease
+  try {
+    lease = await ctx.agentPresets.acquireScope(id)
+    const assembly = await prompts.assemble({ scope: lease.key })
+    return { variables: Object.keys(assembly.variables).sort(), preview: renderPreview(assembly) }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) }
+  } finally {
+    await lease?.[Symbol.asyncDispose]()
+  }
+}
+
+/** Locate a preset's row list and, for a declared preset, its built-in rows. */
+function presetRows(ctx, id) {
+  const own = customPresets(ctx).find(preset => preset.id === id)
+  if (own !== undefined) return { plugins: own.plugins, custom: true }
+  const declaration = declarations(ctx).get(id)
+  if (declaration === undefined) throw new ActionError('not-editable', `Preset ${id} is not declared in an editable row`, { id })
+  return { plugins: declaration.plugins, inherited: declaration.inherited, overridden: declaration.overridden }
+}
+
+async function readPrompt(ctx, id) {
+  const { plugins, inherited, overridden } = presetRows(ctx, id)
+  const persona = findPersona(plugins)
+  const original = persona?.id === undefined ? undefined : inherited?.get(persona.id)
+  const assembled = await assemblePreset(ctx, id)
+  return {
+    id,
+    ...persona === undefined ? {} : {
+      rowId: persona.id ?? null,
+      prefix: persona.config?.prefix ?? '',
+      complete: persona.config?.complete === true,
+      includeRuntimeContext: persona.config?.includeRuntimeContext !== false,
+    },
+    ...original === undefined ? {} : {
+      builtInPrefix: original.config?.prefix ?? '',
+      changed: overridden === true && stable(original) !== stable(persona),
+    },
+    ...assembled,
+  }
+}
+
+async function setPrompt(ctx, id, prefix) {
+  if (typeof prefix !== 'string') throw new ActionError('bad-request', 'The prompt must be text')
+  if (prefix.length > PROMPT_MAX_CHARS) throw new ActionError('prompt-too-long', `The prompt exceeds ${PROMPT_MAX_CHARS} characters`, { max: PROMPT_MAX_CHARS })
+  const { variables } = await assemblePreset(ctx, id)
+  const problem = templateProblem(prefix, variables)
+  if (problem !== undefined) {
+    throw new ActionError(problem.code, `The prompt cannot render: ${problem.reference}${problem.variables === undefined ? '' : ` (registered variables: ${problem.variables.join(', ')})`}`, problem)
+  }
+  await editPlugins(ctx, id, (rows) => {
+    const persona = findPersona(rows)
+    if (persona === undefined) return [{ id: 'persona', name: PERSONA_MODULE, config: { prefix } }, ...rows]
+    if (persona.id === undefined) throw new ActionError('not-found', 'The persona row has no id, so it cannot be edited here')
+    return replaceRow(rows, persona.id, row => ({ ...row, config: { ...row.config, prefix } }))
+  })
 }

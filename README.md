@@ -13,6 +13,7 @@
 - 修改过的插件标为「已修改」，可以单独还原；整个模式也可以一键恢复内置配置
 - 搜索插件或模式，或者只看改动过的插件
 - 用某个模式直接新建会话，或把它设为新会话的默认模式
+- 按模式编辑系统提示词（persona 行的 `prefix`）：卡片上显示提示词摘要；编辑器支持点击插入 `{{model}}` 等变量，输入时实时校验变量，并可预览该模式完整的系统提示词（包括未保存的修改）；修改过的提示词可以一键恢复内置
 - 复制任意模式作为自定义模式：根据名称自动生成 ID，并实时校验格式和重复；自定义模式可以修改名称、描述，也可以删除
 - 删除和恢复内置都会先在页面内二次确认；删除时会提示还有多少个打开的会话在用
 - 保存时只锁住正在修改的那一行，完成后在卡片上提示；失败原因显示在对应的卡片里
@@ -23,7 +24,7 @@
 
 | 文件 | 作用 |
 |---|---|
-| `index.js` | 宿主端插件，提供 `POST /api/preset-manager`，动作包括 `list`、`read`、`toggle`、`resetRow`、`reset`、`create`、`update`、`remove`、`setDefault`。修改内置预设时，通过 `configEditor.edit()` 在 profile 里写入该预设行的覆盖；插件的显示信息来自 `pluginInventory.list()` |
+| `index.js` | 宿主端插件，提供 `POST /api/preset-manager`，动作包括 `list`、`read`、`toggle`、`resetRow`、`reset`、`create`、`update`、`remove`、`setDefault`、`prompt`、`setPrompt`。修改内置预设时，通过 `configEditor.edit()` 在 profile 里写入该预设行的覆盖；插件的显示信息来自 `pluginInventory.list()` |
 | `container.js` | 自定义预设容器，配置里保存 `presets` 列表，并对每一项调用 `agentPresets.register()` |
 | `client.js` | Web 端设置页 |
 | `cordis.patch.yml` | 插入上面两个宿主端插件行 |
@@ -36,9 +37,21 @@ dsh plugin --profile web add /path/to/dsh-preset-manager
 
 然后启动 `dsh web`，打开 设置 → 预设管理。
 
+## 系统提示词
+
+提示词就是该模式 `@deepseek-ai/dsh-persona` 行的 `prefix`：
+
+- 一般情况下，它位于系统提示词的开头，后面还会追加工具说明、工作区规则等内容；如果该行设了 `complete: true`（例如极简模式），它就是完整的系统提示词。
+- `{{model}}`、`{{provider}}` 这类变量在每一步组装提示词时替换成实际值。DSH 严格校验变量，写错一个会让该模式下的每一步都失败，所以保存前会检查变量名是否已注册、格式是否完整，校验不过就拒绝保存。
+- 预览不需要真的创建会话：它用该模式当前版本的作用域组装提示词，不包含每一步注入的运行时上下文。
+
+在 dsh `0.2.1-alpha.3` 上，我们用本地假模型抓取了实际发出的请求，验证了三件事：保存后新建的会话使用新提示词，`{{model}}` 会被替换成模型名；已经在运行的会话在提示词被改回后继续沿用旧提示词；改回后新建的会话又用回内置提示词。
+
 ## 已知限制
 
 - 覆盖内置预设时会复制完整的插件列表，内置预设之后的更新不会自动合并
 - 「在用会话数」只统计当前已打开的会话；删除自定义模式后，用过它的会话重启时无法恢复
 - 带 `!!js` 条件的行（例如 `tool-bash`）不能在界面里开关，只能改 YAML
 - 写操作只依赖 dsh 自带的登录校验，没有额外权限确认
+- 提示词修改只影响之后新建的会话；正在运行的会话要新开一个才能用上
+- 只编辑 `prefix`；`suffix`、`complete`、`includeRuntimeContext` 仍需在 YAML 中修改

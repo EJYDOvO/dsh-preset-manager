@@ -11,6 +11,10 @@ window.__ModuleLoader__.load({
     const NOTICE_MS = 2500
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
+    const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
+    /** The prompt registry's reference syntax; the Host repeats this check before saving. */
+    const VARIABLE_GROUP = /^\{\{([^{}]*)\}\}/
+    const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
     const ZH = {
       nav: '预设管理',
@@ -80,6 +84,26 @@ window.__ModuleLoader__.load({
       'err.invalid-id': 'ID 只能包含小写字母、数字或连字符。',
       'err.broken': '这个模式当前无法使用，不能设为默认。',
       'err.network': '无法连接到 DSH 服务，请刷新页面后重试。',
+      'err.prompt-unknown-variable': '提示词里的 {reference} 不是可用变量。可用变量：{variables}。',
+      'err.prompt-malformed': '提示词里的 {reference} 格式不对：变量要写成完整的双花括号形式，名称用小写字母开头，例如 {{model}}。',
+      'err.prompt-too-long': '提示词太长了，上限是 {max} 个字符。',
+      'action.prompt': '编辑提示词',
+      'badge.promptChanged': '提示词已修改',
+      'prompt.excerptLine': '提示词：{text}',
+      'prompt.title': '系统提示词',
+      'prompt.partial': '这段文字位于系统提示词的开头，后面还会追加工具说明、工作区规则等内容。',
+      'prompt.complete': '这个模式只把这段文字作为完整的系统提示词，不会再追加工具说明等内容。',
+      'prompt.none': '这个模式还没有人设提示词，保存后会在最前面添加一行。',
+      'prompt.variables': '可用变量（点击插入）',
+      'prompt.chars': '{n} 个字符',
+      'prompt.preview': '预览完整系统提示词',
+      'prompt.hidePreview': '收起预览',
+      'prompt.previewNote': '根据已保存的配置生成，不含每一步注入的运行时上下文；{{变量}} 在会话中会替换成实际值。',
+      'prompt.previewDirty': '预览已包含尚未保存的修改。',
+      'prompt.restore': '恢复内置提示词',
+      'prompt.shortcut': '⌘/Ctrl + Enter 保存',
+      'notice.promptSaved': '提示词已保存 · 之后新建的会话生效',
+      'notice.promptRestored': '已恢复内置提示词',
     }
     const EN = {
       nav: 'Preset manager',
@@ -149,6 +173,26 @@ window.__ModuleLoader__.load({
       'err.invalid-id': 'Use lowercase letters, digits, or hyphens for the ID.',
       'err.broken': 'This mode cannot run right now, so it cannot be the default.',
       'err.network': 'Cannot reach the DSH service; reload the page and try again.',
+      'err.prompt-unknown-variable': '{reference} is not an available variable. Available variables: {variables}.',
+      'err.prompt-malformed': '{reference} is malformed: write a variable as a complete double-brace reference whose name starts with a lowercase letter, such as {{model}}.',
+      'err.prompt-too-long': 'The prompt is too long; the limit is {max} characters.',
+      'action.prompt': 'Edit prompt',
+      'badge.promptChanged': 'Prompt changed',
+      'prompt.excerptLine': 'Prompt: {text}',
+      'prompt.title': 'System prompt',
+      'prompt.partial': 'This text opens the system prompt; tool guidance, workspace rules, and other sections follow it.',
+      'prompt.complete': 'This mode uses only this text as its complete system prompt; nothing else is appended.',
+      'prompt.none': 'This mode has no persona prompt yet; saving adds one as its first row.',
+      'prompt.variables': 'Variables (click to insert)',
+      'prompt.chars': '{n} characters',
+      'prompt.preview': 'Preview full system prompt',
+      'prompt.hidePreview': 'Hide preview',
+      'prompt.previewNote': 'Built from the saved configuration, without the runtime context added at each step; {{variables}} become real values in a session.',
+      'prompt.previewDirty': 'The preview includes unsaved edits.',
+      'prompt.restore': 'Restore built-in prompt',
+      'prompt.shortcut': '⌘/Ctrl + Enter to save',
+      'notice.promptSaved': 'Prompt saved · applies to new sessions',
+      'notice.promptRestored': 'Built-in prompt restored',
     }
 
     const CSS = `
@@ -216,18 +260,49 @@ window.__ModuleLoader__.load({
 .pm-yaml { position: relative; margin: 0 14px 12px 40px; }
 .pm-yaml pre { margin: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); font-size: 12px; line-height: 1.5; }
 .pm-yaml .pm-btn { position: absolute; top: 8px; right: 8px; background: var(--dsw-alias-bg-layer-2); }
+.pm-excerpt { font-size: 12px; color: var(--dsw-alias-label-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-prompt { margin: 0 14px 12px 40px; display: flex; flex-direction: column; gap: 8px; }
+.pm-textarea { width: 100%; min-height: 140px; resize: vertical; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; line-height: 1.6; }
+.pm-textarea[aria-invalid='true'] { border-color: var(--dsw-alias-state-error-primary); }
+.pm-chip { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: var(--dsw-alias-state-business-primary); cursor: pointer; }
+.pm-chip:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-prompt .pm-yaml { margin: 0; }
+.pm-prompt pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 @container (max-width: 520px) {
-  .pm-actions, .pm-body, .pm-confirm, .pm-yaml { margin-left: 0; padding-left: 14px; }
+  .pm-actions, .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
   .pm-yaml { margin: 0 14px 12px; }
   .pm-form { grid-template-columns: minmax(0, 1fr); }
 }
 `
 
     class ActionFailure extends Error {
-      constructor(code, message) {
+      constructor(code, message, details) {
         super(message)
         this.code = code
+        this.details = details
       }
+    }
+
+    /**
+     * The first reference the prompt registry would refuse to render.
+     * @param {string} text - persona prefix template.
+     * @param {string[] | undefined} variables - registered names, or undefined when unknown.
+     * @returns {{code: string, reference: string, variables?: string[]} | undefined} the refusal.
+     */
+    function templateProblem(text, variables) {
+      let last = 0
+      for (let open = text.indexOf('{{'); open >= 0; open = text.indexOf('{{', last)) {
+        const group = VARIABLE_GROUP.exec(text.slice(open))
+        if (group === null) {
+          if (text.indexOf('}}', open + 2) >= 0) return { code: 'prompt-malformed', reference: text.slice(open, open + 16) }
+          last = open + 2
+          continue
+        }
+        if (!VARIABLE_NAME.test(group[1])) return { code: 'prompt-malformed', reference: group[0] }
+        if (variables !== undefined && !variables.includes(group[1])) return { code: 'prompt-unknown-variable', reference: group[0], variables }
+        last = open + group[0].length
+      }
+      return undefined
     }
 
     async function call(action, payload) {
@@ -243,7 +318,7 @@ window.__ModuleLoader__.load({
       }
       if (!response.ok) throw new ActionFailure(response.status === 404 ? 'network' : 'failed', `HTTP ${response.status}`)
       const body = await response.json()
-      if (body.ok !== true) throw new ActionFailure(body.code ?? 'failed', body.error)
+      if (body.ok !== true) throw new ActionFailure(body.code ?? 'failed', body.error, body.details)
       return body.value
     }
 
@@ -380,12 +455,83 @@ window.__ModuleLoader__.load({
         }, copied ? t('action.copied') : t('action.copy')))
     }
 
+    function PromptEditor({ ui, preset, onClose }) {
+      const { t } = ui
+      const [info, setInfo] = React.useState(null)
+      const [failure, setFailure] = React.useState(null)
+      const [text, setText] = React.useState('')
+      const [showPreview, setShowPreview] = React.useState(false)
+      const area = React.useRef(null)
+      React.useEffect(() => {
+        let live = true
+        call('prompt', { id: preset.id }).then(
+          (value) => { if (live) { setInfo(value); setText(value.prefix ?? '') } },
+          (error) => { if (live) setFailure(ui.describe(error)) })
+        return () => { live = false }
+      }, [preset.id])
+      React.useEffect(() => { if (info !== null) area.current?.focus() }, [info === null])
+      if (failure !== null) return h('div', { className: 'pm-prompt pm-error', role: 'alert' }, failure)
+      if (info === null) return h('div', { className: 'pm-prompt pm-muted' }, t('loading'))
+      const key = `prompt:${preset.id}`
+      const saving = ui.pending.has(key)
+      const dirty = text !== (info.prefix ?? '')
+      const problem = templateProblem(text, info.variables)
+      const save = () => {
+        if (dirty && problem === undefined && !saving) ui.run(key, 'setPrompt', { id: preset.id, prefix: text }, 'notice.promptSaved', onClose)
+      }
+      const insert = (name) => {
+        const element = area.current
+        const token = `{{${name}}}`
+        const start = element?.selectionStart ?? text.length
+        const end = element?.selectionEnd ?? text.length
+        setText(text.slice(0, start) + token + text.slice(end))
+        requestAnimationFrame(() => {
+          element?.focus()
+          element?.setSelectionRange(start + token.length, start + token.length)
+        })
+      }
+      const preview = info.preview === undefined ? info.error
+        : dirty && info.prefix !== undefined && info.prefix !== '' && info.preview.includes(info.prefix) ? info.preview.replace(info.prefix, text) : info.preview
+      return h('div', { className: 'pm-prompt' },
+        h('div', { className: 'pm-hint' }, info.rowId === undefined ? t('prompt.none') : info.complete ? t('prompt.complete') : t('prompt.partial')),
+        h('textarea', {
+          ref: area, className: 'pm-input pm-textarea', value: text, rows: 8, spellCheck: false,
+          'aria-label': t('prompt.title'), 'aria-invalid': problem !== undefined,
+          onChange: e => setText(e.target.value),
+          onKeyDown: (event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); save() }
+            else if (event.key === 'Escape' && !dirty) onClose()
+          },
+        }),
+        h('div', { className: 'pm-bar pm-hint' },
+          info.variables?.length > 0 ? h('span', null, t('prompt.variables')) : null,
+          ...(info.variables ?? []).map(name => h('button', { key: name, type: 'button', className: 'pm-chip', onClick: () => insert(name) }, `{{${name}}}`)),
+          h('span', { className: 'pm-grow' }),
+          h('span', null, t('prompt.chars', { n: text.length }))),
+        problem === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, ui.describeCode(problem.code, problem, '')),
+        h('div', { className: 'pm-bar' },
+          h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': showPreview, onClick: () => setShowPreview(!showPreview) }, t(showPreview ? 'prompt.hidePreview' : 'prompt.preview')),
+          info.changed && info.rowId
+            ? h('button', { type: 'button', className: 'pm-btn', disabled: saving, onClick: () => ui.run(key, 'resetRow', { id: preset.id, rowId: info.rowId }, 'notice.promptRestored', onClose) }, t('prompt.restore'))
+            : null,
+          h('span', { className: 'pm-grow' }),
+          h('span', { className: 'pm-hint' }, t('prompt.shortcut')),
+          h('button', { type: 'button', className: 'pm-btn', onClick: onClose }, t('action.cancel')),
+          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: !dirty || problem !== undefined || saving, onClick: save }, t('action.save'))),
+        showPreview
+          ? h('div', { className: 'pm-yaml' },
+            h('div', { className: 'pm-hint', style: { marginBottom: 6 } }, dirty ? `${t('prompt.previewNote')} ${t('prompt.previewDirty')}` : t('prompt.previewNote')),
+            h('pre', null, preview))
+          : null)
+    }
+
     function PresetCard({ ui, preset, presets, query, onlyChanged, open, onOpen, onDuplicate }) {
       const { t, pending, run, notices, errors, canTry, canSetDefault } = ui
       const [panel, setPanel] = React.useState(null)
       const name = ui.presetName(preset)
       const description = ui.presetDescription(preset)
       const changed = preset.rows.filter(row => row.changed).length
+      const promptChanged = preset.rows.some(row => row.module === PERSONA_MODULE && row.changed)
       const on = preset.rows.filter(row => (row.enabled ?? row.declared === true) === true).length
       const needle = query.trim().toLowerCase()
       const rows = preset.rows.filter(row => (!onlyChanged || row.changed)
@@ -411,8 +557,10 @@ window.__ModuleLoader__.load({
               h('span', { className: 'pm-badge' }, t(preset.source === 'custom' ? 'badge.custom' : preset.source === 'external' ? 'badge.external' : 'badge.builtin')),
               changed > 0 ? h('span', { className: 'pm-badge is-warn' }, t('badge.modified', { n: changed })) : null,
               preset.usage > 0 ? h('span', { className: 'pm-badge' }, t('badge.usage', { n: preset.usage })) : null,
+              promptChanged ? h('span', { className: 'pm-badge is-warn' }, t('badge.promptChanged')) : null,
               preset.broken ? h('span', { className: 'pm-badge is-error' }, t('badge.broken')) : null),
             description ? h('div', { className: 'pm-desc' }, description) : null,
+            preset.promptExcerpt ? h('div', { className: 'pm-excerpt', title: preset.promptExcerpt }, t('prompt.excerptLine', { text: preset.promptExcerpt })) : null,
             h('div', { className: 'pm-muted' }, t('summary', { on, total: preset.rows.length })),
             preset.broken ? h('div', { className: 'pm-error' }, preset.broken) : null,
             notice ? h('div', { className: 'pm-notice', role: 'status' }, `✓ ${t(notice)}`) : null,
@@ -435,12 +583,14 @@ window.__ModuleLoader__.load({
               canSetDefault && !preset.isDefault && !preset.broken
                 ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('setDefault', {}, 'notice.default') }, t('action.setDefault'))
                 : null,
+              preset.source !== 'external' && !preset.broken ? h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel('prompt') }, t('action.prompt')) : null,
               preset.rows.length > 0 ? h('button', { type: 'button', className: 'pm-btn', onClick: () => onDuplicate(preset.id) }, t('action.duplicate')) : null,
               h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel === 'yaml', onClick: () => setPanel(panel === 'yaml' ? null : 'yaml') }, t(panel === 'yaml' ? 'action.hideYaml' : 'action.yaml')),
               preset.source === 'overridden' ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setPanel('reset') }, t('action.reset')) : null,
               preset.source === 'custom' ? h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel('details') }, t('action.rename')) : null,
               preset.source === 'custom' && !preset.isDefault ? h('button', { type: 'button', className: 'pm-btn pm-danger', onClick: () => setPanel('remove') }, t('action.remove')) : null),
         panel === 'yaml' ? h(Yaml, { ui, preset }) : null,
+        panel === 'prompt' ? h(PromptEditor, { ui, preset, onClose: () => setPanel(null) }) : null,
         open && preset.rows.length > 0 ? h('div', { className: 'pm-body' }, h(PluginList, { ui, preset, rows })) : null)
     }
 
@@ -472,7 +622,14 @@ window.__ModuleLoader__.load({
         return value === key ? undefined : value
       }
       const text = value => value === undefined || value === null ? undefined : ctx.locale.resolveText(value)
-      const describe = error => (error instanceof ActionFailure && t(`err.${error.code}`) !== `err.${error.code}`) ? t(`err.${error.code}`) : error.message
+      /** Localized text for a failure code, with its details as parameters; the Host's English message otherwise. */
+      const describeCode = (code, details, fallback) => {
+        const key = `err.${code}`
+        const params = details === undefined ? undefined : { ...details, ...Array.isArray(details.variables) ? { variables: details.variables.join(', ') } : {} }
+        const text = t(key, params)
+        return text === key ? fallback : text
+      }
+      const describe = error => error instanceof ActionFailure ? describeCode(error.code, error.details, error.message) : error.message
 
       const flash = (presetId, notice) => {
         setNotices(previous => new Map(previous).set(presetId, notice))
@@ -504,7 +661,7 @@ window.__ModuleLoader__.load({
 
       const workspace = ctx.get('uiWorkspace')
       const ui = {
-        t, text, describe, pending, notices, errors, run,
+        t, text, describe, describeCode, pending, notices, errors, run,
         canTry: typeof workspace?.startSession === 'function',
         canSetDefault: data?.canSetDefault === true,
         presetName: preset => builtInCopy(preset, 'Name') ?? preset.name ?? preset.id,
