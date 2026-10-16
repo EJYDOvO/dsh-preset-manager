@@ -1,1 +1,1 @@
-{ "meta": { "title": "Preset Manager (prototype)", "description": "View agent presets, toggle their plugins, restore built-in definitions, and create custom presets." } }
+{ "meta": { "title": "Modes", "description": "View and manage agent modes in Settings: toggle the plugins each mode loads, edit its system prompt, and create modes from starter templates." } }

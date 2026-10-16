@@ -1,17 +1,32 @@
 {
-  "name": "@local/dsh-preset-manager",
-  "version": "0.3.0",
-  "private": true,
-  "description": "Prototype: view and manage Agent presets (modes) from Settings.",
+  "name": "dsh-modes",
+  "version": "0.4.0",
+  "description": "View and manage DeepSeek Harness agent modes (presets) in Web Settings: toggle the plugins each mode loads, edit its system prompt, and create modes from starter templates.",
+  "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "cordis", "agent-preset", "system-prompt"],
+  "author": "xiaohai-78",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiaohai-78/dsh-modes.git"
+  },
+  "homepage": "https://github.com/xiaohai-78/dsh-modes#readme",
+  "bugs": {
+    "url": "https://github.com/xiaohai-78/dsh-modes/issues"
+  },
   "type": "module",
+  "icon": "icon.svg",
   "exports": {
     ".": "./index.js",
     "./container": "./container.js",
     "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
   },
   "files": ["index.js", "container.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {

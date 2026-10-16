@@ -1,16 +1,16 @@
 window.__ModuleLoader__.load({
-  id: '@local/dsh-preset-manager',
+  id: 'dsh-modes',
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const NS = 'preset-manager'
-    const ROUTE = '/api/preset-manager'
+    const NS = 'dsh-modes'
+    const ROUTE = '/api/dsh-modes'
     const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
     /** Copy keys the official Agent presets page registers for the four shipped presets. */
     const BUILT_IN_COPY = { standard: 'Standard', ptc: 'Ptc', minimal: 'Minimal', cordis: 'Cordis' }
     const NOTICE_MS = 2500
     const PROMPT_MAX_CHARS = 20000
-    const DRAFT_PREFIX = 'dsh-preset-manager:draft:'
+    const DRAFT_PREFIX = 'dsh-modes:draft:'
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
     const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
@@ -19,8 +19,8 @@ window.__ModuleLoader__.load({
     const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
     const ZH = {
-      nav: '预设管理',
-      title: '预设管理',
+      nav: '模式管理',
+      title: '模式管理',
       intro: '查看每个模式包含哪些能力，按需开关、复制成自己的模式。修改只影响之后新建的会话。',
       search: '搜索插件或模式',
       onlyChanged: '只看改动',
@@ -167,8 +167,8 @@ window.__ModuleLoader__.load({
       'prompt.off': '身份行已关闭，这段提示词不会生效。',
     }
     const EN = {
-      nav: 'Preset manager',
-      title: 'Preset manager',
+      nav: 'Modes',
+      title: 'Modes',
       intro: 'See what each mode includes, switch capabilities on or off, and copy modes into your own. Changes apply to sessions created afterwards.',
       search: 'Search plugins or modes',
       onlyChanged: 'Changed only',
@@ -1100,11 +1100,11 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
-        ctx.effect(() => ctx.locale.register(NS, { zh: ZH, en: EN }), 'preset-manager: dictionaries')
+        ctx.effect(() => ctx.locale.register(NS, { zh: ZH, en: EN }), 'dsh-modes: dictionaries')
         const t = ctx.locale.bind(NS)
         ctx.slots.inject('settings.section', () => ctx.slots.register({
           name: 'settings.section',
-          id: 'preset-manager',
+          id: 'dsh-modes',
           order: 21,
           label: () => t('nav'),
           locale: NS,

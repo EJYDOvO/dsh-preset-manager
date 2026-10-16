@@ -1,15 +1,24 @@
-# dsh-preset-manager
+# dsh-modes
 
-在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）Web 的设置里查看和管理 Agent 预设（模式）。
+在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）Web 的设置里查看和管理 Agent 模式（预设）：开关每个模式加载的插件、编辑它的系统提示词、用起步模板新建模式。
 
-> 原型阶段：只在 dsh `0.2.1-alpha.3` 源码版本上验证过，依赖的 `configEditor`、`agentPresets` 都是尚未稳定的接口。
+View and manage DeepSeek Harness agent modes (presets) in Web Settings: toggle the plugins each mode loads, edit its system prompt, and create modes from starter templates. The page follows dsh's language setting (Chinese or English).
+
+## 兼容性
+
+| dsh 版本 | 验证方式 | 结果 |
+|---|---|---|
+| `0.2.0-rc.2`（npm 当前 latest，也是 Desktop 当前版本） | 安装 `npm pack` 打出的包，在 dsh web 里实际操作 | 可用；这个版本的 dsh 不提供插件的本地化名称，插件行显示包名和英文说明 |
+| `0.2.1-alpha.3` | 源码运行，并用本地假模型抓取实际请求 | 可用 |
+
+插件依赖的 `configEditor`、`agentPresets`、`systemPrompt` 等都是 dsh 尚未稳定的接口，其他版本可能需要适配。
 
 ## 功能
 
-设置 → **预设管理**（Preset manager）页面：
+设置 → **模式管理**（Modes）页面：
 
 - 每个模式一张卡片：本地化的名称和描述、默认 / 内置 / 自定义标记、已修改项数、正在使用它的会话数、已启用插件数
-- 展开后按分组（基础能力、规划模式、上下文压缩、子代理与工作流……）列出插件，显示插件自己的中文名称、说明和图标，逐行开关
+- 展开后按分组（基础能力、规划模式、上下文压缩、子代理与工作流……）列出插件，显示插件自己的名称、说明和图标（dsh 提供本地化名称时显示中文），逐行开关
 - 修改过的插件标为「已修改」，可以单独还原；整个模式也可以一键恢复内置配置
 - 搜索插件或模式，或者只看改动过的插件
 - 用某个模式直接新建会话，或把它设为新会话的默认模式
@@ -28,7 +37,7 @@
 
 | 文件 | 作用 |
 |---|---|
-| `index.js` | 宿主端插件，提供 `POST /api/preset-manager`，动作包括 `list`、`read`、`toggle`、`resetRow`、`reset`、`create`（支持 `template` 起步模板或 `from` 复制）、`update`、`remove`、`setDefault`、`prompt`、`setPrompt`（支持 `base` 冲突检测）。修改内置预设时，通过 `configEditor.edit()` 在 profile 里写入该预设行的覆盖；插件的显示信息来自 `pluginInventory.list()` |
+| `index.js` | 宿主端插件，提供 `POST /api/dsh-modes`，动作包括 `list`、`read`、`toggle`、`resetRow`、`reset`、`create`（支持 `template` 起步模板或 `from` 复制）、`update`、`remove`、`setDefault`、`prompt`、`setPrompt`（支持 `base` 冲突检测）。修改内置预设时，通过 `configEditor.edit()` 在 profile 里写入该预设行的覆盖；插件的显示信息来自 `pluginInventory.list()` |
 | `container.js` | 自定义预设容器，配置里保存 `presets` 列表，并对每一项调用 `agentPresets.register()` |
 | `client.js` | Web 端设置页 |
 | `cordis.patch.yml` | 插入上面两个宿主端插件行 |
@@ -36,10 +45,16 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add /path/to/dsh-preset-manager
+dsh plugin --profile web add dsh-modes
 ```
 
-然后启动 `dsh web`，打开 设置 → 预设管理。
+然后启动 `dsh web`，打开 设置 → 模式管理。卸载：
+
+```bash
+dsh plugin --profile web remove dsh-modes
+```
+
+插件做的修改保存在 profile 的 `cordis.patch.yml` 里，卸载插件不会删除它们：改过的内置模式在卸载后仍按修改后的配置运行。想完全还原，请在卸载前把改过的内置模式恢复内置，并删除自己新建的模式。
 
 ## 起步模板
 
@@ -59,9 +74,9 @@ dsh plugin --profile web add /path/to/dsh-preset-manager
 提示词就是该模式 `@deepseek-ai/dsh-persona` 行的 `prefix`：
 
 - 一般情况下，它位于系统提示词的开头，后面还会追加工具说明、工作区规则等内容；如果该行设了 `complete: true`（例如极简模式），它就是完整的系统提示词。
-- `{{model}}`、`{{provider}}` 这类变量在每一步组装提示词时替换成实际值。DSH 严格校验变量，写错一个会让该模式下的每一步都失败，所以保存前会检查变量名是否已注册、格式是否完整，校验不过就拒绝保存。
+- `{{model}}`、`{{provider}}` 这类变量在每一步组装提示词时替换成实际值。可用的变量以当前 dsh 实际注册的为准（例如 `0.2.0-rc.2` 还有 `{{cwd}}`，`0.2.1-alpha.2` 起已移除），编辑器只列出当前可用的变量。DSH 严格校验变量，写错一个会让该模式下的每一步都失败，所以保存前会检查变量名是否已注册、格式是否完整，校验不过就拒绝保存。
 - 预览不需要真的创建会话：它用该模式当前版本的作用域组装提示词，不包含每一步注入的运行时上下文。
-- 保存时会带上你开始编辑时的版本；如果服务器上的提示词已经不是那个版本，就返回 `prompt-conflict`，不会覆盖。草稿保存在浏览器的 `localStorage` 里（键名前缀为 `dsh-preset-manager:draft:`），只在当前浏览器有效。
+- 保存时会带上你开始编辑时的版本；如果服务器上的提示词已经不是那个版本，就返回 `prompt-conflict`，不会覆盖。草稿保存在浏览器的 `localStorage` 里（键名前缀为 `dsh-modes:draft:`），只在当前浏览器有效。
 
 在 dsh `0.2.1-alpha.3` 上，我们用本地假模型抓取了实际发出的请求，验证了三件事：保存后新建的会话使用新提示词，`{{model}}` 会被替换成模型名；已经在运行的会话在提示词被改回后继续沿用旧提示词；改回后新建的会话又用回内置提示词。
 
@@ -75,3 +90,7 @@ dsh plugin --profile web add /path/to/dsh-preset-manager
 - 只编辑 `prefix`；`suffix`、`complete`、`includeRuntimeContext` 仍需在 YAML 中修改
 - 模板只在创建时生效；以后 DSH 新增的插件不会自动加入用模板创建的模式
 - 草稿只保存在当前浏览器，换浏览器或清除站点数据后会丢失
+
+## 许可证
+
+[MIT](LICENSE)

@@ -4,13 +4,13 @@
  * Shipped presets are ordinary `@deepseek-ai/dsh-agent-preset` rows; an edit
  * writes the profile's `cordis.patch.yml` override for that row through
  * `configEditor.edit()`, which validates, persists, and reloads it. User-created
- * presets live in the `preset-manager-custom` container row (container.js).
+ * presets live in the `dsh-modes-custom` container row (container.js).
  * Running sessions keep the revision they started with; new sessions see edits.
  */
 
-const ROUTE = '/api/preset-manager'
+const ROUTE = '/api/dsh-modes'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
-const CONTAINER_ID = 'preset-manager-custom'
+const CONTAINER_ID = 'dsh-modes-custom'
 const REGISTRY_SETTINGS = 'agent-preset-registry'
 const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
 const CUSTOM_ORDER_BASE = 100
@@ -60,7 +60,7 @@ const TEMPLATES = {
   },
 }
 
-export const name = 'preset-manager'
+export const name = 'dsh-modes'
 export const inject = ['agentPresets', 'configEditor']
 
 /** A refusal the page can word in its own locale; `message` is the English fallback. */
@@ -79,7 +79,7 @@ export function apply(ctx) {
       methods: ['POST'],
       requestBody: 'buffered',
       fetch: request => handle(ctx, request),
-    }), 'preset-manager: route')
+    }), 'dsh-modes: route')
   })
 }
 
