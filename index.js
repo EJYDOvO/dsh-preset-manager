@@ -120,6 +120,7 @@ const ACTIONS = {
   read: (m, body) => m.ctx.agentPresets.readDocument(String(body.id)),
   toggle: (m, body) => toggle(m, String(body.id), String(body.rowId), body.enabled === true, body.force === true),
   followPlatform: (m, body) => followPlatform(m, String(body.id), String(body.rowId)),
+  applyRows: (m, body) => applyRows(m, String(body.id), body.changes),
   resetRow: (m, body) => resetRow(m, String(body.id), String(body.rowId)),
   reset: (m, body) => reset(m, String(body.id)),
   sync: (m, body) => sync(m, String(body.id)),
@@ -329,6 +330,7 @@ function flatten(rows, context, outer = false, group = null, out = []) {
     const id = typeof row.id === 'string' ? row.id : null
     const mounted = context.live?.find(candidate => candidate.entryId === id || candidate.entryId?.endsWith(`:${String(id)}`))
     const base = id === null ? undefined : context.inherited?.get(id)
+    const shipped = base ?? (id === null ? undefined : context.origin?.get(id))
     const meta = context.meta.get(row.name)
     const platform = id === null || isExpr(row.disabled) ? undefined : context.conditions.get(`${id}\0${row.name}`)
     const failure = id === null ? undefined : context.failures.get(id)
@@ -342,6 +344,7 @@ function flatten(rows, context, outer = false, group = null, out = []) {
       ...platform === undefined ? {} : { platform },
       ...mounted === undefined ? {} : { enabled: mounted.enabled },
       ...context.inherited === undefined ? {} : { changed: base === undefined || stable(base) !== stable(row) },
+      ...shipped === undefined ? {} : { shipped: isExpr(shipped.disabled) ? 'conditional' : shipped.disabled ? 'off' : 'on' },
       ...base === undefined ? {} : {
         restorable: true,
         builtIn: isExpr(base.disabled) ? { declared: 'conditional', condition: base.disabled.__jsExpr } : { declared: !base.disabled },
@@ -386,6 +389,7 @@ async function list(m) {
       conditions,
       failures,
       ...declaration === undefined ? {} : { inherited: declaration.inherited },
+      ...own !== undefined && Array.isArray(state.presets[row.id]?.base) ? { origin: rowsById(state.presets[row.id].base) } : {},
     })
     const persona = plugins === undefined ? undefined : findPersona(plugins)
     const prefix = persona?.config?.prefix
@@ -556,6 +560,64 @@ async function followPlatform(m, id, rowId) {
     if (condition === undefined) throw new ActionError('no-condition', `No platform condition is known for row ${rowId}`, { rowId })
     return { ...row, disabled: { __jsExpr: condition } }
   }))
+}
+
+/** Copy of a row list with every group that contains `rowId` and is switched off by a literal switched back on. */
+function enableGroupsOf(rows, rowId) {
+  return rows.map((row) => {
+    if (row.group !== true || !Array.isArray(row.config) || !rowsById(row.config).has(rowId)) return row
+    const next = { ...row, config: enableGroupsOf(row.config, rowId) }
+    if (next.disabled === true) delete next.disabled
+    return next
+  })
+}
+
+/**
+ * Change several rows of one preset in a single save, for capability switches.
+ * @param {object} m - manager context and state store.
+ * @param {string} id - preset id.
+ * @param {unknown} changes - `{rowId, enabled?, platform?, config?}` items: `enabled` sets a literal switch (replacing a
+ *   platform condition), `platform: true` restores the row's known platform condition, and `config` sets keys, where
+ *   `null` returns a key to its built-in value (or removes it). Switching a row on also switches on a group that
+ *   contains it.
+ * @returns {Promise<{synced?: object}>} the built-in merge summary when the save also merged a built-in update.
+ */
+async function applyRows(m, id, changes) {
+  if (!Array.isArray(changes) || changes.length === 0) throw new ActionError('bad-request', 'changes must be a non-empty list')
+  const { state } = await readState(m)
+  const conditions = knownConditions(declarations(m.ctx), state)
+  return editPlugins(m, id, (rows, inherited) => {
+    const builtIn = rowsById(inherited)
+    let next = rows
+    for (const change of changes) {
+      const rowId = String(change?.rowId)
+      next = replaceRow(next, rowId, (row) => {
+        const out = { ...row }
+        if (change.platform === true) {
+          const condition = conditions.get(`${rowId}\0${row.name}`)
+          if (condition === undefined) throw new ActionError('no-condition', `No platform condition is known for row ${rowId}`, { rowId })
+          out.disabled = { __jsExpr: condition }
+        } else if (typeof change.enabled === 'boolean') {
+          if (change.enabled) delete out.disabled
+          else out.disabled = true
+        }
+        if (change.config !== null && typeof change.config === 'object') {
+          const config = { ...out.config ?? {} }
+          const original = builtIn.get(rowId)?.config ?? {}
+          for (const [key, value] of Object.entries(change.config)) {
+            if (value !== null) config[key] = value
+            else if (Object.hasOwn(original, key)) config[key] = original[key]
+            else delete config[key]
+          }
+          if (Object.keys(config).length === 0 && builtIn.get(rowId)?.config === undefined) delete out.config
+          else out.config = config
+        }
+        return out
+      })
+      if (change.enabled === true || change.platform === true) next = enableGroupsOf(next, rowId)
+    }
+    return next
+  })
 }
 
 async function resetRow(m, id, rowId) {

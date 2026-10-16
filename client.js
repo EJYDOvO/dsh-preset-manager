@@ -21,26 +21,20 @@ window.__ModuleLoader__.load({
     const ZH = {
       nav: '模式管理',
       title: '模式管理',
-      intro: '查看每个模式包含哪些能力，按需开关、复制成自己的模式。修改只影响之后新建的会话。',
-      search: '搜索插件或模式',
-      onlyChanged: '只看改动',
+      intro: '模式决定 Agent 能做什么、怎么说话。改动只影响之后新建的会话；开启了即时生效的模式，保存的提示词会立刻用到正在运行的会话。',
       refresh: '刷新',
       newPreset: '新建模式',
       loading: '加载中…',
       noMatch: '没有匹配的插件',
       'badge.default': '默认',
-      'badge.builtin': '内置',
       'badge.custom': '自定义',
       'badge.external': '来自其他插件',
-      'badge.modified': '已修改 {n} 项',
-      'badge.usage': '{n} 个会话在用',
       'badge.broken': '无法使用',
-      summary: '{on}/{total} 个插件已启用',
       'action.try': '用它新建会话',
       'action.setDefault': '设为默认',
       'action.duplicate': '复制',
-      'action.yaml': 'YAML',
-      'action.hideYaml': '收起 YAML',
+      'action.yaml': '查看配置（YAML）',
+      'action.hideYaml': '收起配置',
       'action.copy': '复制内容',
       'action.copied': '已复制',
       'action.reset': '恢复内置',
@@ -73,9 +67,8 @@ window.__ModuleLoader__.load({
       'confirm.remove': '删除「{name}」？',
       'confirm.reset': '把「{name}」恢复为内置配置？你的 {n} 处修改会被丢弃。',
       'confirm.inUse': '有 {n} 个打开的会话正在使用它，这些会话重启后将无法恢复。',
-      'confirm.ok': '确认',
       'notice.saved': '已保存 · 之后新建的会话生效',
-      'notice.created': '已创建',
+      'notice.created': '已创建 · 可以在下面调整它能做什么',
       'notice.default': '已设为新会话的默认模式',
       'notice.reset': '已恢复内置配置',
       'notice.updated': '已更新',
@@ -88,9 +81,6 @@ window.__ModuleLoader__.load({
       'err.prompt-unknown-variable': '提示词里的 {reference} 不是可用变量。可用变量：{variables}。',
       'err.prompt-malformed': '提示词里的 {reference} 格式不对：变量要写成完整的双花括号形式，名称用小写字母开头，例如 {{model}}。',
       'err.prompt-too-long': '提示词太长了，上限是 {max} 个字符。',
-      'action.prompt': '编辑提示词',
-      'badge.promptChanged': '提示词已修改',
-      'prompt.excerptLine': '提示词：{text}',
       'prompt.title': '系统提示词',
       'prompt.partial': '这段文字位于系统提示词的开头，后面还会追加工具说明、工作区规则等内容。',
       'prompt.complete': '这个模式只把这段文字作为完整的系统提示词，不会再追加工具说明等内容。',
@@ -158,14 +148,12 @@ window.__ModuleLoader__.load({
       'prompt.exported': '已导出为文件。',
       'prompt.importTooLarge': '文件太大，上限是 {max} 个字符。',
       'prompt.importFailed': '导入失败：{detail}',
-      'prompt.close': '收起',
       'prompt.conflictTitle': '保存被拒绝：这段提示词在你编辑期间被别处修改了。',
       'prompt.conflictLatest': '最新内容：',
       'prompt.loadLatest': '载入最新内容（放弃我的修改）',
       'prompt.overwrite': '用我的版本覆盖',
       'prompt.off': '身份行已关闭，这段提示词不会生效。',
       'badge.live': '即时生效',
-      'badge.sync': '内置模式有更新',
       'action.sync': '同步内置更新',
       'sync.title': '把内置模式的最新变化合并进来，你的修改会保留。',
       'sync.origin': '这个模式基于「{name}」，会合并「{name}」内置版本的变化。',
@@ -184,28 +172,27 @@ window.__ModuleLoader__.load({
       'notice.repaired': '已关闭无法加载的插件',
       'err.nothing-to-repair': '没有需要关闭的插件。',
       'row.failed': '加载失败',
-      'row.platform': '跟随平台',
-      'row.platformNow': '跟随平台（当前{state}）',
+      'row.platform': '自动',
+      'row.platformNow': '自动（当前{state}）',
       'row.forceOn': '开',
       'row.forceOff': '关',
-      'row.forced': '已固定，不随平台切换',
-      'row.platformHint': '这一项原本按运行平台自动开关；固定为开或关后，换到其他平台也不会再自动切换。',
-      'err.no-condition': '找不到这个插件原本的平台条件。',
+      'row.forced': '已固定，不再自动切换',
+      'row.platformHint': '这一项原本按运行环境（例如操作系统）自动开关；固定为开或关后，就不再自动切换。',
+      'err.no-condition': '找不到这个插件原本的自动开关条件。',
       'confirm.saved': '另有 {n} 个已保存的会话是用这个模式创建的，删除后再打开这些会话会失败。',
       'confirm.checking': '正在统计使用这个模式的会话…',
       'confirm.savedPartial': '另有至少 {n} 个已保存的会话使用这个模式（会话较多，没有全部统计完），删除后再打开这些会话会失败。',
-      'prompt.advanced': '更多设置',
-      'prompt.hideAdvanced': '收起更多设置',
+      'prompt.advanced': '高级设置：结尾提示词、完整提示词、运行时上下文',
       'prompt.suffix': '结尾提示词',
       'prompt.suffixHint': '追加在工具说明、工作区规则等内容之后。留空会去掉这个模式原有的结尾。',
       'prompt.suffixIgnored': '已选择只用开头这段作为完整提示词，结尾提示词不会生效。',
       'prompt.completeLabel': '只用开头这段作为完整的系统提示词，不追加工具说明等内容',
       'prompt.runtimeLabel': '附带运行时上下文：当前时间、工作目录、权限等',
       'prompt.flagsNote': '这两项只对之后新建的会话生效，预览也不会反映它们的变化。',
-      'prompt.liveLabel': '即时生效：保存提示词后，正在运行的会话从下一步起就使用新提示词',
-      'prompt.liveHint': '会话中途换提示词时，模型会收到一条新的系统提示，可能多消耗一些输入令牌。开关本身只对之后新建的会话生效；卸载本插件前请先关闭。',
-      'prompt.toolLabel': '允许在对话里修改提示词：模型可以调用 mode_prompt 工具，每次保存都要你批准',
-      'prompt.toolHint': '只对之后新建的会话生效。',
+      'prompt.liveLabel': '即时生效',
+      'prompt.liveHint': '保存提示词后，正在运行的会话从下一步起就用新提示词。模型会收到一条新的系统提示，可能多消耗一些输入令牌。卸载本插件前请先关闭。',
+      'prompt.toolLabel': '允许在对话里修改提示词',
+      'prompt.toolHint': '模型可以调用 mode_prompt 工具读取或修改这个模式的提示词，每次保存前都会请你批准。卸载本插件前请先关闭。',
       'notice.liveOn': '已开启即时生效 · 对之后新建的会话生效',
       'notice.liveOff': '已关闭即时生效',
       'notice.toolOn': '已允许在对话里修改提示词 · 对之后新建的会话生效',
@@ -227,30 +214,89 @@ window.__ModuleLoader__.load({
       'own.live.desc': '由模式管理插件提供：每一步都读取这个模式最新保存的提示词。',
       'own.tool.title': '对话里修改提示词',
       'own.tool.desc': '由模式管理插件提供：mode_prompt 工具，保存前需要你批准。',
+      'tab.capabilities': '能力',
+      'tab.prompt': '提示词',
+      'tab.plugins': '全部插件',
+      'section.act': '能做的事',
+      'section.work': '工作方式',
+      'section.context': '上下文',
+      'cap.intro': '打开一项能力会把它恢复成内置模式里的样子；关闭会关掉它包含的所有插件。',
+      'cap.terminal.name': '运行命令',
+      'cap.terminal.desc': '在终端里执行命令、运行脚本，并管理后台任务。',
+      'cap.files.name': '文件',
+      'cap.files.desc': '读取和搜索工作区里的文件。',
+      'cap.web.name': '网页',
+      'cap.web.desc': '搜索网页并读取页面内容。',
+      'cap.delegation.name': '子代理与工作流',
+      'cap.delegation.desc': '把任务交给子代理处理，或编写脚本编排多步工具操作。',
+      'cap.extend.name': '扩展自身',
+      'cap.extend.desc': '安装和管理 DSH 插件，查询编写插件所需的接口。',
+      'cap.planning.name': '计划模式',
+      'cap.planning.desc': '先制定计划，经你审阅后再动手执行。',
+      'cap.todo.name': '待办清单',
+      'cap.todo.desc': '用待办清单跟踪多步骤任务的进度。',
+      'cap.goals.name': '会话目标',
+      'cap.goals.desc': '设置和跟踪当前会话的目标，也可以用 /goal 命令管理。',
+      'cap.skills.name': '技能',
+      'cap.skills.desc': '发现并按需加载本地的技能说明。',
+      'cap.ask.name': '向你提问',
+      'cap.ask.desc': '需要补充信息或做选择时向你提问。',
+      'cap.present.name': '交付文件',
+      'cap.present.desc': '把工作区里的文件标记为这一轮的交付内容。',
+      'cap.schedule.name': '定时提醒',
+      'cap.schedule.desc': '设置稍后提醒，到时间继续当前会话的任务。',
+      'cap.instructions.name': '工作区指令',
+      'cap.instructions.desc': '读取 AGENTS.md、CLAUDE.md 等文件里的项目规则。',
+      'cap.time.name': '时间感知',
+      'cap.time.desc': '每一步告诉模型当前时间、时区和距上一条消息过了多久。',
+      'cap.compaction.name': '上下文压缩',
+      'cap.compaction.desc': '对话太长时自动总结历史，并精简过长的工具输出；也可以用 /compact 命令手动压缩。',
+      'cap.writes': '允许修改文件',
+      'cap.writesDesc': '关闭后只能读取和搜索文件，不能创建、写入或编辑。',
+      'cap.partial': '部分开启',
+      'cap.partialHint': '这项能力里的插件只开了一部分，可以在「全部插件」里查看；打开开关会恢复成内置模式里的样子。',
+      'cap.none': '这个模式没有可以在这里调整的能力，可以在「全部插件」里查看。',
+      'cap.other': '另有 {n} 个插件不属于上面的能力。',
+      'cap.showPlugins': '查看全部插件',
+      'chip.label': '这个模式能做的事',
+      'chip.terminal': '运行命令',
+      'chip.files': '读写文件',
+      'chip.filesReadOnly': '只读文件',
+      'chip.web': '网页',
+      'chip.delegation': '子代理',
+      'chip.extend': '扩展自身',
+      'meta.plugins': '{on}/{total} 个插件已启用',
+      'meta.usage': '{n} 个会话在用',
+      'meta.changed': '已改 {n} 项',
+      'meta.live': '提示词即时生效',
+      'meta.promptTool': '可在对话里改提示词',
+      'action.more': '更多操作',
+      'banner.sync': '内置模式有更新，同步后会保留你的修改。',
+      'banner.draft': '这个模式有未保存的提示词草稿。',
+      'action.openDraft': '继续编辑',
+      'plugins.search': '搜索插件',
+      'plugins.onlyChanged': '只看改动',
+      'plugins.intro': '这里列出模式里的每一个插件，适合需要逐个调整的情况。',
+      'prompt.behaviorTitle': '在对话中',
+      'prompt.behaviorHint': '这两个开关立即保存，不需要点「保存」；它们对之后新建的会话生效。',
     }
     const EN = {
       nav: 'Modes',
       title: 'Modes',
-      intro: 'See what each mode includes, switch capabilities on or off, and copy modes into your own. Changes apply to sessions created afterwards.',
-      search: 'Search plugins or modes',
-      onlyChanged: 'Changed only',
+      intro: 'A mode decides what the agent can do and how it talks. Changes apply to sessions created afterwards; in a mode with live prompts, a saved prompt reaches running sessions right away.',
       refresh: 'Refresh',
       newPreset: 'New mode',
       loading: 'Loading…',
       noMatch: 'No matching plugins',
       'badge.default': 'Default',
-      'badge.builtin': 'Built-in',
       'badge.custom': 'Custom',
       'badge.external': 'From another plugin',
-      'badge.modified': '{n} changed',
-      'badge.usage': 'Used by {n} sessions',
       'badge.broken': 'Unavailable',
-      summary: '{on}/{total} plugins on',
       'action.try': 'New session with it',
       'action.setDefault': 'Make default',
       'action.duplicate': 'Duplicate',
-      'action.yaml': 'YAML',
-      'action.hideYaml': 'Hide YAML',
+      'action.yaml': 'View configuration (YAML)',
+      'action.hideYaml': 'Hide configuration',
       'action.copy': 'Copy',
       'action.copied': 'Copied',
       'action.reset': 'Restore built-in',
@@ -283,9 +329,8 @@ window.__ModuleLoader__.load({
       'confirm.remove': 'Delete "{name}"?',
       'confirm.reset': 'Restore "{name}" to its built-in configuration? Your {n} changes will be discarded.',
       'confirm.inUse': '{n} open sessions use it; they cannot be restored after a restart.',
-      'confirm.ok': 'Confirm',
       'notice.saved': 'Saved · applies to new sessions',
-      'notice.created': 'Created',
+      'notice.created': 'Created · adjust what it can do below',
       'notice.default': 'Now the default for new sessions',
       'notice.reset': 'Built-in configuration restored',
       'notice.updated': 'Updated',
@@ -298,9 +343,6 @@ window.__ModuleLoader__.load({
       'err.prompt-unknown-variable': '{reference} is not an available variable. Available variables: {variables}.',
       'err.prompt-malformed': '{reference} is malformed: write a variable as a complete double-brace reference whose name starts with a lowercase letter, such as {{model}}.',
       'err.prompt-too-long': 'The prompt is too long; the limit is {max} characters.',
-      'action.prompt': 'Edit prompt',
-      'badge.promptChanged': 'Prompt changed',
-      'prompt.excerptLine': 'Prompt: {text}',
       'prompt.title': 'System prompt',
       'prompt.partial': 'This text opens the system prompt; tool guidance, workspace rules, and other sections follow it.',
       'prompt.complete': 'This mode uses only this text as its complete system prompt; nothing else is appended.',
@@ -368,14 +410,12 @@ window.__ModuleLoader__.load({
       'prompt.exported': 'Exported to a file.',
       'prompt.importTooLarge': 'The file is too large; the limit is {max} characters.',
       'prompt.importFailed': 'Import failed: {detail}',
-      'prompt.close': 'Close',
       'prompt.conflictTitle': 'Not saved: this prompt was changed elsewhere while you were editing.',
       'prompt.conflictLatest': 'Latest version:',
       'prompt.loadLatest': 'Load the latest (discard my edits)',
       'prompt.overwrite': 'Overwrite with my version',
       'prompt.off': 'The persona row is off, so this prompt is not applied.',
       'badge.live': 'Live prompt',
-      'badge.sync': 'Built-in update',
       'action.sync': 'Sync built-in update',
       'sync.title': 'Merge the latest built-in changes into this mode; your changes are kept.',
       'sync.origin': 'This mode is based on "{name}" and takes the changes of its built-in version.',
@@ -394,28 +434,27 @@ window.__ModuleLoader__.load({
       'notice.repaired': 'Turned off the plugins that could not load',
       'err.nothing-to-repair': 'No plugins need to be turned off.',
       'row.failed': 'Failed to load',
-      'row.platform': 'Follow platform',
-      'row.platformNow': 'Follow platform (now {state})',
+      'row.platform': 'Auto',
+      'row.platformNow': 'Auto (now {state})',
       'row.forceOn': 'On',
       'row.forceOff': 'Off',
-      'row.forced': 'Fixed; no longer follows the platform',
-      'row.platformHint': 'This plugin is normally switched by platform; fixed on or off, it stays that way on every platform.',
-      'err.no-condition': 'The plugin\'s original platform condition is not known.',
+      'row.forced': 'Fixed; no longer switches automatically',
+      'row.platformHint': 'This plugin normally switches on or off by environment (for example the operating system); fixed on or off, it stops switching.',
+      'err.no-condition': 'The plugin\'s original automatic condition is not known.',
       'confirm.saved': '{n} more saved sessions were created with this mode; they will fail to open after it is deleted.',
       'confirm.checking': 'Counting the sessions that use this mode…',
       'confirm.savedPartial': 'At least {n} more saved sessions use this mode (not every session was counted); they will fail to open after it is deleted.',
-      'prompt.advanced': 'More settings',
-      'prompt.hideAdvanced': 'Fewer settings',
+      'prompt.advanced': 'Advanced: closing prompt, complete prompt, runtime context',
       'prompt.suffix': 'Closing prompt',
       'prompt.suffixHint': 'Added after tool guidance, workspace rules, and other sections. Leave it empty to drop this mode\'s closing text.',
       'prompt.suffixIgnored': 'The opening text is the complete prompt, so the closing prompt is not used.',
       'prompt.completeLabel': 'Use only the opening text as the complete system prompt, without tool guidance or other sections',
       'prompt.runtimeLabel': 'Include runtime context: current time, working directory, permissions, and more',
       'prompt.flagsNote': 'These two settings apply to sessions created afterwards, and the preview does not reflect them.',
-      'prompt.liveLabel': 'Live prompt: after a save, running sessions use the new prompt from their next step',
-      'prompt.liveHint': 'A mid-session prompt change reaches the model as a new system message and can cost some extra input tokens. The switch itself applies to sessions created afterwards; turn it off before uninstalling this plugin.',
-      'prompt.toolLabel': 'Allow prompt changes in chat: the model can call the mode_prompt tool, and every save asks you first',
-      'prompt.toolHint': 'Applies to sessions created afterwards.',
+      'prompt.liveLabel': 'Live prompt',
+      'prompt.liveHint': 'After a save, running sessions use the new prompt from their next step. The model receives a new system message, which can cost some extra input tokens. Turn it off before uninstalling this plugin.',
+      'prompt.toolLabel': 'Allow prompt changes in chat',
+      'prompt.toolHint': 'The model can call the mode_prompt tool to read or change this mode\'s prompt, and asks you before every save. Turn it off before uninstalling this plugin.',
       'notice.liveOn': 'Live prompt on · applies to new sessions',
       'notice.liveOff': 'Live prompt off',
       'notice.toolOn': 'Prompt changes in chat allowed · applies to new sessions',
@@ -437,6 +476,71 @@ window.__ModuleLoader__.load({
       'own.live.desc': 'From the Modes plugin: reads this mode\'s latest saved prompt at every step.',
       'own.tool.title': 'Prompt changes in chat',
       'own.tool.desc': 'From the Modes plugin: the mode_prompt tool, which asks you before each save.',
+      'tab.capabilities': 'Capabilities',
+      'tab.prompt': 'Prompt',
+      'tab.plugins': 'All plugins',
+      'section.act': 'What it can do',
+      'section.work': 'How it works',
+      'section.context': 'Context',
+      'cap.intro': 'Turning a capability on restores it as the built-in mode has it; turning it off switches off every plugin it includes.',
+      'cap.terminal.name': 'Run commands',
+      'cap.terminal.desc': 'Runs commands and scripts in a terminal and manages background jobs.',
+      'cap.files.name': 'Files',
+      'cap.files.desc': 'Reads and searches files in the workspace.',
+      'cap.web.name': 'Web',
+      'cap.web.desc': 'Searches the web and reads pages.',
+      'cap.delegation.name': 'Subagents and workflows',
+      'cap.delegation.desc': 'Hands tasks to subagents, or writes scripts that orchestrate several tool calls.',
+      'cap.extend.name': 'Extend itself',
+      'cap.extend.desc': 'Installs and manages DSH plugins, and looks up the APIs for writing them.',
+      'cap.planning.name': 'Plan mode',
+      'cap.planning.desc': 'Plans first and starts working after you review the plan.',
+      'cap.todo.name': 'To-do list',
+      'cap.todo.desc': 'Tracks multi-step tasks with a to-do list.',
+      'cap.goals.name': 'Session goals',
+      'cap.goals.desc': 'Sets and tracks the session goal; you can also manage it with /goal.',
+      'cap.skills.name': 'Skills',
+      'cap.skills.desc': 'Finds local skills and loads their instructions when needed.',
+      'cap.ask.name': 'Ask you',
+      'cap.ask.desc': 'Asks you when it needs information or a choice.',
+      'cap.present.name': 'Deliverables',
+      'cap.present.desc': 'Marks workspace files as this turn\'s deliverables.',
+      'cap.schedule.name': 'Reminders',
+      'cap.schedule.desc': 'Sets reminders that bring it back to the session later.',
+      'cap.instructions.name': 'Workspace instructions',
+      'cap.instructions.desc': 'Reads project rules from AGENTS.md, CLAUDE.md, and similar files.',
+      'cap.time.name': 'Time awareness',
+      'cap.time.desc': 'Tells the model the current time, time zone, and time since the last message at every step.',
+      'cap.compaction.name': 'Context compaction',
+      'cap.compaction.desc': 'Summarizes long conversations and trims long tool output; you can also compact with /compact.',
+      'cap.writes': 'Allow file changes',
+      'cap.writesDesc': 'When off, it can only read and search files, not create, write, or edit them.',
+      'cap.partial': 'Partly on',
+      'cap.partialHint': 'Only some of this capability\'s plugins are on; see All plugins. Turning it on restores it as the built-in mode has it.',
+      'cap.none': 'This mode has no capabilities to adjust here; see All plugins.',
+      'cap.other': '{n} more plugins belong to none of these capabilities.',
+      'cap.showPlugins': 'See all plugins',
+      'chip.label': 'What this mode can do',
+      'chip.terminal': 'Commands',
+      'chip.files': 'Files',
+      'chip.filesReadOnly': 'Files (read-only)',
+      'chip.web': 'Web',
+      'chip.delegation': 'Subagents',
+      'chip.extend': 'Extends itself',
+      'meta.plugins': '{on}/{total} plugins on',
+      'meta.usage': 'Open sessions: {n}',
+      'meta.changed': '{n} changed',
+      'meta.live': 'Live prompt',
+      'meta.promptTool': 'Prompt editable in chat',
+      'action.more': 'More actions',
+      'banner.sync': 'The built-in mode was updated; syncing keeps your changes.',
+      'banner.draft': 'This mode has an unsaved prompt draft.',
+      'action.openDraft': 'Keep editing',
+      'plugins.search': 'Search plugins',
+      'plugins.onlyChanged': 'Changed only',
+      'plugins.intro': 'Every plugin in this mode, for when you need to adjust them one by one.',
+      'prompt.behaviorTitle': 'In chat',
+      'prompt.behaviorHint': 'These switches save at once, without Save; they apply to sessions created afterwards.',
     }
 
     const CSS = `
@@ -463,7 +567,6 @@ window.__ModuleLoader__.load({
 .pm-card.is-broken { border-color: var(--dsw-alias-state-error-primary); }
 .pm-card.is-flash { border-color: var(--dsw-alias-state-success-primary); }
 .pm-head { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; cursor: pointer; border-radius: 12px; }
-.pm-head:hover { background: var(--dsw-alias-interactive-bg-hover); }
 .pm-chevron { flex: none; width: 16px; margin-top: 2px; color: var(--dsw-alias-label-tertiary); transition: transform .15s; }
 .pm-chevron.is-open { transform: rotate(90deg); }
 .pm-headmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -477,7 +580,6 @@ window.__ModuleLoader__.load({
 .pm-desc { color: var(--dsw-alias-label-secondary); line-height: 1.5; }
 .pm-notice { font-size: 12px; color: var(--dsw-alias-state-success-primary); }
 .pm-error { color: var(--dsw-alias-state-error-primary); white-space: pre-wrap; line-height: 1.5; }
-.pm-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 12px 40px; }
 .pm-body { border-top: .5px solid var(--dsw-alias-border-l3); padding: 6px 14px 12px 40px; display: flex; flex-direction: column; }
 .pm-group { margin: 12px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .pm-rowwrap { border-top: .5px solid var(--dsw-alias-border-l4); }
@@ -487,7 +589,6 @@ window.__ModuleLoader__.load({
 .pm-rowmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pm-rowtitle { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .pm-rowdesc { color: var(--dsw-alias-label-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.pm-rowtech { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; color: var(--dsw-alias-label-quaternary, var(--dsw-alias-label-tertiary)); overflow-wrap: anywhere; }
 .pm-switch { position: relative; flex: none; box-sizing: border-box; width: 36px; height: 20px; margin-top: 4px; padding: 2px; border: 0; border-radius: 999px; background: var(--dsw-alias-border-l3); cursor: pointer; }
 .pm-switch[aria-checked='true'] { background: var(--dsw-alias-brand-primary); }
 .pm-switch:disabled { cursor: default; opacity: .45; }
@@ -505,13 +606,13 @@ window.__ModuleLoader__.load({
 .pm-yaml { position: relative; margin: 0 14px 12px 40px; }
 .pm-yaml pre { margin: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); font-size: 12px; line-height: 1.5; }
 .pm-yaml .pm-btn { position: absolute; top: 8px; right: 8px; background: var(--dsw-alias-bg-layer-2); }
-.pm-excerpt { font-size: 12px; color: var(--dsw-alias-label-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pm-prompt { margin: 0 14px 12px 40px; display: flex; flex-direction: column; gap: 8px; }
 .pm-textarea { width: 100%; min-height: 140px; resize: vertical; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; line-height: 1.6; }
 .pm-textarea[aria-invalid='true'] { border-color: var(--dsw-alias-state-error-primary); }
 .pm-chip { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: var(--dsw-alias-state-business-primary); cursor: pointer; }
 .pm-chip:hover { background: var(--dsw-alias-interactive-bg-hover); }
 .pm-prompt .pm-yaml { margin: 0; }
+.pm-body .pm-prompt { margin: 4px 0 0; padding-left: 0; }
 .pm-prompt pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .pm-tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pm-tpl { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -545,12 +646,43 @@ window.__ModuleLoader__.load({
 .pm-history { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow: auto; }
 .pm-history-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l4); }
 .pm-history-item pre { margin: 0; max-height: 72px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.pm-top { display: flex; align-items: flex-start; border-radius: 12px; }
+.pm-top:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-top .pm-head { flex: 1 1 auto; min-width: 0; }
+.pm-topactions { flex: none; display: flex; gap: 6px; align-items: center; padding: 12px 14px 0 0; }
+.pm-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.pm-cchip { font-size: 11px; line-height: 18px; padding: 0 7px; border-radius: 6px; background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.pm-meta { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
+.pm-info { color: var(--dsw-alias-label-secondary); }
+.pm-tabs { display: flex; gap: 2px; margin: 4px 0 6px; border-bottom: .5px solid var(--dsw-alias-border-l3); }
+.pm-tab { position: relative; font: inherit; font-size: 13px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -.5px; background: none; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+.pm-tab:hover { color: var(--dsw-alias-label-primary); }
+.pm-tab[aria-selected='true'] { color: var(--dsw-alias-label-primary); font-weight: 600; border-bottom-color: var(--dsw-alias-brand-primary); }
+.pm-tab:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
+.pm-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--dsw-alias-state-warn-primary); vertical-align: middle; }
+.pm-caps { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
+.pm-capsection + .pm-capsection { margin-top: 6px; }
+.pm-cap { border-top: .5px solid var(--dsw-alias-border-l4); }
+.pm-group + .pm-cap { border-top: 0; }
+.pm-capline { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; }
+.pm-capsub { margin-left: 18px; padding-top: 0; }
+.pm-capline .pm-rowdesc { -webkit-line-clamp: 3; }
+.pm-menu { position: relative; }
+.pm-menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 168px; display: flex; flex-direction: column; padding: 4px; border-radius: 10px; border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
+.pm-menu-list button { font: inherit; font-size: 13px; text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none; color: inherit; cursor: pointer; white-space: nowrap; }
+.pm-menu-list button:hover:not(:disabled), .pm-menu-list button:focus-visible { background: var(--dsw-alias-interactive-bg-hover); outline: none; }
+.pm-menu-list button:disabled { opacity: .5; cursor: default; }
+.pm-menu-list .pm-danger { color: var(--dsw-alias-state-error-primary); }
+.pm-behavior { display: flex; flex-direction: column; margin-top: 6px; padding-top: 4px; border-top: .5px solid var(--dsw-alias-border-l3); }
+.pm-behavior .pm-capline + .pm-capline { border-top: .5px solid var(--dsw-alias-border-l4); }
 @container (max-width: 520px) {
-  .pm-actions, .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
+  .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
   .pm-inline { margin-left: 0; }
   .pm-cardwarn { margin-left: 14px; }
   .pm-yaml { margin: 0 14px 12px; }
   .pm-form { grid-template-columns: minmax(0, 1fr); }
+  .pm-top { flex-wrap: wrap; }
+  .pm-topactions { box-sizing: border-box; width: 100%; padding: 0 14px 10px 40px; }
 }
 `
 
@@ -678,6 +810,256 @@ window.__ModuleLoader__.load({
     /** Localized title and description for the rows this plugin adds to a mode. */
     const OWN_ROWS = { 'dsh-modes/live-persona': 'live', 'dsh-modes/prompt-tool': 'tool' }
 
+    /**
+     * Official names and descriptions of the rows the shipped presets mount (Chinese from each package's locale),
+     * shown when the plugin inventory has no localized metadata, as on DSH 0.2.0.
+     */
+    const ROW_COPY = {
+      zh: {
+        persona: ['身份与提示词', '这个模式的系统提示词。'],
+        'agent-instructions': ['工作区指令加载', '读取 AGENTS.md、CLAUDE.md 等文件，为 AI 提供工作区规则。'],
+        'time-context': ['时间感知', '每一步把当前时间、浏览器时区和距上一条消息的时长告诉模型。'],
+        'tool-bash': ['Bash 命令工具', '让 AI 执行 Bash 命令，并按配置管理后台运行和权限申请。'],
+        'tool-pwsh': ['PowerShell 命令工具', '让 AI 执行 PowerShell 命令。'],
+        'tool-fs': ['文件读写工具', '让 AI 读取、创建和编辑工作文件。'],
+        'tool-fs-search': ['文件搜索工具', '让 AI 按文件名或文本内容搜索本地文件。'],
+        'tool-jobs': ['后台任务工具', '让 AI 查看后台任务、读取输出或停止任务。'],
+        'tool-schedule': ['定时提醒工具', '让 AI 创建、查看、修改和删除稍后提醒它继续的任务。'],
+        'skill-filesystem': ['本地技能加载', '从本地目录发现和读取技能。'],
+        'tool-skill': ['技能加载工具', '让 AI 按需加载技能说明。'],
+        'command-goal': ['目标管理命令', '通过用户命令设置和管理当前会话目标。'],
+        'tool-goal': ['目标管理工具', '让 AI 设置、查看和更新当前会话目标。'],
+        'plan-mode': ['计划模式', '让 AI 先制定计划，并在用户审阅后切换到执行。'],
+        'compaction-basic': ['上下文压缩', '在上下文达到阈值时，使用模型总结历史内容。'],
+        'command-compact': ['上下文压缩命令', '让用户通过命令主动压缩当前会话上下文。'],
+        'tool-result-pruner': ['工具结果精简', '在上下文压力较大时，精简过长的工具输出并保留首尾内容。'],
+        'tool-subagent-control': ['子智能体控制工具', '让 AI 向子智能体发送消息或中断其运行。'],
+        'tool-subagent-list-agents': ['子智能体列表', '让 AI 列出当前会话的子智能体。'],
+        'tool-subagent': ['子智能体委派工具', '让 AI 将任务交给子智能体，并获取运行结果。'],
+        'tool-subagent-fork': ['子智能体分叉', '让 AI 以当前对话为起点派出子智能体。'],
+        'tool-subagent-codex': ['Codex 子智能体', '让 AI 把任务交给本机的 Codex 命令行。'],
+        'tool-subagent-claude-code': ['Claude Code 子智能体', '让 AI 把任务交给本机的 Claude Code 命令行。'],
+        'workflow-ptc': ['工作流执行引擎', '使用共享的 PTC 运行时执行工作流编排代码。'],
+        'tool-workflow': ['工作流工具', '让 AI 编写并运行 JavaScript 脚本，编排多项工具操作。'],
+        'tool-ralph': ['Ralph 迭代工具', '围绕同一目标逐轮运行新的子智能体，并传递上一轮的简要报告。'],
+        'tool-ask-user': ['向用户提问工具', '让 AI 在需要补充信息或选择时向用户提问。'],
+        'tool-todo': ['待办清单工具', '让 AI 创建和更新任务待办清单。'],
+        'tool-web': ['网页搜索与读取工具', '让 AI 搜索网页并读取页面内容。'],
+        present: ['文件交付工具', '让 AI 将工作区文件明确标记为本轮交付内容。'],
+        'tool-plugin-manager': ['插件管理工具', '让 AI 安装、移除和启停当前运行配置中的插件。'],
+        'tool-cordis': ['插件 API 查询工具', '让 AI 在开发插件前查询服务端和浏览器端的可用 API。'],
+        'tool-presentation': ['工具调用方式', '选择智能体通过原生工具或 PTC 代码来调用工具。'],
+        pty: ['持久终端服务', '管理可持续交互的终端会话及其输入、输出和清理。'],
+        'terminal-bash': ['持久 Shell 后端', '提供可跨多次调用保留状态的 Shell 终端。'],
+        'terminal-pwsh': ['持久 Shell 后端', '提供可跨多次调用保留状态的 Shell 终端。'],
+        'persistent-bash': ['持久 Bash 工具', '让 AI 在保留状态的 Bash 会话中连续执行命令。'],
+        'persistent-pwsh': ['持久 PowerShell 工具', '让 AI 在保留状态的 PowerShell 会话中连续执行命令。'],
+      },
+      en: {
+        persona: ['Persona and prompt', 'This mode\'s system prompt.'],
+        'agent-instructions': ['Workspace instructions', 'Reads AGENTS.md, CLAUDE.md, and similar files for workspace rules.'],
+        'time-context': ['Time awareness', 'Tells the model the current time, browser time zone, and time since the last message at every step.'],
+        'tool-bash': ['Bash commands', 'Lets the AI run Bash commands, with background runs and permission requests as configured.'],
+        'tool-pwsh': ['PowerShell commands', 'Lets the AI run PowerShell commands.'],
+        'tool-fs': ['File read and write', 'Lets the AI read, create, and edit work files.'],
+        'tool-fs-search': ['File search', 'Lets the AI search local files by name or text.'],
+        'tool-jobs': ['Background jobs', 'Lets the AI list background jobs, read their output, or stop them.'],
+        'tool-schedule': ['Reminders', 'Lets the AI create, list, edit, and delete reminders that bring it back later.'],
+        'skill-filesystem': ['Local skills', 'Finds and reads skills from local folders.'],
+        'tool-skill': ['Skill loading', 'Lets the AI load skill instructions when needed.'],
+        'command-goal': ['Goal command', 'Lets you set and manage the session goal with a command.'],
+        'tool-goal': ['Goal tools', 'Lets the AI set, read, and update the session goal.'],
+        'plan-mode': ['Plan mode', 'Lets the AI plan first and execute after you review the plan.'],
+        'compaction-basic': ['Context compaction', 'Summarizes the history with the model when the context reaches its threshold.'],
+        'command-compact': ['Compact command', 'Lets you compact the session context with a command.'],
+        'tool-result-pruner': ['Tool output trimming', 'Trims long tool output under context pressure, keeping its start and end.'],
+        'tool-subagent-control': ['Subagent control', 'Lets the AI message or interrupt subagents.'],
+        'tool-subagent-list-agents': ['Subagent list', 'Lets the AI list the session\'s subagents.'],
+        'tool-subagent': ['Subagents', 'Lets the AI hand tasks to subagents and get their results.'],
+        'tool-subagent-fork': ['Subagent fork', 'Lets the AI start a subagent from the current conversation.'],
+        'tool-subagent-codex': ['Codex subagent', 'Lets the AI hand tasks to the local Codex CLI.'],
+        'tool-subagent-claude-code': ['Claude Code subagent', 'Lets the AI hand tasks to the local Claude Code CLI.'],
+        'workflow-ptc': ['Workflow engine', 'Runs workflow orchestration code on the shared PTC runtime.'],
+        'tool-workflow': ['Workflows', 'Lets the AI write and run JavaScript that orchestrates several tool calls.'],
+        'tool-ralph': ['Ralph loop', 'Runs a fresh subagent round after round toward one goal, passing on each round\'s brief report.'],
+        'tool-ask-user': ['Ask the user', 'Lets the AI ask you when it needs information or a choice.'],
+        'tool-todo': ['To-do list', 'Lets the AI create and update a task list.'],
+        'tool-web': ['Web search and fetch', 'Lets the AI search the web and read pages.'],
+        present: ['Deliverables', 'Lets the AI mark workspace files as this turn\'s deliverables.'],
+        'tool-plugin-manager': ['Plugin management', 'Lets the AI install, remove, and switch plugins in the running configuration.'],
+        'tool-cordis': ['Plugin API lookup', 'Lets the AI look up Host and browser APIs before writing a plugin.'],
+        'tool-presentation': ['Tool calling style', 'Chooses whether the agent calls tools natively or through PTC code.'],
+        pty: ['Persistent terminal', 'Manages interactive terminal sessions, their input, output, and cleanup.'],
+        'terminal-bash': ['Persistent shell backend', 'Provides a shell terminal that keeps its state across calls.'],
+        'terminal-pwsh': ['Persistent shell backend', 'Provides a shell terminal that keeps its state across calls.'],
+        'persistent-bash': ['Persistent Bash', 'Lets the AI run commands one after another in a Bash session that keeps its state.'],
+        'persistent-pwsh': ['Persistent PowerShell', 'Lets the AI run commands one after another in a PowerShell session that keeps its state.'],
+      },
+    }
+
+    /** A row's display title and description: the inventory's localized metadata, else the copy above, else its id. */
+    function rowCopy(ui, row) {
+      const own = OWN_ROWS[row.module]
+      if (own !== undefined) return { title: ui.t(`own.${own}.title`), description: ui.t(`own.${own}.desc`) }
+      const title = ui.text(row.meta?.title)
+      const description = ui.text(row.meta?.description)
+      const copy = row.id === null ? undefined : ROW_COPY[ui.lang][row.id]
+      const localized = title !== undefined && title !== row.module
+      return {
+        title: localized ? title : copy?.[0] ?? title ?? row.id ?? row.module,
+        description: localized ? description : copy?.[1] ?? description,
+      }
+    }
+
+    /**
+     * What a mode can do, grouped the way a user thinks about it. Each capability switches a set of shipped rows;
+     * rows a mode does not mount are skipped.
+     */
+    const CAPABILITIES = [
+      { id: 'terminal', section: 'act', rows: ['tool-bash', 'tool-pwsh', 'tool-jobs', 'pty', 'terminal-bash', 'persistent-bash', 'terminal-pwsh', 'persistent-pwsh'] },
+      { id: 'files', section: 'act', rows: ['tool-fs', 'tool-fs-search'] },
+      { id: 'web', section: 'act', rows: ['tool-web'] },
+      { id: 'delegation', section: 'act', rows: ['tool-subagent', 'tool-subagent-fork', 'tool-subagent-control', 'tool-subagent-list-agents', 'tool-subagent-codex', 'tool-subagent-claude-code', 'tool-workflow', 'workflow-ptc', 'tool-ralph'] },
+      { id: 'extend', section: 'act', rows: ['tool-plugin-manager', 'tool-cordis'] },
+      { id: 'planning', section: 'work', rows: ['plan-mode'] },
+      { id: 'todo', section: 'work', rows: ['tool-todo'] },
+      { id: 'goals', section: 'work', rows: ['command-goal', 'tool-goal'] },
+      { id: 'skills', section: 'work', rows: ['skill-filesystem', 'tool-skill'] },
+      { id: 'ask', section: 'work', rows: ['tool-ask-user'] },
+      { id: 'present', section: 'work', rows: ['present'] },
+      { id: 'schedule', section: 'work', rows: ['tool-schedule'] },
+      { id: 'instructions', section: 'context', rows: ['agent-instructions'] },
+      { id: 'time', section: 'context', rows: ['time-context'] },
+      { id: 'compaction', section: 'context', rows: ['compaction-basic', 'command-compact', 'tool-result-pruner'] },
+    ]
+    const CAPABILITY_SECTIONS = ['act', 'work', 'context']
+    const CAPABILITY_ROWS = new Set(CAPABILITIES.flatMap(capability => capability.rows))
+
+    /** Whether a row is switched on by its own setting (a platform condition counts as on) and its group. */
+    function rowOn(row) {
+      return !row.inheritedOff && (row.declared === true || row.declared === 'conditional')
+    }
+
+    /**
+     * One capability's rows in a mode. `counted` are the rows its built-in or template version switches on, so a row
+     * the shipped mode keeps off (for example the Codex subagent) neither blocks "on" nor gets switched on by it.
+     */
+    function capabilityRows(capability, preset) {
+      const rows = preset.rows.filter(row => row.id !== null && capability.rows.includes(row.id))
+      const shipped = rows.filter(row => row.shipped !== 'off')
+      return { rows, counted: shipped.length > 0 ? shipped : rows }
+    }
+
+    function capabilityState(counted) {
+      const on = counted.filter(rowOn).length
+      return on === 0 ? 'off' : on === counted.length ? 'on' : 'partial'
+    }
+
+    /** Row changes that switch a capability on: each counted row back on, following its platform when it has one. */
+    function enableChanges(counted) {
+      return counted.filter(row => !rowOn(row)).map(row => (row.shipped === 'conditional' || row.platform !== undefined
+        ? { rowId: row.id, platform: true }
+        : { rowId: row.id, enabled: true }))
+    }
+
+    function disableChanges(rows) {
+      return rows.filter(rowOn).map(row => ({ rowId: row.id, enabled: false }))
+    }
+
+    /** Whether the file tool may write and edit; undefined when the mode has no file tool. */
+    function fileWrites(preset) {
+      const fs = preset.rows.find(row => row.id === 'tool-fs')
+      return fs === undefined ? undefined : !(fs.config?.write === false || fs.config?.edit === false)
+    }
+
+    /** Short labels of what a mode can do, for its card header. */
+    function capabilityChips(t, preset) {
+      return CAPABILITIES.filter(capability => capability.section === 'act').flatMap((capability) => {
+        const { rows, counted } = capabilityRows(capability, preset)
+        if (rows.length === 0 || capabilityState(counted) === 'off') return []
+        if (capability.id === 'files' && fileWrites(preset) === false) return [t('chip.filesReadOnly')]
+        return [t(`chip.${capability.id}`)]
+      })
+    }
+
+    function CapabilityPanel({ ui, preset, onShowPlugins }) {
+      const { t, pending, run } = ui
+      const editable = preset.source !== 'external'
+      const others = preset.rows.filter(row => row.id === null || (!CAPABILITY_ROWS.has(row.id) && !row.essential && !row.own)).length
+      const sections = CAPABILITY_SECTIONS.map(section => ({
+        section,
+        items: CAPABILITIES.filter(capability => capability.section === section)
+          .map(capability => ({ capability, ...capabilityRows(capability, preset) }))
+          .filter(item => item.rows.length > 0),
+      })).filter(item => item.items.length > 0)
+      if (sections.length === 0) return h('div', { className: 'pm-muted' }, t('cap.none'))
+      const apply = (key, changes) => { if (changes.length > 0) run(key, 'applyRows', { id: preset.id, changes }, 'notice.saved') }
+      return h('div', { className: 'pm-caps' },
+        h('div', { className: 'pm-hint' }, t('cap.intro')),
+        ...sections.map(({ section, items }) => h('div', { key: section, className: 'pm-capsection' },
+          h('div', { className: 'pm-group' }, t(`section.${section}`)),
+          ...items.map(({ capability, rows, counted }) => {
+            const state = capabilityState(counted)
+            const key = `cap:${preset.id}:${capability.id}`
+            const name = t(`cap.${capability.id}.name`)
+            const writes = capability.id === 'files' ? fileWrites(preset) : undefined
+            const writesKey = `cap:${preset.id}:writes`
+            return h('div', { key: capability.id, className: 'pm-cap' },
+              h('div', { className: 'pm-capline' },
+                h('div', { className: 'pm-rowmain' },
+                  h('div', { className: 'pm-rowtitle' },
+                    h('strong', null, name),
+                    state === 'partial' ? h('span', { className: 'pm-badge is-warn', title: t('cap.partialHint') }, t('cap.partial')) : null),
+                  h('div', { className: 'pm-rowdesc' }, t(`cap.${capability.id}.desc`))),
+                h(Switch, {
+                  checked: state === 'on', pending: pending.has(key), disabled: !editable, label: name,
+                  onChange: enabled => apply(key, enabled ? enableChanges(counted) : disableChanges(rows)),
+                })),
+              writes !== undefined && state !== 'off'
+                ? h('div', { className: 'pm-capline pm-capsub' },
+                  h('div', { className: 'pm-rowmain' },
+                    h('div', null, t('cap.writes')),
+                    h('div', { className: 'pm-rowdesc' }, t('cap.writesDesc'))),
+                  h(Switch, {
+                    checked: writes, pending: pending.has(writesKey), disabled: !editable, label: t('cap.writes'),
+                    onChange: enabled => apply(writesKey, [{ rowId: 'tool-fs', config: enabled ? { write: null, edit: null } : { write: false, edit: false } }]),
+                  }))
+                : null)
+          }))),
+        others > 0
+          ? h('div', { className: 'pm-hint' }, t('cap.other', { n: others }), ' ',
+            h('button', { type: 'button', className: 'pm-link', onClick: onShowPlugins }, t('cap.showPlugins')))
+          : null)
+    }
+
+    /** A "more actions" button with a menu of secondary actions; closes on choice, Escape, or an outside click. */
+    function Menu({ label, items }) {
+      const [open, setOpen] = React.useState(false)
+      const root = React.useRef(null)
+      React.useEffect(() => {
+        if (!open) return undefined
+        const outside = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }
+        const escape = (event) => { if (event.key === 'Escape') { setOpen(false); root.current?.querySelector('button')?.focus() } }
+        document.addEventListener('mousedown', outside)
+        document.addEventListener('keydown', escape)
+        root.current?.querySelector('[role=menuitem]')?.focus()
+        return () => {
+          document.removeEventListener('mousedown', outside)
+          document.removeEventListener('keydown', escape)
+        }
+      }, [open])
+      if (items.length === 0) return null
+      return h('div', { className: 'pm-menu', ref: root },
+        h('button', { type: 'button', className: 'pm-btn', 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-label': label, title: label, onClick: () => setOpen(!open) }, '⋯'),
+        open
+          ? h('div', { className: 'pm-menu-list', role: 'menu', 'aria-label': label },
+            ...items.map(item => h('button', {
+              key: item.label, type: 'button', role: 'menuitem', className: item.danger ? 'pm-danger' : undefined, disabled: item.disabled,
+              onClick: () => { setOpen(false); item.onSelect() },
+            }, item.label)))
+          : null)
+    }
+
     /** Follow-platform / on / off choice for a row whose built-in version is switched by a platform condition. */
     function PlatformChoice({ ui, row, title, pending, onChoose }) {
       const { t } = ui
@@ -692,13 +1074,12 @@ window.__ModuleLoader__.load({
     }
 
     function PluginRow({ ui, preset, row }) {
-      const { t, text, pending, run } = ui
+      const { t, pending, run } = ui
       const [details, setDetails] = React.useState(false)
       const [confirmOff, setConfirmOff] = React.useState(false)
       const key = `row:${preset.id}:${row.id}`
       const own = OWN_ROWS[row.module]
-      const title = own !== undefined ? t(`own.${own}.title`) : text(row.meta?.title) ?? row.id ?? row.module
-      const description = own !== undefined ? t(`own.${own}.desc`) : text(row.meta?.description)
+      const { title, description } = rowCopy(ui, row)
       const on = row.enabled ?? row.declared === true
       const platform = row.id !== null && (row.declared === 'conditional' || row.platform !== undefined)
       const locked = row.id === null ? t('row.noId') : row.inheritedOff ? t('row.groupOff') : undefined
@@ -725,8 +1106,7 @@ window.__ModuleLoader__.load({
               locked === undefined ? null : h('span', { className: 'pm-badge', title: row.condition }, locked)),
             description === undefined ? null : h('div', { className: 'pm-rowdesc' }, description),
             row.failure !== undefined ? h('div', { className: 'pm-hint is-error' }, row.failure) : null,
-            h('div', { className: 'pm-rowtech' },
-              row.id === null ? row.module : `${row.id} · ${row.module}`, ' · ',
+            h('div', null,
               h('button', { type: 'button', className: 'pm-link', 'aria-expanded': details, onClick: () => setDetails(!details) }, t(details ? 'row.hideDetails' : 'row.details')))),
           platform
             ? h(PlatformChoice, { ui, row, title, pending: pending.has(key), onChoose: choose })
@@ -863,7 +1243,7 @@ window.__ModuleLoader__.load({
         h('pre', null, entry.prefix === '' ? '—' : entry.prefix))))
     }
 
-    function PromptEditor({ ui, preset, onClose }) {
+    function PromptEditor({ ui, preset }) {
       const { t } = ui
       const [info, setInfo] = React.useState(null)
       const [failure, setFailure] = React.useState(null)
@@ -944,9 +1324,10 @@ window.__ModuleLoader__.load({
         }
         call('setPrompt', { id: preset.id, ...payload })
           .then((value) => {
+            const key = info.live ? 'notice.promptSavedLive' : value.effect?.synced ? 'notice.savedSynced' : 'notice.promptSaved'
             ui.setDraft(preset.id, undefined)
-            ui.applyList(value, preset.id, info.live ? 'notice.promptSavedLive' : value.effect?.synced ? 'notice.savedSynced' : 'notice.promptSaved')
-            onClose()
+            ui.applyList(value, preset.id, key)
+            return reload().then((latest) => { adopt(latest, undefined); setNotice(t(key)) })
           })
           .catch((reason) => {
             if (reason instanceof ActionFailure && reason.code === 'prompt-conflict') setConflict(reason.details?.stored ?? { prefix: reason.details?.current ?? '' })
@@ -959,7 +1340,10 @@ window.__ModuleLoader__.load({
       const setting = (action, payload, success) => ui.run(`prompt:${preset.id}`, action, { id: preset.id, ...payload }, success,
         () => reload().then(latest => setInfo(latest), () => undefined))
       const restoreBuiltIn = () => {
-        const after = () => { ui.setDraft(preset.id, undefined); onClose() }
+        const after = () => {
+          ui.setDraft(preset.id, undefined)
+          reload().then((latest) => { adopt(latest, undefined); setNotice(t('notice.promptRestored')) }, () => undefined)
+        }
         if (info.live) ui.run(`prompt:${preset.id}`, 'setPrompt', { id: preset.id, ...info.builtIn }, 'notice.promptRestored', after)
         else ui.run(`prompt:${preset.id}`, 'resetRow', { id: preset.id, rowId: info.rowId }, 'notice.promptRestored', after)
       }
@@ -1013,12 +1397,16 @@ window.__ModuleLoader__.load({
       }
       const keys = (event) => {
         if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); save(false) }
-        else if (event.key === 'Escape') onClose()
       }
       const busy = ui.pending.size > 0
       const option = (checked, label, onChange, hint) => h('label', { className: 'pm-option' },
         h('input', { type: 'checkbox', checked, disabled: busy, onChange: e => onChange(e.target.checked) }),
         h('span', null, label, hint === undefined ? null : h('span', { className: 'pm-hint', style: { display: 'block' } }, hint)))
+      const behavior = (checked, label, hint, onChange) => h('div', { className: 'pm-capline' },
+        h('div', { className: 'pm-rowmain' },
+          h('div', null, label),
+          h('div', { className: 'pm-rowdesc' }, hint)),
+        h(Switch, { checked, pending: ui.pending.has(`prompt:${preset.id}`), disabled: busy, label, onChange }))
       return h('div', { className: 'pm-prompt' },
         h('div', { className: 'pm-hint' }, info.rowId === undefined ? t('prompt.none') : info.complete ? t('prompt.complete') : t('prompt.partial')),
         info.off ? h('div', { className: 'pm-warn', role: 'note' },
@@ -1039,6 +1427,8 @@ window.__ModuleLoader__.load({
           ...(info.variables ?? []).map(name => h('button', { key: name, type: 'button', className: 'pm-chip', onClick: () => insert(name) }, `{{${name}}}`)),
           h('span', { className: 'pm-grow' }),
           h('span', null, t('prompt.chars', { n: text.length }))),
+        h('div', null,
+          h('button', { type: 'button', className: 'pm-link', 'aria-expanded': panel.advanced, onClick: () => toggle('advanced') }, `${panel.advanced ? '▾' : '▸'} ${t('prompt.advanced')}`)),
         panel.advanced ? h('div', { className: 'pm-panel' },
           h('label', { className: 'pm-hint', htmlFor: `pm-suffix-${preset.id}` }, t('prompt.suffix')),
           h('textarea', {
@@ -1050,9 +1440,7 @@ window.__ModuleLoader__.load({
           }),
           h('div', { className: 'pm-hint' }, complete ? t('prompt.suffixIgnored') : t('prompt.suffixHint')),
           option(complete, t('prompt.completeLabel'), editComplete),
-          option(runtime, t('prompt.runtimeLabel'), editRuntime, t('prompt.flagsNote')),
-          info.rowId ? option(info.live === true, t('prompt.liveLabel'), value => setting('setLive', { live: value }, value ? 'notice.liveOn' : 'notice.liveOff'), t('prompt.liveHint')) : null,
-          option(info.promptTool === true, t('prompt.toolLabel'), value => setting('setPromptTool', { enabled: value }, value ? 'notice.toolOn' : 'notice.toolOff'), t('prompt.toolHint')))
+          option(runtime, t('prompt.runtimeLabel'), editRuntime, t('prompt.flagsNote')))
           : null,
         problem === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, ui.describeCode(problem.code, problem, '')),
         error === null ? null : h('div', { className: 'pm-error', role: 'alert' }, error),
@@ -1066,23 +1454,25 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: saving, onClick: () => save(true) }, t('prompt.overwrite')))),
         h('div', { className: 'pm-bar' },
           h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel.preview, onClick: () => toggle('preview') }, t(panel.preview ? 'prompt.hidePreview' : 'prompt.preview')),
-          h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel.advanced, onClick: () => toggle('advanced') }, t(panel.advanced ? 'prompt.hideAdvanced' : 'prompt.advanced')),
           h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel.history, onClick: () => toggle('history') }, t(panel.history ? 'prompt.hideHistory' : 'prompt.history')),
           h('button', { type: 'button', className: 'pm-btn', onClick: () => fileInput.current?.click() }, t('prompt.import')),
           h('button', { type: 'button', className: 'pm-btn', onClick: exportFile }, t('prompt.export')),
           h('input', { ref: fileInput, className: 'pm-file', type: 'file', accept: '.md,.txt,text/markdown,text/plain', onChange: importFile }),
-          dirty ? h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discard')) : null,
           info.changed && info.rowId ? h('button', { type: 'button', className: 'pm-btn', disabled: saving || busy, onClick: restoreBuiltIn }, t('prompt.restore')) : null,
           h('span', { className: 'pm-grow' }),
-          h('span', { className: 'pm-hint' }, t('prompt.shortcut')),
-          h('button', { type: 'button', className: 'pm-btn', onClick: onClose }, t('prompt.close')),
-          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: !dirty || problem !== undefined || saving, onClick: () => save(false) }, t('action.save'))),
+          dirty ? h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discard')) : null,
+          h('button', { type: 'button', className: 'pm-btn pm-primary', title: t('prompt.shortcut'), disabled: !dirty || problem !== undefined || saving, onClick: () => save(false) }, t('action.save'))),
         panel.history ? h(PromptHistory, { ui, preset, current: { prefix: text, suffix }, onLoad: loadVersion }) : null,
         panel.preview
           ? h('div', { className: 'pm-yaml' },
             h('div', { className: 'pm-hint', style: { marginBottom: 6 } }, dirty ? `${t('prompt.previewNote')} ${t('prompt.previewDirty')}` : t('prompt.previewNote')),
             h('pre', null, preview))
-          : null)
+          : null,
+        h('div', { className: 'pm-behavior' },
+          h('div', { className: 'pm-group' }, t('prompt.behaviorTitle')),
+          h('div', { className: 'pm-hint' }, t('prompt.behaviorHint')),
+          info.rowId ? behavior(info.live === true, t('prompt.liveLabel'), t('prompt.liveHint'), value => setting('setLive', { live: value }, value ? 'notice.liveOn' : 'notice.liveOff')) : null,
+          behavior(info.promptTool === true, t('prompt.toolLabel'), t('prompt.toolHint'), value => setting('setPromptTool', { enabled: value }, value ? 'notice.toolOn' : 'notice.toolOff'))))
     }
 
     function CreateForm({ ui, presets, templates, initial, onSubmit, onCancel }) {
@@ -1174,68 +1564,118 @@ window.__ModuleLoader__.load({
         h('ul', null, lines.map(line => h('li', { key: line }, line))))
     }
 
-    function PresetCard({ ui, preset, presets, query, onlyChanged, open, onOpen, onDuplicate }) {
+    /** The full row list with its own search, for users who want plugin-level control. */
+    function PluginsPanel({ ui, preset }) {
+      const { t } = ui
+      const [query, setQuery] = React.useState('')
+      const [onlyChanged, setOnlyChanged] = React.useState(false)
+      const needle = query.trim().toLowerCase()
+      const rows = preset.rows.filter((row) => {
+        if (onlyChanged && !row.changed) return false
+        if (needle === '') return true
+        const copy = rowCopy(ui, row)
+        return [row.id, row.module, copy.title, copy.description].some(value => value?.toLowerCase().includes(needle))
+      })
+      return h(React.Fragment, null,
+        h('div', { className: 'pm-bar', style: { margin: '8px 0 4px' } },
+          h('input', { className: 'pm-input pm-search', type: 'search', value: query, placeholder: t('plugins.search'), 'aria-label': t('plugins.search'), onChange: e => setQuery(e.target.value) }),
+          h('label', { className: 'pm-check' },
+            h('input', { type: 'checkbox', checked: onlyChanged, onChange: e => setOnlyChanged(e.target.checked) }),
+            t('plugins.onlyChanged'))),
+        h('div', { className: 'pm-hint' }, t('plugins.intro')),
+        h(PluginList, { ui, preset, rows }))
+    }
+
+    function PresetCard({ ui, preset, presets, open, onOpen, onDuplicate }) {
       const { t, pending, run, notices, errors, canTry, canSetDefault } = ui
       const [panel, setPanel] = React.useState(null)
+      const [tab, setTab] = React.useState('capabilities')
       const name = ui.presetName(preset)
       const description = ui.presetDescription(preset)
       const changed = preset.rows.filter(row => row.changed).length
       const persona = preset.rows.find(row => row.essential)
-      const promptChanged = persona?.changed === true
       const on = preset.rows.filter(row => (row.enabled ?? row.declared === true) === true).length
-      const needle = query.trim().toLowerCase()
-      const rows = preset.rows.filter(row => (!onlyChanged || row.changed)
-        && (needle === '' || [row.id, row.module, ui.text(row.meta?.title), ui.text(row.meta?.description)].some(value => value?.toLowerCase().includes(needle))))
       const busy = pending.size > 0
       const notice = notices.get(preset.id)
       const error = errors.get(preset.id)
       const act = (action, payload, success) => run(`card:${preset.id}`, action, { id: preset.id, ...payload }, success, () => setPanel(null))
       const classes = ['pm-card', preset.isDefault ? 'is-default' : '', preset.broken ? 'is-broken' : '', notice ? 'is-flash' : ''].filter(Boolean).join(' ')
+      const unregistered = preset.rows.length === 0
+      const tabs = [
+        !unregistered && preset.source !== 'external' && CAPABILITIES.some(capability => capabilityRows(capability, preset).rows.length > 0) ? 'capabilities' : undefined,
+        !unregistered && preset.source !== 'external' ? 'prompt' : undefined,
+        !unregistered ? 'plugins' : undefined,
+      ].filter(Boolean)
+      const current = tabs.includes(tab) ? tab : tabs[0]
+      const openTab = (name) => { setTab(name); onOpen(true) }
+      const chips = capabilityChips(t, preset)
+      const meta = [
+        t('meta.plugins', { on, total: preset.rows.length }),
+        preset.usage > 0 ? t('meta.usage', { n: preset.usage }) : undefined,
+        changed > 0 ? t('meta.changed', { n: changed }) : undefined,
+        preset.live ? t('meta.live') : undefined,
+        preset.promptTool ? t('meta.promptTool') : undefined,
+      ].filter(Boolean)
       const failureTitle = (failure) => {
         const row = preset.rows.find(candidate => candidate.id === failure.rowId)
-        const title = row === undefined ? undefined : ui.text(row.meta?.title)
-        return title === undefined || title === failure.rowId ? `${failure.rowId} (${row?.module ?? '?'})` : `${title} (${failure.rowId})`
+        if (row === undefined) return failure.rowId
+        const title = rowCopy(ui, row).title
+        return title === failure.rowId ? `${failure.rowId} (${row.module})` : `${title} (${failure.rowId})`
       }
+      /** The single most urgent thing this card asks the user to do, if any. */
+      const banner = preset.failures !== undefined
+        ? h('div', { className: 'pm-warn pm-cardwarn', role: 'alert' },
+          h('div', { className: 'pm-grow' },
+            h('div', null, `⚠ ${t('repair.title', { n: preset.failures.length })}`),
+            h('ul', { style: { margin: '4px 0 0', paddingLeft: 18 } }, preset.failures.map(failure => h('li', { key: failure.rowId }, `${failureTitle(failure)}: ${failure.detail}`))),
+            h('div', { className: 'pm-hint', style: { marginTop: 4 } }, t('repair.hint'))),
+          h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('repair', {}, 'notice.repaired') }, t('action.repair')))
+        : preset.sync !== undefined && panel !== 'sync'
+          ? h('div', { className: 'pm-warn pm-cardwarn pm-info', role: 'note' },
+            h('span', { className: 'pm-grow' }, t('banner.sync')),
+            h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setPanel('sync') }, t('action.sync')))
+          : persona?.declared === false && persona.id !== null
+            ? h('div', { className: 'pm-warn pm-cardwarn', role: 'note' },
+              h('span', { className: 'pm-grow' }, `⚠ ${t('warn.personaOff')}`),
+              h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('toggle', { rowId: persona.id, enabled: true }, 'notice.saved') }, t('action.enablePersona')))
+            : ui.drafts.has(preset.id) && !(open && current === 'prompt')
+              ? h('div', { className: 'pm-warn pm-cardwarn pm-info', role: 'note' },
+                h('span', { className: 'pm-grow' }, t('banner.draft')),
+                h('button', { type: 'button', className: 'pm-btn', onClick: () => openTab('prompt') }, t('action.openDraft')))
+              : null
+      const menu = [
+        canSetDefault && !preset.isDefault && !preset.broken ? { label: t('action.setDefault'), disabled: busy, onSelect: () => act('setDefault', {}, 'notice.default') } : undefined,
+        preset.rows.length > 0 ? { label: t('action.duplicate'), onSelect: () => onDuplicate({ kind: 'copy', from: preset.id }) } : undefined,
+        { label: t('action.yaml'), onSelect: () => setPanel('yaml') },
+        preset.source === 'custom' ? { label: t('action.rename'), onSelect: () => setPanel('details') } : undefined,
+        preset.source === 'overridden' ? { label: t('action.reset'), disabled: busy, onSelect: () => setPanel('reset') } : undefined,
+        preset.source === 'custom' && !preset.isDefault ? { label: t('action.remove'), danger: true, onSelect: () => setPanel('remove') } : undefined,
+      ].filter(Boolean)
       return h('section', { className: classes, id: `pm-preset-${preset.id}`, 'aria-label': name },
-        h('div', {
-          className: 'pm-head', role: 'button', tabIndex: 0, 'aria-expanded': open,
-          'aria-label': `${name} · ${t(open ? 'action.collapse' : 'action.expand')}`,
-          onClick: () => onOpen(!open),
-          onKeyDown: (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(!open) } },
-        },
-          h(Chevron, { open }),
-          h('div', { className: 'pm-headmain' },
-            h('div', { className: 'pm-name' },
-              h('strong', null, name),
-              h('span', { className: 'pm-code' }, preset.id),
-              preset.isDefault ? h('span', { className: 'pm-badge is-accent' }, t('badge.default')) : null,
-              h('span', { className: 'pm-badge' }, t(preset.source === 'custom' ? 'badge.custom' : preset.source === 'external' ? 'badge.external' : 'badge.builtin')),
-              changed > 0 ? h('span', { className: 'pm-badge is-warn' }, t('badge.modified', { n: changed })) : null,
-              preset.usage > 0 ? h('span', { className: 'pm-badge' }, t('badge.usage', { n: preset.usage })) : null,
-              promptChanged ? h('span', { className: 'pm-badge is-warn' }, t('badge.promptChanged')) : null,
-              preset.live ? h('span', { className: 'pm-badge is-accent' }, t('badge.live')) : null,
-              preset.sync ? h('span', { className: 'pm-badge is-accent' }, t('badge.sync')) : null,
-              ui.drafts.has(preset.id) ? h('span', { className: 'pm-badge is-warn' }, t('badge.draft')) : null,
-              preset.broken ? h('span', { className: 'pm-badge is-error' }, t('badge.broken')) : null),
-            description ? h('div', { className: 'pm-desc' }, description) : null,
-            preset.promptExcerpt ? h('div', { className: 'pm-excerpt', title: preset.promptExcerpt }, t('prompt.excerptLine', { text: preset.promptExcerpt })) : null,
-            h('div', { className: 'pm-muted' }, t('summary', { on, total: preset.rows.length })),
-            preset.broken && preset.failures === undefined ? h('div', { className: 'pm-error' }, preset.broken) : null,
-            notice ? h('div', { className: 'pm-notice', role: 'status' }, `✓ ${t(notice)}`) : null,
-            error ? h('div', { className: 'pm-error', role: 'alert' }, error) : null)),
-        preset.failures !== undefined
-          ? h('div', { className: 'pm-warn pm-cardwarn', role: 'alert' },
-            h('div', { className: 'pm-grow' },
-              h('div', null, `⚠ ${t('repair.title', { n: preset.failures.length })}`),
-              h('ul', { style: { margin: '4px 0 0', paddingLeft: 18 } }, preset.failures.map(failure => h('li', { key: failure.rowId }, `${failureTitle(failure)}: ${failure.detail}`))),
-              h('div', { className: 'pm-hint', style: { marginTop: 4 } }, t('repair.hint'))),
-            h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('repair', {}, 'notice.repaired') }, t('action.repair')))
-          : null,
-        persona?.declared === false && persona.id !== null
-          ? h('div', { className: 'pm-warn pm-cardwarn', role: 'note' },
-            h('span', { className: 'pm-grow' }, `⚠ ${t('warn.personaOff')}`),
-            h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('toggle', { rowId: persona.id, enabled: true }, 'notice.saved') }, t('action.enablePersona')))
-          : null,
+        h('div', { className: 'pm-top' },
+          h('div', {
+            className: 'pm-head', role: 'button', tabIndex: 0, 'aria-expanded': open,
+            'aria-label': `${name} · ${t(open ? 'action.collapse' : 'action.expand')}`,
+            onClick: () => onOpen(!open),
+            onKeyDown: (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(!open) } },
+          },
+            h(Chevron, { open }),
+            h('div', { className: 'pm-headmain' },
+              h('div', { className: 'pm-name' },
+                h('strong', null, name),
+                preset.isDefault ? h('span', { className: 'pm-badge is-accent' }, t('badge.default')) : null,
+                preset.source === 'custom' ? h('span', { className: 'pm-badge' }, t('badge.custom')) : preset.source === 'external' ? h('span', { className: 'pm-badge' }, t('badge.external')) : null,
+                preset.broken ? h('span', { className: 'pm-badge is-error' }, t('badge.broken')) : null),
+              description ? h('div', { className: 'pm-desc' }, description) : null,
+              chips.length > 0 ? h('div', { className: 'pm-chips', 'aria-label': t('chip.label') }, chips.map(chip => h('span', { key: chip, className: 'pm-cchip' }, chip))) : null,
+              h('div', { className: 'pm-meta' }, meta.join(' · ')),
+              preset.broken && preset.failures === undefined ? h('div', { className: 'pm-error' }, preset.broken) : null,
+              notice ? h('div', { className: 'pm-notice', role: 'status' }, `✓ ${t(notice)}`) : null,
+              error ? h('div', { className: 'pm-error', role: 'alert' }, error) : null)),
+          h('div', { className: 'pm-topactions' },
+            canTry && !preset.broken ? h('button', { type: 'button', className: 'pm-btn pm-primary', onClick: () => ui.tryPreset(preset.id) }, t('action.try')) : null,
+            h(Menu, { label: t('action.more'), items: menu }))),
+        banner,
         panel === 'details'
           ? h(DetailsForm, {
             ui, title: t('rename.title'), initial: preset, presets, from: preset.id, withId: false, submitLabel: t('action.save'),
@@ -1251,23 +1691,27 @@ window.__ModuleLoader__.load({
                 h('button', {
                   type: 'button', className: `pm-btn ${panel === 'sync' ? 'pm-primary' : 'pm-danger'}`, disabled: busy,
                   onClick: () => act(panel, {}, panel === 'remove' ? undefined : panel === 'sync' ? 'notice.synced' : 'notice.reset'),
-                }, t(panel === 'sync' ? 'sync.confirm' : 'confirm.ok')),
+                }, t(panel === 'sync' ? 'sync.confirm' : panel === 'remove' ? 'action.remove' : 'action.reset')),
                 h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel(null) }, t('action.cancel'))))
-            : h('div', { className: 'pm-actions' },
-              canTry && !preset.broken ? h('button', { type: 'button', className: 'pm-btn pm-primary', onClick: () => ui.tryPreset(preset.id) }, t('action.try')) : null,
-              preset.sync ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setPanel('sync') }, t('action.sync')) : null,
-              canSetDefault && !preset.isDefault && !preset.broken
-                ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('setDefault', {}, 'notice.default') }, t('action.setDefault'))
-                : null,
-              preset.source !== 'external' && !preset.broken ? h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel('prompt') }, t('action.prompt')) : null,
-              preset.rows.length > 0 ? h('button', { type: 'button', className: 'pm-btn', onClick: () => onDuplicate({ kind: 'copy', from: preset.id }) }, t('action.duplicate')) : null,
-              h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel === 'yaml', onClick: () => setPanel(panel === 'yaml' ? null : 'yaml') }, t(panel === 'yaml' ? 'action.hideYaml' : 'action.yaml')),
-              preset.source === 'overridden' ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setPanel('reset') }, t('action.reset')) : null,
-              preset.source === 'custom' ? h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel('details') }, t('action.rename')) : null,
-              preset.source === 'custom' && !preset.isDefault ? h('button', { type: 'button', className: 'pm-btn pm-danger', onClick: () => setPanel('remove') }, t('action.remove')) : null),
-        panel === 'yaml' ? h(Yaml, { ui, preset }) : null,
-        panel === 'prompt' ? h(PromptEditor, { ui, preset, onClose: () => setPanel(null) }) : null,
-        open && preset.rows.length > 0 ? h('div', { className: 'pm-body' }, h(PluginList, { ui, preset, rows })) : null)
+            : null,
+        panel === 'yaml'
+          ? h('div', null,
+            h(Yaml, { ui, preset }),
+            h('div', { className: 'pm-bar', style: { margin: '0 14px 12px 40px' } },
+              h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel(null) }, t('action.hideYaml'))))
+          : null,
+        open && tabs.length > 0
+          ? h('div', { className: 'pm-body' },
+            h('div', { className: 'pm-tabs', role: 'tablist', 'aria-label': name },
+              ...tabs.map(name => h('button', {
+                key: name, type: 'button', role: 'tab', id: `pm-tab-${preset.id}-${name}`, 'aria-selected': current === name,
+                'aria-controls': `pm-panel-${preset.id}`, className: 'pm-tab', onClick: () => setTab(name),
+              }, t(`tab.${name}`), name === 'prompt' && ui.drafts.has(preset.id) ? h('span', { className: 'pm-dot', title: t('badge.draft') }) : null))),
+            h('div', { id: `pm-panel-${preset.id}`, role: 'tabpanel', 'aria-labelledby': `pm-tab-${preset.id}-${current}` },
+              current === 'capabilities' ? h(CapabilityPanel, { ui, preset, onShowPlugins: () => setTab('plugins') })
+                : current === 'prompt' ? h(PromptEditor, { key: preset.id, ui, preset })
+                  : h(PluginsPanel, { ui, preset })))
+          : null)
     }
 
     /** Wait for the blank session the main view shows, then compose it with `preset`; gives up after 3 seconds. */
@@ -1297,8 +1741,6 @@ window.__ModuleLoader__.load({
       const [pending, setPending] = React.useState(() => new Set())
       const [notices, setNotices] = React.useState(() => new Map())
       const [errors, setErrors] = React.useState(() => new Map())
-      const [query, setQuery] = React.useState('')
-      const [onlyChanged, setOnlyChanged] = React.useState(false)
       const [open, setOpen] = React.useState(() => new Set())
       const [creating, setCreating] = React.useState(null)
       const [focusId, setFocusId] = React.useState(null)
@@ -1392,14 +1834,6 @@ window.__ModuleLoader__.load({
         },
       }
       const presets = data?.presets ?? []
-      const needle = query.trim().toLowerCase()
-      const searching = needle !== '' || onlyChanged
-      /** A preset whose name matches keeps all its rows; otherwise the query filters rows. */
-      const nameMatches = preset => needle !== '' && [preset.id, ui.presetName(preset)].some(value => value.toLowerCase().includes(needle))
-      const visible = presets.filter(preset => !searching
-        || preset.rows.some(row => (!onlyChanged || row.changed)
-          && (needle === '' || nameMatches(preset) || [row.id, row.module, text(row.meta?.title), text(row.meta?.description)].some(value => value?.toLowerCase().includes(needle))))
-        || (!onlyChanged && nameMatches(preset)))
       const setCardOpen = (id, value) => setOpen((previous) => {
         const next = new Set(previous)
         if (value) next.add(id)
@@ -1421,11 +1855,6 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'pm-btn', onClick: load }, t('refresh')),
           h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: data === null, onClick: () => setCreating({ kind: 'develop' }) }, t('newPreset'))),
         h('p', { className: 'pm-intro' }, t('intro')),
-        h('div', { className: 'pm-bar' },
-          h('input', { className: 'pm-input pm-search', type: 'search', value: query, placeholder: t('search'), 'aria-label': t('search'), onChange: e => setQuery(e.target.value) }),
-          h('label', { className: 'pm-check' },
-            h('input', { type: 'checkbox', checked: onlyChanged, onChange: e => setOnlyChanged(e.target.checked) }),
-            t('onlyChanged'))),
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
         creating === null ? null : h('div', { className: 'pm-card' },
@@ -1435,10 +1864,9 @@ window.__ModuleLoader__.load({
           }),
           errors.get(CREATE_ERROR) ? h('div', { className: 'pm-error', role: 'alert', style: { padding: '0 14px 12px' } }, errors.get(CREATE_ERROR)) : null),
         data === null && pageError === null ? h('div', { className: 'pm-muted' }, t('loading')) : null,
-        data !== null && visible.length === 0 ? h('div', { className: 'pm-muted' }, t('noMatch')) : null,
-        visible.map(preset => h(PresetCard, {
-          key: preset.id, ui, preset, presets, query: nameMatches(preset) ? '' : query, onlyChanged,
-          open: searching || open.has(preset.id),
+        presets.map(preset => h(PresetCard, {
+          key: preset.id, ui, preset, presets,
+          open: open.has(preset.id),
           onOpen: value => setCardOpen(preset.id, value),
           onDuplicate: setCreating,
         })))
