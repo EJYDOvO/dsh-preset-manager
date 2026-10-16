@@ -21,6 +21,45 @@ const PROMPT_EXCERPT_CHARS = 160
 const VARIABLE_GROUP = /^\{\{([^{}]*)\}\}/
 const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
+/** Rows every non-develop template keeps on: the prompt, time, compaction, and asking the user. */
+const TEMPLATE_COMMON = ['persona', 'time-context', 'compaction-basic', 'command-compact', 'tool-result-pruner', 'tool-ask-user']
+
+/**
+ * Starter templates for a new mode, built on the shipped `standard` rows.
+ * `allow` names the plugin rows kept as shipped; every other row is switched off at
+ * creation, so a template never turns on a tool it does not name. `tweaks` merges into
+ * a kept row's config. `prompt` replaces the persona prefix; `develop` keeps standard's.
+ * Prompts reference only `{{model}}`, which the agent loop registers in every deployment.
+ */
+const TEMPLATES = {
+  develop: { base: 'standard' },
+  write: {
+    base: 'standard',
+    allow: [...TEMPLATE_COMMON, 'agent-instructions', 'tool-fs', 'tool-fs-search', 'tool-todo', 'present', 'skill-filesystem', 'tool-skill'],
+    prompt: {
+      zh: '你是写作助手，由 {{model}} 模型驱动。\n\n只修改用户指定的文件。动笔前先通读相关内容，保持已有的人称、语气和设定一致。\n\n信息不足时直接提问或标注待定，不要自行编造设定；不要改动用户没有提到的段落。\n\n你不能运行命令，所有工作都通过读写文件完成。',
+      en: 'You are a writing assistant powered by the {{model}} model.\n\nEdit only the files the user names. Read the relevant text first and keep its voice, tense, and established facts consistent.\n\nWhen information is missing, ask or mark it as undecided instead of inventing it, and leave passages the user did not mention unchanged.\n\nYou cannot run commands; do all work by reading and writing files.',
+    },
+  },
+  chat: {
+    base: 'standard',
+    allow: [...TEMPLATE_COMMON, 'tool-web'],
+    prompt: {
+      zh: '你是对话伙伴，由 {{model}} 模型驱动。\n\n回答的长短跟随用户：简短的问题就简短地回答。不要做自我介绍，也不要罗列你能做什么。\n\n需要澄清时一次只问一个问题。需要最新信息时可以搜索网页，并说明来源。\n\n你不能读写文件，也不能运行命令，不要声称做过这些事。',
+      en: 'You are a conversation partner powered by the {{model}} model.\n\nMatch the length of your answers to the user: answer short questions briefly. Do not introduce yourself or list what you can do.\n\nAsk at most one clarifying question at a time. When current information matters, search the web and name your sources.\n\nYou cannot read or write files or run commands; never claim that you did.',
+    },
+  },
+  research: {
+    base: 'standard',
+    allow: [...TEMPLATE_COMMON, 'agent-instructions', 'tool-fs', 'tool-fs-search', 'tool-web', 'tool-todo', 'skill-filesystem', 'tool-skill'],
+    tweaks: { 'tool-fs': { write: false, edit: false } },
+    prompt: {
+      zh: '你是只读调研助手，由 {{model}} 模型驱动。\n\n通过阅读代码、文档和网页回答问题，结论要给出依据：文件路径和行号，或网页链接。区分已确认的事实和推测。\n\n你不能修改文件，也不能运行命令。如果用户要求修改，说明需要切换到可写的模式，并给出具体的修改建议。',
+      en: 'You are a read-only research assistant powered by the {{model}} model.\n\nAnswer by reading code, documents, and web pages, and back every conclusion with evidence: file paths and line numbers, or links. Separate confirmed facts from inference.\n\nYou cannot modify files or run commands. When the user asks for a change, say that it needs a writable mode and describe the exact change instead.',
+    },
+  },
+}
+
 export const name = 'preset-manager'
 export const inject = ['agentPresets', 'configEditor']
 
@@ -59,7 +98,7 @@ const ACTIONS = {
   remove: (ctx, body) => remove(ctx, String(body.id)),
   setDefault: (ctx, body) => setDefault(ctx, String(body.id)),
   prompt: (ctx, body) => readPrompt(ctx, String(body.id)),
-  setPrompt: (ctx, body) => setPrompt(ctx, String(body.id), body.prefix),
+  setPrompt: (ctx, body) => setPrompt(ctx, String(body.id), body.prefix, body.base),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
 const READS = new Set(['list', 'read', 'prompt'])
@@ -182,7 +221,12 @@ function flatten(rows, context, outer = false, group = null, out = []) {
       ...isExpr(row.disabled) ? { condition: row.disabled.__jsExpr } : {},
       ...mounted === undefined ? {} : { enabled: mounted.enabled },
       ...context.inherited === undefined ? {} : { changed: base === undefined || stable(base) !== stable(row) },
-      ...base === undefined ? {} : { restorable: true },
+      ...base === undefined ? {} : {
+        restorable: true,
+        builtIn: isExpr(base.disabled) ? { declared: 'conditional', condition: base.disabled.__jsExpr } : { declared: !base.disabled },
+      },
+      ...row.name === PERSONA_MODULE ? { essential: true } : {},
+      ...row.config === undefined ? {} : { config: row.config },
       ...meta === undefined ? {} : { meta: { title: meta.title, description: meta.description, icon: meta.icon } },
     })
   }
@@ -203,7 +247,7 @@ async function list(ctx) {
     const flat = plugins === undefined ? [] : flatten(plugins, {
       live: live.get(row.id),
       meta,
-      ...declaration?.overridden === true ? { inherited: declaration.inherited } : {},
+      ...declaration === undefined ? {} : { inherited: declaration.inherited },
     })
     const prefix = plugins === undefined ? undefined : findPersona(plugins)?.config?.prefix
     return {
@@ -221,7 +265,35 @@ async function list(ctx) {
       rows.push({ id, name: preset.name, source: 'custom', isDefault: false, usage: 0, rows: [], broken: 'Not registered: the id is taken or the definition is invalid (see the Host log)' })
     }
   }
-  return { presets: rows, defaultId: presets.defaultId, canSetDefault: ctx.get('settings') !== undefined }
+  // Counted from the base preset's live mount, so platform conditions resolve as they do on this host.
+  const templates = Object.entries(TEMPLATES).flatMap(([id, template]) => {
+    if (!declared.has(template.base)) return []
+    const allowed = entryId => template.allow === undefined || template.allow.some(row => entryId === row || entryId?.endsWith(`:${row}`))
+    const on = (live.get(template.base) ?? []).filter(row => row.enabled === true && allowed(row.entryId)).length
+    return [{ id, base: template.base, on }]
+  })
+  return { presets: rows, templates, defaultId: presets.defaultId, canSetDefault: ctx.get('settings') !== undefined }
+}
+
+/**
+ * A template's row list: rows outside `allow` switched off (a `!!js` condition included),
+ * kept rows merged with their `tweaks`, and the persona prefix replaced when the template
+ * carries a prompt. `develop` returns the base rows unchanged.
+ * @param {object[]} rows - the base preset's declared rows.
+ * @param {object} template - one {@link TEMPLATES} entry.
+ * @param {string} [prompt] - the localized prompt to install.
+ * @returns {object[]} a detached row list.
+ */
+function applyTemplate(rows, template, prompt) {
+  const visit = list => list.map((row) => {
+    if (row.group === true && Array.isArray(row.config)) return { ...row, config: visit(row.config) }
+    if (template.allow === undefined) return row
+    if (!template.allow.includes(row.id)) return { ...row, disabled: true }
+    const tweak = template.tweaks?.[row.id]
+    const next = tweak === undefined ? row : { ...row, config: { ...row.config, ...tweak } }
+    return prompt !== undefined && row.name === PERSONA_MODULE ? { ...next, config: { ...next.config, prefix: prompt } } : next
+  })
+  return visit(structuredClone(rows))
 }
 
 /** Copy of a row list with the row `rowId` replaced by `replace(row)`. */
@@ -287,20 +359,37 @@ function text(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
 
-async function create(ctx, { id, name, description, from }) {
+/**
+ * Create a custom preset from a starter template, or as a copy of an existing preset.
+ * @param {object} ctx - plugin context.
+ * @param {{id: string, name?: string, description?: string, template?: string, from?: string, locale?: string}} request -
+ *   `template` names a {@link TEMPLATES} entry; otherwise `from` names the preset to copy (default `standard`).
+ */
+async function create(ctx, { id, name, description, template, from, locale }) {
   if (typeof id !== 'string' || !PRESET_ID.test(id)) throw new ActionError('invalid-id', 'Use 1-40 lowercase letters, digits, or hyphens for the id')
   const roster = await ctx.agentPresets.list()
   const custom = customPresets(ctx)
   if (roster.some(row => row.id === id) || custom.some(preset => preset.id === id)) throw new ActionError('exists', `Preset ${id} already exists`, { id })
-  const template = String(from ?? 'standard')
-  const plugins = custom.find(preset => preset.id === template)?.plugins ?? declarations(ctx).get(template)?.plugins
-  if (plugins === undefined) throw new ActionError('not-found', `Template preset ${template} is not available`, { id: template })
+  let plugins
+  if (template !== undefined) {
+    const starter = TEMPLATES[template]
+    if (starter === undefined) throw new ActionError('not-found', `Unknown template ${String(template)}`, { id: template })
+    const base = declarations(ctx).get(starter.base)?.plugins
+    if (base === undefined) throw new ActionError('not-found', `Template base ${starter.base} is not available`, { id: starter.base })
+    const prompt = starter.prompt === undefined ? undefined : starter.prompt[locale === 'zh' ? 'zh' : 'en']
+    plugins = applyTemplate(base, starter, prompt)
+  } else {
+    const source = String(from ?? 'standard')
+    const copied = custom.find(preset => preset.id === source)?.plugins ?? declarations(ctx).get(source)?.plugins
+    if (copied === undefined) throw new ActionError('not-found', `Template preset ${source} is not available`, { id: source })
+    plugins = structuredClone(copied)
+  }
   const preset = {
     id,
     ...text(name) === undefined ? {} : { name: text(name) },
     ...text(description) === undefined ? {} : { description: text(description) },
     order: CUSTOM_ORDER_BASE + custom.length,
-    plugins: structuredClone(plugins),
+    plugins,
   }
   await ctx.configEditor.edit(containerEntry(ctx), current => ({ ...current, presets: [...(current.presets ?? []), preset] }))
 }
@@ -416,6 +505,7 @@ async function readPrompt(ctx, id) {
       prefix: persona.config?.prefix ?? '',
       complete: persona.config?.complete === true,
       includeRuntimeContext: persona.config?.includeRuntimeContext !== false,
+      off: persona.disabled === true,
     },
     ...original === undefined ? {} : {
       builtInPrefix: original.config?.prefix ?? '',
@@ -425,7 +515,15 @@ async function readPrompt(ctx, id) {
   }
 }
 
-async function setPrompt(ctx, id, prefix) {
+/**
+ * Save a preset's persona prefix after checking that it renders.
+ * @param {object} ctx - plugin context.
+ * @param {string} id - preset id.
+ * @param {unknown} prefix - the new prompt text.
+ * @param {unknown} base - the prompt the editor started from; a string refuses the save with
+ *   `prompt-conflict` when the stored prompt has changed since, so a stale editor cannot overwrite it.
+ */
+async function setPrompt(ctx, id, prefix, base) {
   if (typeof prefix !== 'string') throw new ActionError('bad-request', 'The prompt must be text')
   if (prefix.length > PROMPT_MAX_CHARS) throw new ActionError('prompt-too-long', `The prompt exceeds ${PROMPT_MAX_CHARS} characters`, { max: PROMPT_MAX_CHARS })
   const { variables } = await assemblePreset(ctx, id)
@@ -435,6 +533,10 @@ async function setPrompt(ctx, id, prefix) {
   }
   await editPlugins(ctx, id, (rows) => {
     const persona = findPersona(rows)
+    const stored = persona?.config?.prefix ?? ''
+    if (typeof base === 'string' && stored !== base && stored !== prefix) {
+      throw new ActionError('prompt-conflict', 'The prompt was changed elsewhere after you started editing; reload it or overwrite it', { current: stored })
+    }
     if (persona === undefined) return [{ id: 'persona', name: PERSONA_MODULE, config: { prefix } }, ...rows]
     if (persona.id === undefined) throw new ActionError('not-found', 'The persona row has no id, so it cannot be edited here')
     return replaceRow(rows, persona.id, row => ({ ...row, config: { ...row.config, prefix } }))

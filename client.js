@@ -9,6 +9,8 @@ window.__ModuleLoader__.load({
     /** Copy keys the official Agent presets page registers for the four shipped presets. */
     const BUILT_IN_COPY = { standard: 'Standard', ptc: 'Ptc', minimal: 'Minimal', cordis: 'Cordis' }
     const NOTICE_MS = 2500
+    const PROMPT_MAX_CHARS = 20000
+    const DRAFT_PREFIX = 'dsh-preset-manager:draft:'
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
     const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
@@ -101,9 +103,68 @@ window.__ModuleLoader__.load({
       'prompt.previewNote': '根据已保存的配置生成，不含每一步注入的运行时上下文；{{变量}} 在会话中会替换成实际值。',
       'prompt.previewDirty': '预览已包含尚未保存的修改。',
       'prompt.restore': '恢复内置提示词',
-      'prompt.shortcut': '⌘/Ctrl + Enter 保存',
+      'prompt.shortcut': '⌘/Ctrl + Enter 保存 · Esc 收起并保留草稿',
       'notice.promptSaved': '提示词已保存 · 之后新建的会话生效',
       'notice.promptRestored': '已恢复内置提示词',
+      'create.start': '起步方式',
+      'create.copyName': '{name} 副本',
+      'template.on': '{n} 个插件',
+      'template.develop.name': '开发',
+      'template.develop.desc': '和标准模式一样的完整工具：终端、文件读写、子代理、网页等。',
+      'template.develop.suggest': '开发助手',
+      'template.write.name': '写作',
+      'template.write.desc': '能读写文件，没有终端；自带一段写作助手提示词。',
+      'template.write.suggest': '写作助手',
+      'template.chat.name': '聊天',
+      'template.chat.desc': '只聊天和搜索网页，不碰文件和终端；回答简洁。',
+      'template.chat.suggest': '聊天伙伴',
+      'template.research.name': '只读调研',
+      'template.research.desc': '能读代码、搜索和上网，但不能修改文件或运行命令。',
+      'template.research.suggest': '只读调研',
+      'template.copy.name': '复制现有模式',
+      'template.copy.desc': '从任意模式复制完整配置，包括提示词。',
+      'row.essential': '核心',
+      'row.details': '详情',
+      'row.hideDetails': '收起详情',
+      'confirm.personaOff': '关闭「{title}」后，这个模式的提示词不会生效，模型只会看到 DSH 默认的身份说明。',
+      'confirm.personaOffOk': '仍然关闭',
+      'warn.personaOff': '身份行已关闭，这个模式的提示词没有生效。',
+      'action.enablePersona': '重新启用',
+      'badge.draft': '提示词草稿未保存',
+      'detail.id': '行 id',
+      'detail.module': '模块',
+      'detail.group': '所在分组',
+      'detail.builtIn': '内置状态',
+      'detail.current': '当前设置',
+      'detail.live': '实际加载',
+      'detail.change': '修改情况',
+      'detail.config': '配置',
+      'detail.none': '（无）',
+      'detail.noBuiltIn': '没有内置版本（自定义模式）',
+      'state.on': '启用',
+      'state.off': '关闭',
+      'state.conditional': '按条件：{condition}',
+      'live.on': '已加载',
+      'live.off': '未加载',
+      'live.unknown': '未知',
+      'change.changed': '已修改（与内置不同）',
+      'change.same': '与内置相同',
+      'prompt.draftRestored': '已恢复上次未保存的草稿。',
+      'prompt.draftStale': '这份草稿基于旧版本，保存时会提示冲突。',
+      'prompt.discardDraft': '放弃草稿',
+      'prompt.discard': '放弃修改',
+      'prompt.import': '导入',
+      'prompt.export': '导出',
+      'prompt.imported': '已导入到编辑器，尚未保存。',
+      'prompt.exported': '已导出为文件。',
+      'prompt.importTooLarge': '文件太大，上限是 {max} 个字符。',
+      'prompt.importFailed': '导入失败：{detail}',
+      'prompt.close': '收起',
+      'prompt.conflictTitle': '保存被拒绝：这段提示词在你编辑期间被别处修改了。',
+      'prompt.conflictLatest': '最新内容：',
+      'prompt.loadLatest': '载入最新内容（放弃我的修改）',
+      'prompt.overwrite': '用我的版本覆盖',
+      'prompt.off': '身份行已关闭，这段提示词不会生效。',
     }
     const EN = {
       nav: 'Preset manager',
@@ -190,9 +251,68 @@ window.__ModuleLoader__.load({
       'prompt.previewNote': 'Built from the saved configuration, without the runtime context added at each step; {{variables}} become real values in a session.',
       'prompt.previewDirty': 'The preview includes unsaved edits.',
       'prompt.restore': 'Restore built-in prompt',
-      'prompt.shortcut': '⌘/Ctrl + Enter to save',
+      'prompt.shortcut': '⌘/Ctrl + Enter saves · Esc closes and keeps the draft',
       'notice.promptSaved': 'Prompt saved · applies to new sessions',
       'notice.promptRestored': 'Built-in prompt restored',
+      'create.start': 'Start from',
+      'create.copyName': '{name} copy',
+      'template.on': '{n} plugins',
+      'template.develop.name': 'Develop',
+      'template.develop.desc': 'The full Standard toolset: terminal, files, subagents, web, and more.',
+      'template.develop.suggest': 'Developer',
+      'template.write.name': 'Write',
+      'template.write.desc': 'Reads and writes files with no terminal, plus a writing-assistant prompt.',
+      'template.write.suggest': 'Writer',
+      'template.chat.name': 'Chat',
+      'template.chat.desc': 'Conversation and web search only, without files or terminal; answers stay short.',
+      'template.chat.suggest': 'Chat partner',
+      'template.research.name': 'Read-only research',
+      'template.research.desc': 'Reads code, searches, and browses, but cannot change files or run commands.',
+      'template.research.suggest': 'Read-only research',
+      'template.copy.name': 'Copy a mode',
+      'template.copy.desc': 'Copy any mode\'s full configuration, prompt included.',
+      'row.essential': 'Core',
+      'row.details': 'Details',
+      'row.hideDetails': 'Hide details',
+      'confirm.personaOff': 'With "{title}" off, this mode\'s prompt no longer applies; the model sees only DSH\'s default identity.',
+      'confirm.personaOffOk': 'Turn off anyway',
+      'warn.personaOff': 'The persona row is off, so this mode\'s prompt is not applied.',
+      'action.enablePersona': 'Turn back on',
+      'badge.draft': 'Unsaved prompt draft',
+      'detail.id': 'Row id',
+      'detail.module': 'Module',
+      'detail.group': 'Group',
+      'detail.builtIn': 'Built-in state',
+      'detail.current': 'Current setting',
+      'detail.live': 'Loaded',
+      'detail.change': 'Changes',
+      'detail.config': 'Configuration',
+      'detail.none': '(none)',
+      'detail.noBuiltIn': 'No built-in version (custom mode)',
+      'state.on': 'On',
+      'state.off': 'Off',
+      'state.conditional': 'Conditional: {condition}',
+      'live.on': 'Loaded',
+      'live.off': 'Not loaded',
+      'live.unknown': 'Unknown',
+      'change.changed': 'Changed from built-in',
+      'change.same': 'Same as built-in',
+      'prompt.draftRestored': 'Restored your unsaved draft.',
+      'prompt.draftStale': 'This draft started from an older version; saving will report a conflict.',
+      'prompt.discardDraft': 'Discard draft',
+      'prompt.discard': 'Discard changes',
+      'prompt.import': 'Import',
+      'prompt.export': 'Export',
+      'prompt.imported': 'Imported into the editor; not saved yet.',
+      'prompt.exported': 'Exported to a file.',
+      'prompt.importTooLarge': 'The file is too large; the limit is {max} characters.',
+      'prompt.importFailed': 'Import failed: {detail}',
+      'prompt.close': 'Close',
+      'prompt.conflictTitle': 'Not saved: this prompt was changed elsewhere while you were editing.',
+      'prompt.conflictLatest': 'Latest version:',
+      'prompt.loadLatest': 'Load the latest (discard my edits)',
+      'prompt.overwrite': 'Overwrite with my version',
+      'prompt.off': 'The persona row is off, so this prompt is not applied.',
     }
 
     const CSS = `
@@ -236,8 +356,9 @@ window.__ModuleLoader__.load({
 .pm-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 12px 40px; }
 .pm-body { border-top: .5px solid var(--dsw-alias-border-l3); padding: 6px 14px 12px 40px; display: flex; flex-direction: column; }
 .pm-group { margin: 12px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
-.pm-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: .5px solid var(--dsw-alias-border-l4); }
-.pm-group + .pm-row { border-top: 0; }
+.pm-rowwrap { border-top: .5px solid var(--dsw-alias-border-l4); }
+.pm-group + .pm-rowwrap { border-top: 0; }
+.pm-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
 .pm-icon { flex: none; width: 28px; height: 28px; border-radius: 7px; object-fit: contain; background: var(--dsw-alias-bg-layer-3); display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary); }
 .pm-rowmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pm-rowtitle { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -268,8 +389,29 @@ window.__ModuleLoader__.load({
 .pm-chip:hover { background: var(--dsw-alias-interactive-bg-hover); }
 .pm-prompt .pm-yaml { margin: 0; }
 .pm-prompt pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pm-tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pm-tpl { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pm-tpl:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-tpl[aria-checked='true'] { border-color: var(--dsw-static-neutral-bluish-400); background: var(--dsw-alias-bg-module-platform); }
+.pm-tpl:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+.pm-tpl strong { font-size: 13px; }
+.pm-tpl span { font-size: 12px; line-height: 1.45; color: var(--dsw-alias-label-secondary); }
+.pm-tpl .pm-hint { color: var(--dsw-alias-label-tertiary); }
+.pm-warn { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-state-warn-primary); font-size: 12px; line-height: 1.5; }
+.pm-warn .pm-btn { color: var(--dsw-alias-label-primary); }
+.pm-inline { margin: 0 0 8px 38px; }
+.pm-cardwarn { margin: 0 14px 10px 40px; }
+.pm-details { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); font-size: 12px; }
+.pm-details dt { color: var(--dsw-alias-label-tertiary); }
+.pm-details dd { margin: 0; overflow-wrap: anywhere; }
+.pm-details pre { margin: 0; max-height: 200px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+.pm-conflict { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--dsw-alias-state-warn-primary); }
+.pm-conflict pre { margin: 0; max-height: 140px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: var(--dsw-alias-label-secondary); }
+.pm-file { display: none; }
 @container (max-width: 520px) {
   .pm-actions, .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
+  .pm-inline { margin-left: 0; }
+  .pm-cardwarn { margin-left: 14px; }
   .pm-yaml { margin: 0 14px 12px; }
   .pm-form { grid-template-columns: minmax(0, 1fr); }
 }
@@ -303,6 +445,26 @@ window.__ModuleLoader__.load({
         last = open + group[0].length
       }
       return undefined
+    }
+
+    /** Read one preset's saved draft; storage may be unavailable, which reads as no draft. */
+    function readDraft(id) {
+      try {
+        const value = JSON.parse(localStorage.getItem(DRAFT_PREFIX + id) ?? 'null')
+        return value !== null && typeof value.text === 'string' && typeof value.base === 'string' ? value : undefined
+      } catch {
+        return undefined
+      }
+    }
+
+    /** Persist or clear one preset's draft; without storage the draft lives only in this page. */
+    function writeDraft(id, draft) {
+      try {
+        if (draft === undefined) localStorage.removeItem(DRAFT_PREFIX + id)
+        else localStorage.setItem(DRAFT_PREFIX + id, JSON.stringify(draft))
+      } catch {
+        // Storage disabled or full: the in-page draft map still protects the edit until the page closes.
+      }
     }
 
     async function call(action, payload) {
@@ -348,31 +510,76 @@ window.__ModuleLoader__.load({
       }, h('span', { className: 'pm-thumb' }))
     }
 
+    /** Display text for a row's declared state: on, off, or its `!!js` condition. */
+    function stateText(t, declared, condition) {
+      return declared === true ? t('state.on') : declared === false ? t('state.off') : t('state.conditional', { condition: condition ?? '' })
+    }
+
+    /** Row config as JSON, with `!!js` expressions shown the way YAML spells them. */
+    function configText(config) {
+      return JSON.stringify(config, (_key, value) => value !== null && typeof value === 'object' && typeof value.__jsExpr === 'string' ? `!!js ${value.__jsExpr}` : value, 2)
+    }
+
+    function RowDetails({ ui, row }) {
+      const { t } = ui
+      const group = row.group === null ? t('group.core') : t(`group.${row.group}`)
+      const entries = [
+        ['detail.id', row.id ?? '—'],
+        ['detail.module', row.module],
+        ['detail.group', group.startsWith('group.') ? row.group : group],
+        ['detail.builtIn', row.builtIn === undefined ? t('detail.noBuiltIn') : stateText(t, row.builtIn.declared, row.builtIn.condition)],
+        ['detail.current', stateText(t, row.declared, row.condition)],
+        ['detail.live', row.enabled === undefined ? t('live.unknown') : t(row.enabled ? 'live.on' : 'live.off')],
+        ...row.builtIn === undefined ? [] : [['detail.change', t(row.changed ? 'change.changed' : 'change.same')]],
+      ]
+      return h('dl', { className: 'pm-details pm-inline' },
+        ...entries.flatMap(([key, value]) => [h('dt', { key: `${key}:t` }, t(key)), h('dd', { key: `${key}:d` }, value)]),
+        h('dt', { key: 'config:t' }, t('detail.config')),
+        h('dd', { key: 'config:d' }, row.config === undefined ? t('detail.none') : h('pre', null, configText(row.config))))
+    }
+
     function PluginRow({ ui, preset, row }) {
       const { t, text, pending, run } = ui
+      const [details, setDetails] = React.useState(false)
+      const [confirmOff, setConfirmOff] = React.useState(false)
       const key = `row:${preset.id}:${row.id}`
       const title = text(row.meta?.title) ?? row.id ?? row.module
       const description = text(row.meta?.description)
       const on = row.enabled ?? row.declared === true
       const locked = row.id === null ? t('row.noId') : row.declared === 'conditional' ? t('row.conditional') : row.inheritedOff ? t('row.groupOff') : undefined
-      return h('div', { className: 'pm-row' },
-        row.meta?.icon
-          ? h('img', { className: 'pm-icon', src: row.meta.icon, alt: '' })
-          : h('span', { className: 'pm-icon', 'aria-hidden': true }, title.slice(0, 1).toUpperCase()),
-        h('div', { className: 'pm-rowmain' },
-          h('div', { className: 'pm-rowtitle' },
-            h('span', null, title),
-            row.changed ? h('span', { className: 'pm-badge is-warn' }, t('row.changed')) : null,
-            row.changed && row.restorable
-              ? h('button', { type: 'button', className: 'pm-link', disabled: pending.has(key), onClick: () => run(key, 'resetRow', { id: preset.id, rowId: row.id }, 'notice.saved') }, t('action.restoreRow'))
-              : null,
-            locked === undefined ? null : h('span', { className: 'pm-badge', title: row.condition }, locked)),
-          description === undefined ? null : h('div', { className: 'pm-rowdesc' }, description),
-          h('div', { className: 'pm-rowtech' }, row.id === null ? row.module : `${row.id} · ${row.module}`)),
-        h(Switch, {
-          checked: on, pending: pending.has(key), disabled: locked !== undefined, label: title,
-          onChange: enabled => run(key, 'toggle', { id: preset.id, rowId: row.id, enabled }, 'notice.saved'),
-        }))
+      const toggle = enabled => run(key, 'toggle', { id: preset.id, rowId: row.id, enabled }, 'notice.saved')
+      return h('div', { className: 'pm-rowwrap' },
+        h('div', { className: 'pm-row' },
+          row.meta?.icon
+            ? h('img', { className: 'pm-icon', src: row.meta.icon, alt: '' })
+            : h('span', { className: 'pm-icon', 'aria-hidden': true }, title.slice(0, 1).toUpperCase()),
+          h('div', { className: 'pm-rowmain' },
+            h('div', { className: 'pm-rowtitle' },
+              h('span', null, title),
+              row.essential ? h('span', { className: 'pm-badge is-accent' }, t('row.essential')) : null,
+              row.changed ? h('span', { className: 'pm-badge is-warn' }, t('row.changed')) : null,
+              row.changed && row.restorable
+                ? h('button', { type: 'button', className: 'pm-link', disabled: pending.has(key), onClick: () => run(key, 'resetRow', { id: preset.id, rowId: row.id }, 'notice.saved') }, t('action.restoreRow'))
+                : null,
+              locked === undefined ? null : h('span', { className: 'pm-badge', title: row.condition }, locked)),
+            description === undefined ? null : h('div', { className: 'pm-rowdesc' }, description),
+            h('div', { className: 'pm-rowtech' },
+              row.id === null ? row.module : `${row.id} · ${row.module}`, ' · ',
+              h('button', { type: 'button', className: 'pm-link', 'aria-expanded': details, onClick: () => setDetails(!details) }, t(details ? 'row.hideDetails' : 'row.details')))),
+          h(Switch, {
+            checked: on, pending: pending.has(key), disabled: locked !== undefined || confirmOff, label: title,
+            onChange: (enabled) => {
+              if (!enabled && row.essential) setConfirmOff(true)
+              else toggle(enabled)
+            },
+          })),
+        confirmOff
+          ? h('div', { className: 'pm-warn pm-inline', role: 'alertdialog', 'aria-label': title },
+            h('span', { className: 'pm-grow' }, t('confirm.personaOff', { title })),
+            h('button', { type: 'button', className: 'pm-btn pm-danger', onClick: () => { setConfirmOff(false); toggle(false) } }, t('confirm.personaOffOk')),
+            h('button', { type: 'button', className: 'pm-btn', onClick: () => setConfirmOff(false) }, t('action.cancel')))
+          : null,
+        details ? h(RowDetails, { ui, row }) : null)
     }
 
     function PluginList({ ui, preset, rows }) {
@@ -460,47 +667,122 @@ window.__ModuleLoader__.load({
       const [info, setInfo] = React.useState(null)
       const [failure, setFailure] = React.useState(null)
       const [text, setText] = React.useState('')
+      /** The stored prompt this edit started from; a save sends it so a stale editor cannot overwrite a newer prompt. */
+      const [base, setBase] = React.useState('')
+      const [restored, setRestored] = React.useState(false)
+      const [conflict, setConflict] = React.useState(null)
+      const [saving, setSaving] = React.useState(false)
+      const [error, setError] = React.useState(null)
+      const [notice, setNotice] = React.useState(null)
       const [showPreview, setShowPreview] = React.useState(false)
       const area = React.useRef(null)
+      const fileInput = React.useRef(null)
+      const reload = React.useCallback(() => call('prompt', { id: preset.id }), [preset.id])
       React.useEffect(() => {
         let live = true
-        call('prompt', { id: preset.id }).then(
-          (value) => { if (live) { setInfo(value); setText(value.prefix ?? '') } },
-          (error) => { if (live) setFailure(ui.describe(error)) })
+        reload().then((value) => {
+          if (!live) return
+          const saved = value.prefix ?? ''
+          const draft = ui.drafts.get(preset.id)
+          if (draft !== undefined && draft.text !== saved) {
+            setText(draft.text)
+            setBase(draft.base)
+            setRestored(true)
+          } else {
+            setText(saved)
+            setBase(saved)
+            if (draft !== undefined) ui.setDraft(preset.id, undefined)
+          }
+          setInfo(value)
+        }, (reason) => { if (live) setFailure(ui.describe(reason)) })
         return () => { live = false }
       }, [preset.id])
       React.useEffect(() => { if (info !== null) area.current?.focus() }, [info === null])
       if (failure !== null) return h('div', { className: 'pm-prompt pm-error', role: 'alert' }, failure)
       if (info === null) return h('div', { className: 'pm-prompt pm-muted' }, t('loading'))
-      const key = `prompt:${preset.id}`
-      const saving = ui.pending.has(key)
-      const dirty = text !== (info.prefix ?? '')
+      const saved = info.prefix ?? ''
+      const dirty = text !== saved
       const problem = templateProblem(text, info.variables)
-      const save = () => {
-        if (dirty && problem === undefined && !saving) ui.run(key, 'setPrompt', { id: preset.id, prefix: text }, 'notice.promptSaved', onClose)
+      const edit = (value) => {
+        setText(value)
+        setNotice(null)
+        ui.setDraft(preset.id, value === saved ? undefined : { text: value, base, at: Date.now() })
+      }
+      const adopt = (value, latest) => {
+        setInfo(latest)
+        setText(value)
+        setBase(latest.prefix ?? '')
+        setRestored(false)
+        setConflict(null)
+        ui.setDraft(preset.id, undefined)
+      }
+      const discard = () => adopt(saved, info)
+      const save = (overwrite) => {
+        if (!dirty || problem !== undefined || saving) return
+        setSaving(true)
+        setError(null)
+        call('setPrompt', { id: preset.id, prefix: text, ...overwrite ? {} : { base } })
+          .then((value) => {
+            ui.setDraft(preset.id, undefined)
+            ui.applyList(value, preset.id, 'notice.promptSaved')
+            onClose()
+          })
+          .catch((reason) => {
+            if (reason instanceof ActionFailure && reason.code === 'prompt-conflict') setConflict(reason.details?.current ?? '')
+            else setError(ui.describe(reason))
+          })
+          .finally(() => setSaving(false))
+      }
+      const loadLatest = () => reload().then(latest => adopt(latest.prefix ?? '', latest), reason => setError(ui.describe(reason)))
+      const enablePersona = () => ui.run(`prompt:${preset.id}`, 'toggle', { id: preset.id, rowId: info.rowId, enabled: true }, 'notice.saved',
+        () => reload().then(latest => setInfo(latest), () => undefined))
+      const exportFile = () => {
+        const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }))
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${preset.id}-prompt.md`
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        setNotice(t('prompt.exported'))
+      }
+      const importFile = (event) => {
+        const file = event.target.files?.[0]
+        event.target.value = ''
+        if (file === undefined) return
+        file.text().then((content) => {
+          if (content.length > PROMPT_MAX_CHARS) { setError(t('prompt.importTooLarge', { max: PROMPT_MAX_CHARS })); return }
+          edit(content)
+          setNotice(t('prompt.imported'))
+        }, reason => setError(t('prompt.importFailed', { detail: reason instanceof Error ? reason.message : String(reason) })))
       }
       const insert = (name) => {
         const element = area.current
         const token = `{{${name}}}`
         const start = element?.selectionStart ?? text.length
         const end = element?.selectionEnd ?? text.length
-        setText(text.slice(0, start) + token + text.slice(end))
+        edit(text.slice(0, start) + token + text.slice(end))
         requestAnimationFrame(() => {
           element?.focus()
           element?.setSelectionRange(start + token.length, start + token.length)
         })
       }
       const preview = info.preview === undefined ? info.error
-        : dirty && info.prefix !== undefined && info.prefix !== '' && info.preview.includes(info.prefix) ? info.preview.replace(info.prefix, text) : info.preview
+        : dirty && saved !== '' && info.preview.includes(saved) ? info.preview.replace(saved, text) : info.preview
       return h('div', { className: 'pm-prompt' },
         h('div', { className: 'pm-hint' }, info.rowId === undefined ? t('prompt.none') : info.complete ? t('prompt.complete') : t('prompt.partial')),
+        info.off ? h('div', { className: 'pm-warn', role: 'note' },
+          h('span', { className: 'pm-grow' }, t('prompt.off')),
+          h('button', { type: 'button', className: 'pm-btn', disabled: ui.pending.size > 0, onClick: enablePersona }, t('action.enablePersona'))) : null,
+        restored ? h('div', { className: 'pm-warn', role: 'status' },
+          h('span', { className: 'pm-grow' }, base === saved ? t('prompt.draftRestored') : `${t('prompt.draftRestored')} ${t('prompt.draftStale')}`),
+          h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discardDraft'))) : null,
         h('textarea', {
           ref: area, className: 'pm-input pm-textarea', value: text, rows: 8, spellCheck: false,
           'aria-label': t('prompt.title'), 'aria-invalid': problem !== undefined,
-          onChange: e => setText(e.target.value),
+          onChange: e => edit(e.target.value),
           onKeyDown: (event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); save() }
-            else if (event.key === 'Escape' && !dirty) onClose()
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); save(false) }
+            else if (event.key === 'Escape') onClose()
           },
         }),
         h('div', { className: 'pm-bar pm-hint' },
@@ -509,20 +791,87 @@ window.__ModuleLoader__.load({
           h('span', { className: 'pm-grow' }),
           h('span', null, t('prompt.chars', { n: text.length }))),
         problem === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, ui.describeCode(problem.code, problem, '')),
+        error === null ? null : h('div', { className: 'pm-error', role: 'alert' }, error),
+        notice === null ? null : h('div', { className: 'pm-notice', role: 'status' }, `✓ ${notice}`),
+        conflict === null ? null : h('div', { className: 'pm-conflict', role: 'alert' },
+          h('strong', null, t('prompt.conflictTitle')),
+          h('span', { className: 'pm-hint' }, t('prompt.conflictLatest')),
+          h('pre', null, conflict),
+          h('div', { className: 'pm-bar' },
+            h('button', { type: 'button', className: 'pm-btn', onClick: loadLatest }, t('prompt.loadLatest')),
+            h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: saving, onClick: () => save(true) }, t('prompt.overwrite')))),
         h('div', { className: 'pm-bar' },
           h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': showPreview, onClick: () => setShowPreview(!showPreview) }, t(showPreview ? 'prompt.hidePreview' : 'prompt.preview')),
+          h('button', { type: 'button', className: 'pm-btn', onClick: () => fileInput.current?.click() }, t('prompt.import')),
+          h('button', { type: 'button', className: 'pm-btn', onClick: exportFile }, t('prompt.export')),
+          h('input', { ref: fileInput, className: 'pm-file', type: 'file', accept: '.md,.txt,text/markdown,text/plain', onChange: importFile }),
+          dirty ? h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discard')) : null,
           info.changed && info.rowId
-            ? h('button', { type: 'button', className: 'pm-btn', disabled: saving, onClick: () => ui.run(key, 'resetRow', { id: preset.id, rowId: info.rowId }, 'notice.promptRestored', onClose) }, t('prompt.restore'))
+            ? h('button', { type: 'button', className: 'pm-btn', disabled: saving, onClick: () => ui.run(`prompt:${preset.id}`, 'resetRow', { id: preset.id, rowId: info.rowId }, 'notice.promptRestored', () => { ui.setDraft(preset.id, undefined); onClose() }) }, t('prompt.restore'))
             : null,
           h('span', { className: 'pm-grow' }),
           h('span', { className: 'pm-hint' }, t('prompt.shortcut')),
-          h('button', { type: 'button', className: 'pm-btn', onClick: onClose }, t('action.cancel')),
-          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: !dirty || problem !== undefined || saving, onClick: save }, t('action.save'))),
+          h('button', { type: 'button', className: 'pm-btn', onClick: onClose }, t('prompt.close')),
+          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: !dirty || problem !== undefined || saving, onClick: () => save(false) }, t('action.save'))),
         showPreview
           ? h('div', { className: 'pm-yaml' },
             h('div', { className: 'pm-hint', style: { marginBottom: 6 } }, dirty ? `${t('prompt.previewNote')} ${t('prompt.previewDirty')}` : t('prompt.previewNote')),
             h('pre', null, preview))
           : null)
+    }
+
+    function CreateForm({ ui, presets, templates, initial, onSubmit, onCancel }) {
+      const { t } = ui
+      const taken = React.useMemo(() => new Set(presets.map(p => p.id)), [presets])
+      const [kind, setKind] = React.useState(initial.kind)
+      const [from, setFrom] = React.useState(initial.from ?? 'standard')
+      const [name, setName] = React.useState('')
+      const [description, setDescription] = React.useState('')
+      const idFor = (nameValue, kindValue, fromValue) => freeId(slugify(nameValue) || (kindValue === 'copy' ? `${fromValue}-copy` : kindValue), taken)
+      const [id, setId] = React.useState(() => idFor('', initial.kind, initial.from ?? 'standard'))
+      const [idTouched, setIdTouched] = React.useState(false)
+      const nameInput = React.useRef(null)
+      React.useEffect(() => { nameInput.current?.focus() }, [])
+      const source = presets.find(p => p.id === from)
+      const suggested = kind === 'copy' ? t('create.copyName', { name: source === undefined ? from : ui.presetName(source) }) : t(`template.${kind}.suggest`)
+      const idProblem = !PRESET_ID.test(id) ? t('create.idInvalid') : taken.has(id) ? t('create.idTaken') : undefined
+      const choose = (nextKind, nextFrom = from) => {
+        setKind(nextKind)
+        setFrom(nextFrom)
+        if (!idTouched) setId(idFor(name, nextKind, nextFrom))
+      }
+      const submit = (event) => {
+        event.preventDefault()
+        if (idProblem !== undefined) return
+        onSubmit({ id, name: name.trim() || suggested, description, ...kind === 'copy' ? { from } : { template: kind }, locale: ui.lang })
+      }
+      const option = (value, label, note, extra) => h('button', {
+        key: value, type: 'button', role: 'radio', 'aria-checked': kind === value, className: 'pm-tpl', onClick: () => choose(value),
+        'aria-label': [label, note, extra].filter(Boolean).join(' — '),
+      }, h('strong', null, label), h('span', null, note), extra === undefined ? null : h('span', { className: 'pm-hint' }, extra))
+      return h('form', { className: 'pm-form', onSubmit: submit, onKeyDown: (event) => { if (event.key === 'Escape') onCancel() } },
+        h('strong', { className: 'is-wide' }, t('create.title')),
+        h('div', { className: 'is-wide pm-tpl-grid', role: 'radiogroup', 'aria-label': t('create.start') },
+          ...templates.map(item => option(item.id, t(`template.${item.id}.name`), t(`template.${item.id}.desc`), t('template.on', { n: item.on }))),
+          option('copy', t('template.copy.name'), t('template.copy.desc'))),
+        kind === 'copy'
+          ? h('label', { className: 'is-wide' }, t('create.from'),
+            h('select', { className: 'pm-input', value: from, onChange: e => choose('copy', e.target.value) },
+              presets.filter(p => p.rows.length > 0).map(p => h('option', { key: p.id, value: p.id }, ui.presetName(p)))))
+          : null,
+        h('label', null, t('create.name'),
+          h('input', {
+            ref: nameInput, className: 'pm-input', value: name, placeholder: suggested,
+            onChange: (e) => { setName(e.target.value); if (!idTouched) setId(idFor(e.target.value, kind, from)) },
+          })),
+        h('label', null, t('create.id'),
+          h('input', { className: 'pm-input', value: id, 'aria-invalid': idProblem !== undefined, onChange: (e) => { setIdTouched(true); setId(e.target.value.trim()) } }),
+          h('span', { className: `pm-hint${idProblem === undefined ? '' : ' is-error'}` }, idProblem ?? t('create.idHint'))),
+        h('label', { className: 'is-wide' }, t('create.description'),
+          h('input', { className: 'pm-input', value: description, onChange: e => setDescription(e.target.value) })),
+        h('div', { className: 'pm-bar' },
+          h('button', { type: 'button', className: 'pm-btn', onClick: onCancel }, t('action.cancel')),
+          h('button', { type: 'submit', className: 'pm-btn pm-primary', disabled: idProblem !== undefined || ui.pending.size > 0 }, t('action.create'))))
     }
 
     function PresetCard({ ui, preset, presets, query, onlyChanged, open, onOpen, onDuplicate }) {
@@ -531,7 +880,8 @@ window.__ModuleLoader__.load({
       const name = ui.presetName(preset)
       const description = ui.presetDescription(preset)
       const changed = preset.rows.filter(row => row.changed).length
-      const promptChanged = preset.rows.some(row => row.module === PERSONA_MODULE && row.changed)
+      const persona = preset.rows.find(row => row.essential)
+      const promptChanged = persona?.changed === true
       const on = preset.rows.filter(row => (row.enabled ?? row.declared === true) === true).length
       const needle = query.trim().toLowerCase()
       const rows = preset.rows.filter(row => (!onlyChanged || row.changed)
@@ -558,6 +908,7 @@ window.__ModuleLoader__.load({
               changed > 0 ? h('span', { className: 'pm-badge is-warn' }, t('badge.modified', { n: changed })) : null,
               preset.usage > 0 ? h('span', { className: 'pm-badge' }, t('badge.usage', { n: preset.usage })) : null,
               promptChanged ? h('span', { className: 'pm-badge is-warn' }, t('badge.promptChanged')) : null,
+              ui.drafts.has(preset.id) ? h('span', { className: 'pm-badge is-warn' }, t('badge.draft')) : null,
               preset.broken ? h('span', { className: 'pm-badge is-error' }, t('badge.broken')) : null),
             description ? h('div', { className: 'pm-desc' }, description) : null,
             preset.promptExcerpt ? h('div', { className: 'pm-excerpt', title: preset.promptExcerpt }, t('prompt.excerptLine', { text: preset.promptExcerpt })) : null,
@@ -565,6 +916,11 @@ window.__ModuleLoader__.load({
             preset.broken ? h('div', { className: 'pm-error' }, preset.broken) : null,
             notice ? h('div', { className: 'pm-notice', role: 'status' }, `✓ ${t(notice)}`) : null,
             error ? h('div', { className: 'pm-error', role: 'alert' }, error) : null)),
+        persona?.declared === false && persona.id !== null
+          ? h('div', { className: 'pm-warn pm-cardwarn', role: 'note' },
+            h('span', { className: 'pm-grow' }, `⚠ ${t('warn.personaOff')}`),
+            h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('toggle', { rowId: persona.id, enabled: true }, 'notice.saved') }, t('action.enablePersona')))
+          : null,
         panel === 'details'
           ? h(DetailsForm, {
             ui, title: t('rename.title'), initial: preset, presets, from: preset.id, withId: false, submitLabel: t('action.save'),
@@ -584,7 +940,7 @@ window.__ModuleLoader__.load({
                 ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('setDefault', {}, 'notice.default') }, t('action.setDefault'))
                 : null,
               preset.source !== 'external' && !preset.broken ? h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel('prompt') }, t('action.prompt')) : null,
-              preset.rows.length > 0 ? h('button', { type: 'button', className: 'pm-btn', onClick: () => onDuplicate(preset.id) }, t('action.duplicate')) : null,
+              preset.rows.length > 0 ? h('button', { type: 'button', className: 'pm-btn', onClick: () => onDuplicate({ kind: 'copy', from: preset.id }) }, t('action.duplicate')) : null,
               h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel === 'yaml', onClick: () => setPanel(panel === 'yaml' ? null : 'yaml') }, t(panel === 'yaml' ? 'action.hideYaml' : 'action.yaml')),
               preset.source === 'overridden' ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setPanel('reset') }, t('action.reset')) : null,
               preset.source === 'custom' ? h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel('details') }, t('action.rename')) : null,
@@ -605,6 +961,7 @@ window.__ModuleLoader__.load({
       const [open, setOpen] = React.useState(() => new Set())
       const [creating, setCreating] = React.useState(null)
       const [focusId, setFocusId] = React.useState(null)
+      const [drafts, setDrafts] = React.useState(() => new Map())
       const timers = React.useRef(new Map())
       React.useEffect(() => () => { for (const timer of timers.current.values()) clearTimeout(timer) }, [])
       React.useEffect(() => {
@@ -655,13 +1012,30 @@ window.__ModuleLoader__.load({
       }
       const load = () => {
         setPageError(null)
-        call('list').then(setData, (error) => { setPageError(describe(error)) })
+        call('list').then((value) => {
+          setData(value)
+          setDrafts(new Map(value.presets.flatMap((preset) => {
+            const draft = readDraft(preset.id)
+            return draft === undefined ? [] : [[preset.id, draft]]
+          })))
+        }, (error) => { setPageError(describe(error)) })
+      }
+      const setDraft = (id, draft) => {
+        writeDraft(id, draft)
+        setDrafts((previous) => {
+          const next = new Map(previous)
+          if (draft === undefined) next.delete(id)
+          else next.set(id, draft)
+          return next
+        })
       }
       React.useEffect(load, [])
 
       const workspace = ctx.get('uiWorkspace')
       const ui = {
-        t, text, describe, describeCode, pending, notices, errors, run,
+        t, text, describe, describeCode, pending, notices, errors, run, drafts, setDraft,
+        lang: String(ctx.locale.getSnapshot().active).toLowerCase().startsWith('zh') ? 'zh' : 'en',
+        applyList: (value, presetId, notice) => { setData(value); flash(presetId, notice) },
         canTry: typeof workspace?.startSession === 'function',
         canSetDefault: data?.canSetDefault === true,
         presetName: preset => builtInCopy(preset, 'Name') ?? preset.name ?? preset.id,
@@ -699,7 +1073,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'pm-bar' },
           h('h3', { className: 'pm-grow' }, t('title')),
           h('button', { type: 'button', className: 'pm-btn', onClick: load }, t('refresh')),
-          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: data === null, onClick: () => setCreating('standard') }, t('newPreset'))),
+          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: data === null, onClick: () => setCreating({ kind: 'develop' }) }, t('newPreset'))),
         h('p', { className: 'pm-intro' }, t('intro')),
         h('div', { className: 'pm-bar' },
           h('input', { className: 'pm-input pm-search', type: 'search', value: query, placeholder: t('search'), 'aria-label': t('search'), onChange: e => setQuery(e.target.value) }),
@@ -708,8 +1082,8 @@ window.__ModuleLoader__.load({
             t('onlyChanged'))),
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         creating === null ? null : h('div', { className: 'pm-card' },
-          h(DetailsForm, {
-            key: creating, ui, title: t('create.title'), initial: {}, presets, from: creating, withId: true, submitLabel: t('action.create'),
+          h(CreateForm, {
+            key: `${creating.kind}:${creating.from ?? ''}`, ui, presets, templates: data?.templates ?? [], initial: creating,
             onSubmit: create, onCancel: () => { setCreating(null); setErrors((previous) => { const next = new Map(previous); next.delete(CREATE_ERROR); return next }) },
           }),
           errors.get(CREATE_ERROR) ? h('div', { className: 'pm-error', role: 'alert', style: { padding: '0 14px 12px' } }, errors.get(CREATE_ERROR)) : null),
