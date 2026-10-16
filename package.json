@@ -1,6 +1,6 @@
 {
   "name": "dsh-modes",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "View and manage DeepSeek Harness agent modes (presets) in Web Settings: toggle the plugins each mode loads, merge built-in updates, edit and version each mode's system prompt, and create modes from starter templates.",
   "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "cordis", "agent-preset", "system-prompt"],
   "author": "xiaohai-78",

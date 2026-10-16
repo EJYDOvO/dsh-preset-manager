@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
     /** Copy keys the official Agent presets page registers for the four shipped presets. */
     const BUILT_IN_COPY = { standard: 'Standard', ptc: 'Ptc', minimal: 'Minimal', cordis: 'Cordis' }
-    const NOTICE_MS = 2500
+    const NOTICE_MS = 4000
     const PROMPT_MAX_CHARS = 20000
     const DRAFT_PREFIX = 'dsh-modes:draft:'
     /** Error-map key for the create form, which belongs to no preset card yet. */
@@ -279,6 +279,11 @@ window.__ModuleLoader__.load({
       'plugins.intro': '这里列出模式里的每一个插件，适合需要逐个调整的情况。',
       'prompt.behaviorTitle': '在对话中',
       'prompt.behaviorHint': '这两个开关立即保存，不需要点「保存」；它们对之后新建的会话生效。',
+      'toast.line': '{name}：{text}',
+      'action.dismiss': '关闭提示',
+      'notice.removed': '已删除',
+      'prompt.restoreConfirm': '把提示词恢复为内置版本？当前提示词会保留在历史版本里。',
+      'prompt.restoreDirty': '编辑器里未保存的修改会被丢弃。',
     }
     const EN = {
       nav: 'Modes',
@@ -541,6 +546,11 @@ window.__ModuleLoader__.load({
       'plugins.intro': 'Every plugin in this mode, for when you need to adjust them one by one.',
       'prompt.behaviorTitle': 'In chat',
       'prompt.behaviorHint': 'These switches save at once, without Save; they apply to sessions created afterwards.',
+      'toast.line': '{name}: {text}',
+      'action.dismiss': 'Dismiss',
+      'notice.removed': 'Deleted',
+      'prompt.restoreConfirm': 'Restore the built-in prompt? The current prompt stays in the history.',
+      'prompt.restoreDirty': 'Unsaved edits in the editor are discarded.',
     }
 
     const CSS = `
@@ -550,6 +560,11 @@ window.__ModuleLoader__.load({
 .pm-muted { color: var(--dsw-alias-label-tertiary); }
 .pm-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pm-grow { flex: 1 1 auto; }
+.pm-end { justify-content: flex-end; }
+.pm-toast { position: sticky; bottom: 12px; z-index: 30; align-self: center; box-sizing: border-box; max-width: 100%; display: flex; gap: 10px; align-items: center; padding: 8px 8px 8px 14px; border-radius: 10px; border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); color: var(--dsw-alias-state-success-primary); font-size: 12px; line-height: 1.5; }
+.pm-toast.is-error { color: var(--dsw-alias-state-error-primary); border-color: var(--dsw-alias-state-error-primary); }
+.pm-toast-close { flex: none; width: 24px; height: 24px; border: 0; border-radius: 6px; background: none; color: var(--dsw-alias-label-tertiary); font-size: 16px; line-height: 1; cursor: pointer; }
+.pm-toast-close:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
 .pm-input { box-sizing: border-box; min-width: 0; font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); color: inherit; }
 .pm-input:focus { outline: none; border-color: var(--dsw-alias-state-business-primary); }
 .pm-search { flex: 1 1 220px; }
@@ -669,6 +684,7 @@ window.__ModuleLoader__.load({
 .pm-capline .pm-rowdesc { -webkit-line-clamp: 3; }
 .pm-menu { position: relative; }
 .pm-menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 168px; display: flex; flex-direction: column; padding: 4px; border-radius: 10px; border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
+.pm-menu-list.is-up { top: auto; bottom: calc(100% + 4px); }
 .pm-menu-list button { font: inherit; font-size: 13px; text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none; color: inherit; cursor: pointer; white-space: nowrap; }
 .pm-menu-list button:hover:not(:disabled), .pm-menu-list button:focus-visible { background: var(--dsw-alias-interactive-bg-hover); outline: none; }
 .pm-menu-list button:disabled { opacity: .5; cursor: default; }
@@ -1032,35 +1048,67 @@ window.__ModuleLoader__.load({
           : null)
     }
 
-    /** A "more actions" button with a menu of secondary actions; closes on choice, Escape, or an outside click. */
+    /** The nearest scrolling ancestor, which clips absolutely positioned popups. */
+    function scrollParent(element) {
+      for (let node = element?.parentElement; node; node = node.parentElement) {
+        if (/auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight) return node
+      }
+      return document.scrollingElement
+    }
+
+    /**
+     * A "more actions" button with a menu of secondary actions. It opens upward when the space below is too short,
+     * moves through items with the arrow keys, Home, and End, and closes on a choice, Escape, Tab, or an outside click.
+     * Escape is marked handled so the Settings dialog stays open.
+     */
     function Menu({ label, items }) {
       const [open, setOpen] = React.useState(false)
+      const [up, setUp] = React.useState(false)
       const root = React.useRef(null)
-      React.useEffect(() => {
+      const trigger = React.useRef(null)
+      React.useLayoutEffect(() => {
         if (!open) return undefined
-        const outside = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }
-        const escape = (event) => { if (event.key === 'Escape') { setOpen(false); root.current?.querySelector('button')?.focus() } }
-        document.addEventListener('mousedown', outside)
-        document.addEventListener('keydown', escape)
-        root.current?.querySelector('[role=menuitem]')?.focus()
-        return () => {
-          document.removeEventListener('mousedown', outside)
-          document.removeEventListener('keydown', escape)
+        const list = root.current?.querySelector('[role=menu]')
+        const bounds = scrollParent(root.current)?.getBoundingClientRect()
+        const anchor = trigger.current?.getBoundingClientRect()
+        if (list !== undefined && list !== null && bounds !== undefined && anchor !== undefined) {
+          const height = list.offsetHeight + 8
+          setUp(anchor.bottom + height > bounds.bottom && anchor.top - height >= bounds.top)
         }
+        list?.querySelector('[role=menuitem]:not(:disabled)')?.focus({ preventScroll: true })
+        const outside = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }
+        document.addEventListener('mousedown', outside)
+        return () => document.removeEventListener('mousedown', outside)
       }, [open])
       if (items.length === 0) return null
-      return h('div', { className: 'pm-menu', ref: root },
-        h('button', { type: 'button', className: 'pm-btn', 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-label': label, title: label, onClick: () => setOpen(!open) }, '⋯'),
+      const onKeyDown = (event) => {
+        if (!open) return
+        const entries = [...root.current.querySelectorAll('[role=menuitem]:not(:disabled)')]
+        const at = entries.indexOf(document.activeElement)
+        const focus = (index) => { event.preventDefault(); entries[(index + entries.length) % entries.length]?.focus() }
+        if (event.key === 'Escape') { event.preventDefault(); setOpen(false); trigger.current?.focus() }
+        else if (event.key === 'ArrowDown') focus(at + 1)
+        else if (event.key === 'ArrowUp') focus(at - 1)
+        else if (event.key === 'Home') focus(0)
+        else if (event.key === 'End') focus(entries.length - 1)
+        else if (event.key === 'Tab') setOpen(false)
+      }
+      return h('div', { className: 'pm-menu', ref: root, onKeyDown },
+        h('button', {
+          ref: trigger, type: 'button', className: 'pm-btn', 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-label': label, title: label,
+          onClick: () => setOpen(!open),
+          onKeyDown: (event) => { if (event.key === 'ArrowDown' && !open) { event.preventDefault(); setOpen(true) } },
+        }, '⋯'),
         open
-          ? h('div', { className: 'pm-menu-list', role: 'menu', 'aria-label': label },
+          ? h('div', { className: `pm-menu-list${up ? ' is-up' : ''}`, role: 'menu', 'aria-label': label },
             ...items.map(item => h('button', {
-              key: item.label, type: 'button', role: 'menuitem', className: item.danger ? 'pm-danger' : undefined, disabled: item.disabled,
+              key: item.label, type: 'button', role: 'menuitem', tabIndex: -1, className: item.danger ? 'pm-danger' : undefined, disabled: item.disabled,
               onClick: () => { setOpen(false); item.onSelect() },
             }, item.label)))
           : null)
     }
 
-    /** Follow-platform / on / off choice for a row whose built-in version is switched by a platform condition. */
+    /** Auto / on / off choice for a row whose built-in version switches by a condition, such as the platform. */
     function PlatformChoice({ ui, row, title, pending, onChoose }) {
       const { t } = ui
       const current = row.declared === 'conditional' ? 'platform' : row.declared === true ? 'on' : 'off'
@@ -1118,10 +1166,13 @@ window.__ModuleLoader__.load({
               },
             })),
         confirmOff
-          ? h('div', { className: 'pm-warn pm-inline', role: 'alertdialog', 'aria-label': title },
+          ? h('div', {
+            className: 'pm-warn pm-inline', role: 'alertdialog', 'aria-label': title,
+            onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); setConfirmOff(false) } },
+          },
             h('span', { className: 'pm-grow' }, t('confirm.personaOff', { title })),
-            h('button', { type: 'button', className: 'pm-btn pm-danger', onClick: () => { setConfirmOff(false); toggle(false) } }, t('confirm.personaOffOk')),
-            h('button', { type: 'button', className: 'pm-btn', onClick: () => setConfirmOff(false) }, t('action.cancel')))
+            h('button', { type: 'button', className: 'pm-btn', autoFocus: true, onClick: () => setConfirmOff(false) }, t('action.cancel')),
+            h('button', { type: 'button', className: 'pm-btn pm-danger', onClick: () => { setConfirmOff(false); toggle(false) } }, t('confirm.personaOffOk')))
           : null,
         details ? h(RowDetails, { ui, row }) : null)
     }
@@ -1161,7 +1212,7 @@ window.__ModuleLoader__.load({
         event.preventDefault()
         if (idProblem === undefined) onSubmit({ id, name, description, from: template })
       }
-      return h('form', { className: 'pm-form', onSubmit: submit, onKeyDown: (event) => { if (event.key === 'Escape') onCancel() } },
+      return h('form', { className: 'pm-form', onSubmit: submit, onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); onCancel() } } },
         h('strong', { className: 'is-wide' }, title),
         h('label', null, t('create.name'),
           h('input', { ref: nameInput, className: 'pm-input', value: name, placeholder: t('create.namePlaceholder'), onChange: e => onName(e.target.value) })),
@@ -1259,6 +1310,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = React.useState(null)
       const [notice, setNotice] = React.useState(null)
       const [panel, setPanel] = React.useState({ preview: false, advanced: false, history: false })
+      const [confirmRestore, setConfirmRestore] = React.useState(false)
       const area = React.useRef(null)
       const suffixArea = React.useRef(null)
       const lastFocus = React.useRef('prefix')
@@ -1340,6 +1392,7 @@ window.__ModuleLoader__.load({
       const setting = (action, payload, success) => ui.run(`prompt:${preset.id}`, action, { id: preset.id, ...payload }, success,
         () => reload().then(latest => setInfo(latest), () => undefined))
       const restoreBuiltIn = () => {
+        setConfirmRestore(false)
         const after = () => {
           ui.setDraft(preset.id, undefined)
           reload().then((latest) => { adopt(latest, undefined); setNotice(t('notice.promptRestored')) }, () => undefined)
@@ -1458,10 +1511,19 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'pm-btn', onClick: () => fileInput.current?.click() }, t('prompt.import')),
           h('button', { type: 'button', className: 'pm-btn', onClick: exportFile }, t('prompt.export')),
           h('input', { ref: fileInput, className: 'pm-file', type: 'file', accept: '.md,.txt,text/markdown,text/plain', onChange: importFile }),
-          info.changed && info.rowId ? h('button', { type: 'button', className: 'pm-btn', disabled: saving || busy, onClick: restoreBuiltIn }, t('prompt.restore')) : null,
+          info.changed && info.rowId ? h('button', { type: 'button', className: 'pm-btn', disabled: saving || busy || confirmRestore, onClick: () => setConfirmRestore(true) }, t('prompt.restore')) : null,
           h('span', { className: 'pm-grow' }),
           dirty ? h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discard')) : null,
           h('button', { type: 'button', className: 'pm-btn pm-primary', title: t('prompt.shortcut'), disabled: !dirty || problem !== undefined || saving, onClick: () => save(false) }, t('action.save'))),
+        confirmRestore
+          ? h('div', {
+            className: 'pm-warn', role: 'alertdialog', 'aria-label': t('prompt.restore'),
+            onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); setConfirmRestore(false) } },
+          },
+            h('span', { className: 'pm-grow' }, dirty ? `${t('prompt.restoreConfirm')} ${t('prompt.restoreDirty')}` : t('prompt.restoreConfirm')),
+            h('button', { type: 'button', className: 'pm-btn', autoFocus: true, onClick: () => setConfirmRestore(false) }, t('action.cancel')),
+            h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy, onClick: restoreBuiltIn }, t('prompt.restore')))
+          : null,
         panel.history ? h(PromptHistory, { ui, preset, current: { prefix: text, suffix }, onLoad: loadVersion }) : null,
         panel.preview
           ? h('div', { className: 'pm-yaml' },
@@ -1486,7 +1548,11 @@ window.__ModuleLoader__.load({
       const [id, setId] = React.useState(() => idFor('', initial.kind, initial.from ?? 'standard'))
       const [idTouched, setIdTouched] = React.useState(false)
       const nameInput = React.useRef(null)
-      React.useEffect(() => { nameInput.current?.focus() }, [])
+      const formRef = React.useRef(null)
+      React.useEffect(() => {
+        formRef.current?.scrollIntoView({ block: 'nearest' })
+        nameInput.current?.focus({ preventScroll: true })
+      }, [])
       const source = presets.find(p => p.id === from)
       const suggested = kind === 'copy' ? t('create.copyName', { name: source === undefined ? from : ui.presetName(source) }) : t(`template.${kind}.suggest`)
       const idProblem = !PRESET_ID.test(id) ? t('create.idInvalid') : taken.has(id) ? t('create.idTaken') : undefined
@@ -1504,7 +1570,7 @@ window.__ModuleLoader__.load({
         key: value, type: 'button', role: 'radio', 'aria-checked': kind === value, className: 'pm-tpl', onClick: () => choose(value),
         'aria-label': [label, note, extra].filter(Boolean).join(' — '),
       }, h('strong', null, label), h('span', null, note), extra === undefined ? null : h('span', { className: 'pm-hint' }, extra))
-      return h('form', { className: 'pm-form', onSubmit: submit, onKeyDown: (event) => { if (event.key === 'Escape') onCancel() } },
+      return h('form', { ref: formRef, className: 'pm-form', onSubmit: submit, onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); onCancel() } } },
         h('strong', { className: 'is-wide' }, t('create.title')),
         h('div', { className: 'is-wide pm-tpl-grid', role: 'radiogroup', 'aria-label': t('create.start') },
           ...templates.map(item => option(item.id, t(`template.${item.id}.name`), t(`template.${item.id}.desc`), t('template.on', { n: item.on }))),
@@ -1587,7 +1653,7 @@ window.__ModuleLoader__.load({
     }
 
     function PresetCard({ ui, preset, presets, open, onOpen, onDuplicate }) {
-      const { t, pending, run, notices, errors, canTry, canSetDefault } = ui
+      const { t, pending, run, notices, canTry, canSetDefault } = ui
       const [panel, setPanel] = React.useState(null)
       const [tab, setTab] = React.useState('capabilities')
       const name = ui.presetName(preset)
@@ -1597,7 +1663,6 @@ window.__ModuleLoader__.load({
       const on = preset.rows.filter(row => (row.enabled ?? row.declared === true) === true).length
       const busy = pending.size > 0
       const notice = notices.get(preset.id)
-      const error = errors.get(preset.id)
       const act = (action, payload, success) => run(`card:${preset.id}`, action, { id: preset.id, ...payload }, success, () => setPanel(null))
       const classes = ['pm-card', preset.isDefault ? 'is-default' : '', preset.broken ? 'is-broken' : '', notice ? 'is-flash' : ''].filter(Boolean).join(' ')
       const unregistered = preset.rows.length === 0
@@ -1608,6 +1673,27 @@ window.__ModuleLoader__.load({
       ].filter(Boolean)
       const current = tabs.includes(tab) ? tab : tabs[0]
       const openTab = (name) => { setTab(name); onOpen(true) }
+      const panelRef = React.useRef(null)
+      const topRef = React.useRef(null)
+      React.useEffect(() => {
+        if (panel === null) return
+        panelRef.current?.scrollIntoView({ block: 'nearest' })
+        panelRef.current?.querySelector('[data-autofocus]')?.focus({ preventScroll: true })
+      }, [panel])
+      /** Close the open panel and hand the keyboard back to the card's more-actions button. */
+      const closePanel = () => {
+        setPanel(null)
+        topRef.current?.querySelector('.pm-menu > button')?.focus({ preventScroll: true })
+      }
+      const tabKeys = (event) => {
+        const at = tabs.indexOf(current)
+        const next = event.key === 'ArrowRight' ? at + 1 : event.key === 'ArrowLeft' ? at - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : undefined
+        if (next === undefined) return
+        event.preventDefault()
+        const name = tabs[(next + tabs.length) % tabs.length]
+        setTab(name)
+        event.currentTarget.querySelector(`#pm-tab-${preset.id}-${name}`)?.focus()
+      }
       const chips = capabilityChips(t, preset)
       const meta = [
         t('meta.plugins', { on, total: preset.rows.length }),
@@ -1652,7 +1738,7 @@ window.__ModuleLoader__.load({
         preset.source === 'custom' && !preset.isDefault ? { label: t('action.remove'), danger: true, onSelect: () => setPanel('remove') } : undefined,
       ].filter(Boolean)
       return h('section', { className: classes, id: `pm-preset-${preset.id}`, 'aria-label': name },
-        h('div', { className: 'pm-top' },
+        h('div', { className: 'pm-top', ref: topRef },
           h('div', {
             className: 'pm-head', role: 'button', tabIndex: 0, 'aria-expanded': open,
             'aria-label': `${name} · ${t(open ? 'action.collapse' : 'action.expand')}`,
@@ -1669,42 +1755,43 @@ window.__ModuleLoader__.load({
               description ? h('div', { className: 'pm-desc' }, description) : null,
               chips.length > 0 ? h('div', { className: 'pm-chips', 'aria-label': t('chip.label') }, chips.map(chip => h('span', { key: chip, className: 'pm-cchip' }, chip))) : null,
               h('div', { className: 'pm-meta' }, meta.join(' · ')),
-              preset.broken && preset.failures === undefined ? h('div', { className: 'pm-error' }, preset.broken) : null,
-              notice ? h('div', { className: 'pm-notice', role: 'status' }, `✓ ${t(notice)}`) : null,
-              error ? h('div', { className: 'pm-error', role: 'alert' }, error) : null)),
+              preset.broken && preset.failures === undefined ? h('div', { className: 'pm-error' }, preset.broken) : null)),
           h('div', { className: 'pm-topactions' },
-            canTry && !preset.broken ? h('button', { type: 'button', className: 'pm-btn pm-primary', onClick: () => ui.tryPreset(preset.id) }, t('action.try')) : null,
+            canTry && !preset.broken ? h('button', { type: 'button', className: 'pm-btn', onClick: () => ui.tryPreset(preset.id) }, t('action.try')) : null,
             h(Menu, { label: t('action.more'), items: menu }))),
         banner,
         panel === 'details'
           ? h(DetailsForm, {
             ui, title: t('rename.title'), initial: preset, presets, from: preset.id, withId: false, submitLabel: t('action.save'),
             onSubmit: values => act('update', { name: values.name, description: values.description }, 'notice.updated'),
-            onCancel: () => setPanel(null),
+            onCancel: closePanel,
           })
           : panel === 'remove' || panel === 'reset' || (panel === 'sync' && preset.sync)
-            ? h('div', { className: 'pm-confirm', role: 'alertdialog', 'aria-label': name },
+            ? h('div', {
+              ref: panelRef, className: 'pm-confirm', role: 'alertdialog', 'aria-label': name,
+              onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); closePanel() } },
+            },
               panel === 'sync' ? h(SyncSummary, { ui, preset, presets })
                 : h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : t('confirm.reset', { name, n: changed })),
               panel === 'remove' ? h(RemoveUsage, { ui, preset }) : null,
-              h('div', { className: 'pm-bar' },
+              h('div', { className: 'pm-bar pm-end' },
+                h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': panel === 'sync' ? undefined : true, onClick: closePanel }, t('action.cancel')),
                 h('button', {
-                  type: 'button', className: `pm-btn ${panel === 'sync' ? 'pm-primary' : 'pm-danger'}`, disabled: busy,
-                  onClick: () => act(panel, {}, panel === 'remove' ? undefined : panel === 'sync' ? 'notice.synced' : 'notice.reset'),
-                }, t(panel === 'sync' ? 'sync.confirm' : panel === 'remove' ? 'action.remove' : 'action.reset')),
-                h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel(null) }, t('action.cancel'))))
+                  type: 'button', className: `pm-btn ${panel === 'sync' ? 'pm-primary' : 'pm-danger'}`, disabled: busy, 'data-autofocus': panel === 'sync' ? true : undefined,
+                  onClick: () => act(panel, {}, panel === 'remove' ? 'notice.removed' : panel === 'sync' ? 'notice.synced' : 'notice.reset'),
+                }, t(panel === 'sync' ? 'sync.confirm' : panel === 'remove' ? 'action.remove' : 'action.reset'))))
             : null,
         panel === 'yaml'
-          ? h('div', null,
+          ? h('div', { ref: panelRef, onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); closePanel() } } },
             h(Yaml, { ui, preset }),
             h('div', { className: 'pm-bar', style: { margin: '0 14px 12px 40px' } },
-              h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel(null) }, t('action.hideYaml'))))
+              h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': true, onClick: closePanel }, t('action.hideYaml'))))
           : null,
         open && tabs.length > 0
           ? h('div', { className: 'pm-body' },
-            h('div', { className: 'pm-tabs', role: 'tablist', 'aria-label': name },
+            h('div', { className: 'pm-tabs', role: 'tablist', 'aria-label': name, onKeyDown: tabKeys },
               ...tabs.map(name => h('button', {
-                key: name, type: 'button', role: 'tab', id: `pm-tab-${preset.id}-${name}`, 'aria-selected': current === name,
+                key: name, type: 'button', role: 'tab', id: `pm-tab-${preset.id}-${name}`, 'aria-selected': current === name, tabIndex: current === name ? 0 : -1,
                 'aria-controls': `pm-panel-${preset.id}`, className: 'pm-tab', onClick: () => setTab(name),
               }, t(`tab.${name}`), name === 'prompt' && ui.drafts.has(preset.id) ? h('span', { className: 'pm-dot', title: t('badge.draft') }) : null))),
             h('div', { id: `pm-panel-${preset.id}`, role: 'tabpanel', 'aria-labelledby': `pm-tab-${preset.id}-${current}` },
@@ -1745,8 +1832,15 @@ window.__ModuleLoader__.load({
       const [creating, setCreating] = React.useState(null)
       const [focusId, setFocusId] = React.useState(null)
       const [drafts, setDrafts] = React.useState(() => new Map())
+      const [feedback, setFeedback] = React.useState(null)
+      const feedbackTimer = React.useRef(undefined)
+      const dataRef = React.useRef(null)
+      dataRef.current = data
       const timers = React.useRef(new Map())
-      React.useEffect(() => () => { for (const timer of timers.current.values()) clearTimeout(timer) }, [])
+      React.useEffect(() => () => {
+        for (const timer of timers.current.values()) clearTimeout(timer)
+        clearTimeout(feedbackTimer.current)
+      }, [])
       React.useEffect(() => {
         if (focusId === null) return
         document.getElementById(`pm-preset-${focusId}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -1771,26 +1865,49 @@ window.__ModuleLoader__.load({
       }
       const describe = error => error instanceof ActionFailure ? describeCode(error.code, error.details, error.message) : error.message
 
-      const flash = (presetId, notice) => {
-        setNotices(previous => new Map(previous).set(presetId, notice))
+      /** A preset's display name, looked up in the given lists, then the current one. */
+      const presetNameOf = (id, ...lists) => {
+        for (const presets of [...lists, dataRef.current?.presets]) {
+          const preset = presets?.find(candidate => candidate.id === id)
+          if (preset !== undefined) return builtInCopy(preset, 'Name') ?? preset.name ?? preset.id
+        }
+        return id
+      }
+      /**
+       * Show one line in the feedback bar pinned to the bottom of the page, so the result of a switch far down a
+       * card is visible. Notices clear themselves; errors stay until dismissed or replaced.
+       */
+      const announce = (kind, presetId, text, presets) => {
+        clearTimeout(feedbackTimer.current)
+        setFeedback({ kind, text: presetId === undefined ? text : t('toast.line', { name: presetNameOf(presetId, presets), text }) })
+        if (kind === 'notice') feedbackTimer.current = setTimeout(() => setFeedback(null), NOTICE_MS)
+      }
+      /** Outline the card an action just changed. */
+      const highlight = (presetId) => {
+        setNotices(previous => new Map(previous).set(presetId, true))
         clearTimeout(timers.current.get(presetId))
         timers.current.set(presetId, setTimeout(() => {
           setNotices((previous) => { const next = new Map(previous); next.delete(presetId); return next })
         }, NOTICE_MS))
       }
-      /** Run one action; `errorKey` names where its failure renders (a preset card, or the create form). */
+      /** Run one action; a failure of the create form renders under the form, every other one in the feedback bar. */
       const run = (key, action, payload, success, after, errorKey = payload.id) => {
         const presetId = payload.id
+        const before = dataRef.current?.presets
         setPending(previous => new Set(previous).add(key))
         setErrors((previous) => { const next = new Map(previous); next.delete(errorKey); return next })
         return call(action, payload)
           .then((value) => {
             setData(value)
-            if (success !== undefined) flash(presetId, value.effect?.synced !== undefined && success === 'notice.saved' ? 'notice.savedSynced' : success)
+            highlight(presetId)
+            if (success !== undefined) announce('notice', presetId, t(value.effect?.synced !== undefined && success === 'notice.saved' ? 'notice.savedSynced' : success), [...value.presets, ...before ?? []])
             after?.()
             return value
           })
-          .catch((error) => { setErrors(previous => new Map(previous).set(errorKey, describe(error))) })
+          .catch((error) => {
+            if (errorKey === CREATE_ERROR) setErrors(previous => new Map(previous).set(errorKey, describe(error)))
+            else announce('error', presetId, describe(error), before)
+          })
           .finally(() => { setPending((previous) => { const next = new Set(previous); next.delete(key); return next }) })
       }
       const load = () => {
@@ -1818,7 +1935,7 @@ window.__ModuleLoader__.load({
       const ui = {
         t, text, describe, describeCode, pending, notices, errors, run, drafts, setDraft,
         lang: String(ctx.locale.getSnapshot().active).toLowerCase().startsWith('zh') ? 'zh' : 'en',
-        applyList: (value, presetId, notice) => { setData(value); flash(presetId, notice) },
+        applyList: (value, presetId) => { setData(value); highlight(presetId) },
         canTry: typeof workspace?.startSession === 'function',
         canSetDefault: data?.canSetDefault === true,
         presetName: preset => builtInCopy(preset, 'Name') ?? preset.name ?? preset.id,
@@ -1869,7 +1986,10 @@ window.__ModuleLoader__.load({
           open: open.has(preset.id),
           onOpen: value => setCardOpen(preset.id, value),
           onDuplicate: setCreating,
-        })))
+        })),
+        feedback === null ? null : h('div', { className: `pm-toast${feedback.kind === 'error' ? ' is-error' : ''}`, role: feedback.kind === 'error' ? 'alert' : 'status' },
+          h('span', { className: 'pm-grow' }, `${feedback.kind === 'error' ? '⚠' : '✓'} ${feedback.text}`),
+          h('button', { type: 'button', className: 'pm-toast-close', 'aria-label': t('action.dismiss'), onClick: () => setFeedback(null) }, '×')))
     }
 
     return {
