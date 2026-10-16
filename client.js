@@ -53,7 +53,6 @@ window.__ModuleLoader__.load({
       'action.expand': '展开插件',
       'action.collapse': '收起插件',
       'row.changed': '已修改',
-      'row.conditional': '按运行平台自动开关',
       'row.groupOff': '所在分组已关闭',
       'row.noId': '没有 id，不能单独开关',
       'group.core': '基础能力',
@@ -165,6 +164,69 @@ window.__ModuleLoader__.load({
       'prompt.loadLatest': '载入最新内容（放弃我的修改）',
       'prompt.overwrite': '用我的版本覆盖',
       'prompt.off': '身份行已关闭，这段提示词不会生效。',
+      'badge.live': '即时生效',
+      'badge.sync': '内置模式有更新',
+      'action.sync': '同步内置更新',
+      'sync.title': '把内置模式的最新变化合并进来，你的修改会保留。',
+      'sync.origin': '这个模式基于「{name}」，会合并「{name}」内置版本的变化。',
+      'sync.added': '新增 {n} 个插件：{names}',
+      'sync.removed': '移除 {n} 个内置模式已删除的插件：{names}',
+      'sync.updated': '{n} 个插件有官方更新：{names}',
+      'sync.kept': '保留你的 {n} 处修改',
+      'sync.conflicts': '{n} 项设置你和官方都改过，保留你的设置',
+      'sync.confirm': '同步',
+      'notice.synced': '已同步内置更新',
+      'notice.savedSynced': '已保存，并同步了内置模式的更新',
+      'err.up-to-date': '已经包含最新的内置配置。',
+      'repair.title': '有 {n} 个插件无法加载，这个模式现在不能用：',
+      'repair.hint': '关闭后这个模式就能正常使用；之后把对应插件装好，可以在插件列表里再打开。原因的完整内容见宿主日志。',
+      'action.repair': '关闭这些插件',
+      'notice.repaired': '已关闭无法加载的插件',
+      'err.nothing-to-repair': '没有需要关闭的插件。',
+      'row.failed': '加载失败',
+      'row.platform': '跟随平台',
+      'row.platformNow': '跟随平台（当前{state}）',
+      'row.forceOn': '开',
+      'row.forceOff': '关',
+      'row.forced': '已固定，不随平台切换',
+      'row.platformHint': '这一项原本按运行平台自动开关；固定为开或关后，换到其他平台也不会再自动切换。',
+      'err.no-condition': '找不到这个插件原本的平台条件。',
+      'confirm.saved': '另有 {n} 个已保存的会话是用这个模式创建的，删除后再打开这些会话会失败。',
+      'confirm.checking': '正在统计使用这个模式的会话…',
+      'confirm.savedPartial': '另有至少 {n} 个已保存的会话使用这个模式（会话较多，没有全部统计完），删除后再打开这些会话会失败。',
+      'prompt.advanced': '更多设置',
+      'prompt.hideAdvanced': '收起更多设置',
+      'prompt.suffix': '结尾提示词',
+      'prompt.suffixHint': '追加在工具说明、工作区规则等内容之后。留空会去掉这个模式原有的结尾。',
+      'prompt.suffixIgnored': '已选择只用开头这段作为完整提示词，结尾提示词不会生效。',
+      'prompt.completeLabel': '只用开头这段作为完整的系统提示词，不追加工具说明等内容',
+      'prompt.runtimeLabel': '附带运行时上下文：当前时间、工作目录、权限等',
+      'prompt.flagsNote': '这两项只对之后新建的会话生效，预览也不会反映它们的变化。',
+      'prompt.liveLabel': '即时生效：保存提示词后，正在运行的会话从下一步起就使用新提示词',
+      'prompt.liveHint': '会话中途换提示词时，模型会收到一条新的系统提示，可能多消耗一些输入令牌。开关本身只对之后新建的会话生效；卸载本插件前请先关闭。',
+      'prompt.toolLabel': '允许在对话里修改提示词：模型可以调用 mode_prompt 工具，每次保存都要你批准',
+      'prompt.toolHint': '只对之后新建的会话生效。',
+      'notice.liveOn': '已开启即时生效 · 对之后新建的会话生效',
+      'notice.liveOff': '已关闭即时生效',
+      'notice.toolOn': '已允许在对话里修改提示词 · 对之后新建的会话生效',
+      'notice.toolOff': '已关闭对话里修改提示词',
+      'notice.promptSavedLive': '提示词已保存 · 正在运行的会话从下一步起生效',
+      'prompt.history': '历史版本',
+      'prompt.hideHistory': '收起历史版本',
+      'prompt.historyEmpty': '还没有历史版本。每次保存提示词都会自动记录，最多保留 30 个。',
+      'prompt.historyLoad': '载入到编辑器',
+      'prompt.historyCurrent': '与当前版本相同',
+      'prompt.historyLoaded': '已载入历史版本，尚未保存。',
+      'source.page': '设置页',
+      'source.chat': '对话中',
+      'source.restore': '恢复内置',
+      'source.initial': '最初版本',
+      'source.external': '在其他地方修改',
+      stateError: '无法读取插件的状态文件：{detail}',
+      'own.live.title': '身份（即时生效）',
+      'own.live.desc': '由模式管理插件提供：每一步都读取这个模式最新保存的提示词。',
+      'own.tool.title': '对话里修改提示词',
+      'own.tool.desc': '由模式管理插件提供：mode_prompt 工具，保存前需要你批准。',
     }
     const EN = {
       nav: 'Modes',
@@ -201,7 +263,6 @@ window.__ModuleLoader__.load({
       'action.expand': 'Show plugins',
       'action.collapse': 'Hide plugins',
       'row.changed': 'Changed',
-      'row.conditional': 'Switched by platform',
       'row.groupOff': 'Its group is off',
       'row.noId': 'No id; cannot be switched alone',
       'group.core': 'Core',
@@ -313,6 +374,69 @@ window.__ModuleLoader__.load({
       'prompt.loadLatest': 'Load the latest (discard my edits)',
       'prompt.overwrite': 'Overwrite with my version',
       'prompt.off': 'The persona row is off, so this prompt is not applied.',
+      'badge.live': 'Live prompt',
+      'badge.sync': 'Built-in update',
+      'action.sync': 'Sync built-in update',
+      'sync.title': 'Merge the latest built-in changes into this mode; your changes are kept.',
+      'sync.origin': 'This mode is based on "{name}" and takes the changes of its built-in version.',
+      'sync.added': '{n} new plugins: {names}',
+      'sync.removed': '{n} plugins the built-in mode dropped are removed: {names}',
+      'sync.updated': '{n} plugins changed upstream: {names}',
+      'sync.kept': 'Your {n} changes are kept',
+      'sync.conflicts': '{n} settings changed on both sides keep your value',
+      'sync.confirm': 'Sync',
+      'notice.synced': 'Built-in update merged',
+      'notice.savedSynced': 'Saved, and merged the built-in update',
+      'err.up-to-date': 'This mode already includes the latest built-in configuration.',
+      'repair.title': '{n} plugins cannot load, so this mode cannot run:',
+      'repair.hint': 'Turning them off makes the mode usable again; once the plugins are installed, switch them back on in the plugin list. The Host log has the full reasons.',
+      'action.repair': 'Turn these plugins off',
+      'notice.repaired': 'Turned off the plugins that could not load',
+      'err.nothing-to-repair': 'No plugins need to be turned off.',
+      'row.failed': 'Failed to load',
+      'row.platform': 'Follow platform',
+      'row.platformNow': 'Follow platform (now {state})',
+      'row.forceOn': 'On',
+      'row.forceOff': 'Off',
+      'row.forced': 'Fixed; no longer follows the platform',
+      'row.platformHint': 'This plugin is normally switched by platform; fixed on or off, it stays that way on every platform.',
+      'err.no-condition': 'The plugin\'s original platform condition is not known.',
+      'confirm.saved': '{n} more saved sessions were created with this mode; they will fail to open after it is deleted.',
+      'confirm.checking': 'Counting the sessions that use this mode…',
+      'confirm.savedPartial': 'At least {n} more saved sessions use this mode (not every session was counted); they will fail to open after it is deleted.',
+      'prompt.advanced': 'More settings',
+      'prompt.hideAdvanced': 'Fewer settings',
+      'prompt.suffix': 'Closing prompt',
+      'prompt.suffixHint': 'Added after tool guidance, workspace rules, and other sections. Leave it empty to drop this mode\'s closing text.',
+      'prompt.suffixIgnored': 'The opening text is the complete prompt, so the closing prompt is not used.',
+      'prompt.completeLabel': 'Use only the opening text as the complete system prompt, without tool guidance or other sections',
+      'prompt.runtimeLabel': 'Include runtime context: current time, working directory, permissions, and more',
+      'prompt.flagsNote': 'These two settings apply to sessions created afterwards, and the preview does not reflect them.',
+      'prompt.liveLabel': 'Live prompt: after a save, running sessions use the new prompt from their next step',
+      'prompt.liveHint': 'A mid-session prompt change reaches the model as a new system message and can cost some extra input tokens. The switch itself applies to sessions created afterwards; turn it off before uninstalling this plugin.',
+      'prompt.toolLabel': 'Allow prompt changes in chat: the model can call the mode_prompt tool, and every save asks you first',
+      'prompt.toolHint': 'Applies to sessions created afterwards.',
+      'notice.liveOn': 'Live prompt on · applies to new sessions',
+      'notice.liveOff': 'Live prompt off',
+      'notice.toolOn': 'Prompt changes in chat allowed · applies to new sessions',
+      'notice.toolOff': 'Prompt changes in chat turned off',
+      'notice.promptSavedLive': 'Prompt saved · running sessions use it from their next step',
+      'prompt.history': 'History',
+      'prompt.hideHistory': 'Hide history',
+      'prompt.historyEmpty': 'No history yet. Every prompt save is recorded; the latest 30 are kept.',
+      'prompt.historyLoad': 'Load into editor',
+      'prompt.historyCurrent': 'Same as current',
+      'prompt.historyLoaded': 'Loaded a past version; not saved yet.',
+      'source.page': 'Settings',
+      'source.chat': 'In chat',
+      'source.restore': 'Built-in restored',
+      'source.initial': 'Original',
+      'source.external': 'Changed elsewhere',
+      stateError: 'Cannot read the plugin\'s state file: {detail}',
+      'own.live.title': 'Persona (live)',
+      'own.live.desc': 'From the Modes plugin: reads this mode\'s latest saved prompt at every step.',
+      'own.tool.title': 'Prompt changes in chat',
+      'own.tool.desc': 'From the Modes plugin: the mode_prompt tool, which asks you before each save.',
     }
 
     const CSS = `
@@ -408,6 +532,19 @@ window.__ModuleLoader__.load({
 .pm-conflict { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--dsw-alias-state-warn-primary); }
 .pm-conflict pre { margin: 0; max-height: 140px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: var(--dsw-alias-label-secondary); }
 .pm-file { display: none; }
+.pm-seg { flex: none; display: inline-flex; margin-top: 2px; border: 1px solid var(--dsw-alias-border-l3); border-radius: 8px; overflow: hidden; }
+.pm-seg button { font: inherit; font-size: 11px; padding: 3px 8px; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; white-space: nowrap; }
+.pm-seg button + button { border-left: 1px solid var(--dsw-alias-border-l3); }
+.pm-seg button[aria-checked='true'] { background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-primary); font-weight: 600; }
+.pm-seg button:disabled { cursor: default; opacity: .5; }
+.pm-seg button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
+.pm-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); }
+.pm-panel ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+.pm-option { display: flex; gap: 8px; align-items: flex-start; color: var(--dsw-alias-label-primary); cursor: pointer; line-height: 1.5; }
+.pm-option input { margin-top: 3px; }
+.pm-history { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow: auto; }
+.pm-history-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l4); }
+.pm-history-item pre { margin: 0; max-height: 72px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 @container (max-width: 520px) {
   .pm-actions, .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
   .pm-inline { margin-left: 0; }
@@ -538,41 +675,68 @@ window.__ModuleLoader__.load({
         h('dd', { key: 'config:d' }, row.config === undefined ? t('detail.none') : h('pre', null, configText(row.config))))
     }
 
+    /** Localized title and description for the rows this plugin adds to a mode. */
+    const OWN_ROWS = { 'dsh-modes/live-persona': 'live', 'dsh-modes/prompt-tool': 'tool' }
+
+    /** Follow-platform / on / off choice for a row whose built-in version is switched by a platform condition. */
+    function PlatformChoice({ ui, row, title, pending, onChoose }) {
+      const { t } = ui
+      const current = row.declared === 'conditional' ? 'platform' : row.declared === true ? 'on' : 'off'
+      const now = row.declared === 'conditional' && row.enabled !== undefined ? t('row.platformNow', { state: t(row.enabled ? 'state.on' : 'state.off') }) : t('row.platform')
+      const option = (value, label) => h('button', {
+        key: value, type: 'button', role: 'radio', 'aria-checked': current === value, disabled: pending || row.inheritedOff,
+        onClick: (event) => { event.stopPropagation(); if (current !== value) onChoose(value) },
+      }, label)
+      return h('div', { className: 'pm-seg', role: 'radiogroup', 'aria-label': title, title: t('row.platformHint') },
+        option('platform', now), option('on', t('row.forceOn')), option('off', t('row.forceOff')))
+    }
+
     function PluginRow({ ui, preset, row }) {
       const { t, text, pending, run } = ui
       const [details, setDetails] = React.useState(false)
       const [confirmOff, setConfirmOff] = React.useState(false)
       const key = `row:${preset.id}:${row.id}`
-      const title = text(row.meta?.title) ?? row.id ?? row.module
-      const description = text(row.meta?.description)
+      const own = OWN_ROWS[row.module]
+      const title = own !== undefined ? t(`own.${own}.title`) : text(row.meta?.title) ?? row.id ?? row.module
+      const description = own !== undefined ? t(`own.${own}.desc`) : text(row.meta?.description)
       const on = row.enabled ?? row.declared === true
-      const locked = row.id === null ? t('row.noId') : row.declared === 'conditional' ? t('row.conditional') : row.inheritedOff ? t('row.groupOff') : undefined
-      const toggle = enabled => run(key, 'toggle', { id: preset.id, rowId: row.id, enabled }, 'notice.saved')
+      const platform = row.id !== null && (row.declared === 'conditional' || row.platform !== undefined)
+      const locked = row.id === null ? t('row.noId') : row.inheritedOff ? t('row.groupOff') : undefined
+      const toggle = (enabled, force = false) => run(key, 'toggle', { id: preset.id, rowId: row.id, enabled, ...force ? { force } : {} }, 'notice.saved')
+      const choose = value => (value === 'platform'
+        ? run(key, 'followPlatform', { id: preset.id, rowId: row.id }, 'notice.saved')
+        : toggle(value === 'on', true))
       return h('div', { className: 'pm-rowwrap' },
         h('div', { className: 'pm-row' },
-          row.meta?.icon
+          row.meta?.icon && own === undefined
             ? h('img', { className: 'pm-icon', src: row.meta.icon, alt: '' })
             : h('span', { className: 'pm-icon', 'aria-hidden': true }, title.slice(0, 1).toUpperCase()),
           h('div', { className: 'pm-rowmain' },
             h('div', { className: 'pm-rowtitle' },
               h('span', null, title),
               row.essential ? h('span', { className: 'pm-badge is-accent' }, t('row.essential')) : null,
+              row.live ? h('span', { className: 'pm-badge is-accent' }, t('badge.live')) : null,
+              row.failure !== undefined ? h('span', { className: 'pm-badge is-error', title: row.failure }, t('row.failed')) : null,
               row.changed ? h('span', { className: 'pm-badge is-warn' }, t('row.changed')) : null,
               row.changed && row.restorable
                 ? h('button', { type: 'button', className: 'pm-link', disabled: pending.has(key), onClick: () => run(key, 'resetRow', { id: preset.id, rowId: row.id }, 'notice.saved') }, t('action.restoreRow'))
                 : null,
+              row.platform !== undefined && row.declared !== 'conditional' ? h('span', { className: 'pm-badge', title: t('row.platformHint') }, t('row.forced')) : null,
               locked === undefined ? null : h('span', { className: 'pm-badge', title: row.condition }, locked)),
             description === undefined ? null : h('div', { className: 'pm-rowdesc' }, description),
+            row.failure !== undefined ? h('div', { className: 'pm-hint is-error' }, row.failure) : null,
             h('div', { className: 'pm-rowtech' },
               row.id === null ? row.module : `${row.id} · ${row.module}`, ' · ',
               h('button', { type: 'button', className: 'pm-link', 'aria-expanded': details, onClick: () => setDetails(!details) }, t(details ? 'row.hideDetails' : 'row.details')))),
-          h(Switch, {
-            checked: on, pending: pending.has(key), disabled: locked !== undefined || confirmOff, label: title,
-            onChange: (enabled) => {
-              if (!enabled && row.essential) setConfirmOff(true)
-              else toggle(enabled)
-            },
-          })),
+          platform
+            ? h(PlatformChoice, { ui, row, title, pending: pending.has(key), onChoose: choose })
+            : h(Switch, {
+              checked: on, pending: pending.has(key), disabled: locked !== undefined || confirmOff, label: title,
+              onChange: (enabled) => {
+                if (!enabled && row.essential) setConfirmOff(true)
+                else toggle(enabled)
+              },
+            })),
         confirmOff
           ? h('div', { className: 'pm-warn pm-inline', role: 'alertdialog', 'aria-label': title },
             h('span', { className: 'pm-grow' }, t('confirm.personaOff', { title })),
@@ -662,80 +826,143 @@ window.__ModuleLoader__.load({
         }, copied ? t('action.copied') : t('action.copy')))
     }
 
+    /** The prompt settings an edit compares and saves, with the persona schema's defaults filled in. */
+    function promptOf(info) {
+      return {
+        prefix: info?.prefix ?? '',
+        suffix: info?.suffix ?? '',
+        complete: info?.complete === true,
+        includeRuntimeContext: info?.includeRuntimeContext !== false,
+      }
+    }
+
+    function PromptHistory({ ui, preset, current, onLoad }) {
+      const { t } = ui
+      const [entries, setEntries] = React.useState(null)
+      const [failure, setFailure] = React.useState(null)
+      React.useEffect(() => {
+        let live = true
+        call('history', { id: preset.id }).then((value) => { if (live) setEntries(value.entries) }, (reason) => { if (live) setFailure(ui.describe(reason)) })
+        return () => { live = false }
+      }, [preset.id])
+      if (failure !== null) return h('div', { className: 'pm-error', role: 'alert' }, failure)
+      if (entries === null) return h('div', { className: 'pm-muted' }, t('loading'))
+      if (entries.length === 0) return h('div', { className: 'pm-hint' }, t('prompt.historyEmpty'))
+      const source = (value) => {
+        const label = t(`source.${value}`)
+        return label.startsWith('source.') ? value : label
+      }
+      return h('div', { className: 'pm-history' }, entries.map((entry, index) => h('div', { key: `${entry.at}:${index}`, className: 'pm-history-item' },
+        h('div', { className: 'pm-bar pm-hint' },
+          h('span', null, new Date(entry.at).toLocaleString(ui.lang === 'zh' ? 'zh-CN' : 'en')),
+          h('span', { className: 'pm-badge' }, source(entry.source)),
+          h('span', { className: 'pm-grow' }),
+          entry.prefix === current.prefix && entry.suffix === current.suffix
+            ? h('span', null, t('prompt.historyCurrent'))
+            : h('button', { type: 'button', className: 'pm-btn', onClick: () => onLoad(entry) }, t('prompt.historyLoad'))),
+        h('pre', null, entry.prefix === '' ? '—' : entry.prefix))))
+    }
+
     function PromptEditor({ ui, preset, onClose }) {
       const { t } = ui
       const [info, setInfo] = React.useState(null)
       const [failure, setFailure] = React.useState(null)
       const [text, setText] = React.useState('')
-      /** The stored prompt this edit started from; a save sends it so a stale editor cannot overwrite a newer prompt. */
-      const [base, setBase] = React.useState('')
+      const [suffix, setSuffix] = React.useState('')
+      const [complete, setComplete] = React.useState(false)
+      const [runtime, setRuntime] = React.useState(true)
+      /** The stored settings this edit started from; a save sends them so a stale editor cannot overwrite newer ones. */
+      const [base, setBase] = React.useState(null)
       const [restored, setRestored] = React.useState(false)
       const [conflict, setConflict] = React.useState(null)
       const [saving, setSaving] = React.useState(false)
       const [error, setError] = React.useState(null)
       const [notice, setNotice] = React.useState(null)
-      const [showPreview, setShowPreview] = React.useState(false)
+      const [panel, setPanel] = React.useState({ preview: false, advanced: false, history: false })
       const area = React.useRef(null)
+      const suffixArea = React.useRef(null)
+      const lastFocus = React.useRef('prefix')
       const fileInput = React.useRef(null)
       const reload = React.useCallback(() => call('prompt', { id: preset.id }), [preset.id])
+      const toggle = name => setPanel(previous => ({ ...previous, [name]: !previous[name] }))
+      /** Show `value` as stored, or `draft` on top of it when a draft is being restored. */
+      const adopt = (value, draft) => {
+        const saved = promptOf(value)
+        setInfo(value)
+        setText(draft?.text ?? saved.prefix)
+        setSuffix(draft?.suffix ?? saved.suffix)
+        setComplete(draft?.complete ?? saved.complete)
+        setRuntime(draft?.includeRuntimeContext ?? saved.includeRuntimeContext)
+        setBase(draft === undefined ? saved : typeof draft.base === 'string' ? { ...saved, prefix: draft.base } : { ...saved, ...draft.base })
+        setRestored(draft !== undefined)
+        setConflict(null)
+      }
       React.useEffect(() => {
         let live = true
         reload().then((value) => {
           if (!live) return
-          const saved = value.prefix ?? ''
+          const saved = promptOf(value)
           const draft = ui.drafts.get(preset.id)
-          if (draft !== undefined && draft.text !== saved) {
-            setText(draft.text)
-            setBase(draft.base)
-            setRestored(true)
-          } else {
-            setText(saved)
-            setBase(saved)
-            if (draft !== undefined) ui.setDraft(preset.id, undefined)
-          }
-          setInfo(value)
+          const differs = draft !== undefined && (draft.text !== saved.prefix
+            || ['suffix', 'complete', 'includeRuntimeContext'].some(key => draft[key] !== undefined && draft[key] !== saved[key]))
+          if (draft !== undefined && !differs) ui.setDraft(preset.id, undefined)
+          adopt(value, differs ? draft : undefined)
+          if (differs && ['suffix', 'complete', 'includeRuntimeContext'].some(key => draft[key] !== undefined && draft[key] !== saved[key])) setPanel(previous => ({ ...previous, advanced: true }))
         }, (reason) => { if (live) setFailure(ui.describe(reason)) })
         return () => { live = false }
       }, [preset.id])
       React.useEffect(() => { if (info !== null) area.current?.focus() }, [info === null])
       if (failure !== null) return h('div', { className: 'pm-prompt pm-error', role: 'alert' }, failure)
       if (info === null) return h('div', { className: 'pm-prompt pm-muted' }, t('loading'))
-      const saved = info.prefix ?? ''
-      const dirty = text !== saved
-      const problem = templateProblem(text, info.variables)
-      const edit = (value) => {
-        setText(value)
-        setNotice(null)
-        ui.setDraft(preset.id, value === saved ? undefined : { text: value, base, at: Date.now() })
+      const saved = promptOf(info)
+      const current = { prefix: text, suffix, complete, includeRuntimeContext: runtime }
+      const changedKeys = Object.keys(current).filter(key => current[key] !== saved[key])
+      const dirty = changedKeys.length > 0
+      const problem = templateProblem(text, info.variables) ?? templateProblem(suffix, info.variables)
+      const remember = (next) => {
+        const merged = { ...current, ...next }
+        const differs = Object.keys(merged).some(key => merged[key] !== saved[key])
+        ui.setDraft(preset.id, differs
+          ? { text: merged.prefix, suffix: merged.suffix, complete: merged.complete, includeRuntimeContext: merged.includeRuntimeContext, base, at: Date.now() }
+          : undefined)
       }
-      const adopt = (value, latest) => {
-        setInfo(latest)
-        setText(value)
-        setBase(latest.prefix ?? '')
-        setRestored(false)
-        setConflict(null)
-        ui.setDraft(preset.id, undefined)
-      }
-      const discard = () => adopt(saved, info)
+      const edit = (value) => { setText(value); setNotice(null); remember({ prefix: value }) }
+      const editSuffix = (value) => { setSuffix(value); setNotice(null); remember({ suffix: value }) }
+      const editComplete = (value) => { setComplete(value); remember({ complete: value }) }
+      const editRuntime = (value) => { setRuntime(value); remember({ includeRuntimeContext: value }) }
+      const discard = () => { adopt(info, undefined); ui.setDraft(preset.id, undefined) }
       const save = (overwrite) => {
         if (!dirty || problem !== undefined || saving) return
         setSaving(true)
         setError(null)
-        call('setPrompt', { id: preset.id, prefix: text, ...overwrite ? {} : { base } })
+        const payload = {
+          prefix: text,
+          ...changedKeys.includes('suffix') ? { suffix } : {},
+          ...changedKeys.includes('complete') ? { complete } : {},
+          ...changedKeys.includes('includeRuntimeContext') ? { includeRuntimeContext: runtime } : {},
+          ...overwrite ? {} : { base },
+        }
+        call('setPrompt', { id: preset.id, ...payload })
           .then((value) => {
             ui.setDraft(preset.id, undefined)
-            ui.applyList(value, preset.id, 'notice.promptSaved')
+            ui.applyList(value, preset.id, info.live ? 'notice.promptSavedLive' : value.effect?.synced ? 'notice.savedSynced' : 'notice.promptSaved')
             onClose()
           })
           .catch((reason) => {
-            if (reason instanceof ActionFailure && reason.code === 'prompt-conflict') setConflict(reason.details?.current ?? '')
+            if (reason instanceof ActionFailure && reason.code === 'prompt-conflict') setConflict(reason.details?.stored ?? { prefix: reason.details?.current ?? '' })
             else setError(ui.describe(reason))
           })
           .finally(() => setSaving(false))
       }
-      const loadLatest = () => reload().then(latest => adopt(latest.prefix ?? '', latest), reason => setError(ui.describe(reason)))
-      const enablePersona = () => ui.run(`prompt:${preset.id}`, 'toggle', { id: preset.id, rowId: info.rowId, enabled: true }, 'notice.saved',
+      const loadLatest = () => reload().then((latest) => { adopt(latest, undefined); ui.setDraft(preset.id, undefined) }, reason => setError(ui.describe(reason)))
+      /** Run a setting that saves on its own, then refresh the stored state without touching unsaved text. */
+      const setting = (action, payload, success) => ui.run(`prompt:${preset.id}`, action, { id: preset.id, ...payload }, success,
         () => reload().then(latest => setInfo(latest), () => undefined))
+      const restoreBuiltIn = () => {
+        const after = () => { ui.setDraft(preset.id, undefined); onClose() }
+        if (info.live) ui.run(`prompt:${preset.id}`, 'setPrompt', { id: preset.id, ...info.builtIn }, 'notice.promptRestored', after)
+        else ui.run(`prompt:${preset.id}`, 'resetRow', { id: preset.id, rowId: info.rowId }, 'notice.promptRestored', after)
+      }
       const exportFile = () => {
         const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }))
         const link = document.createElement('a')
@@ -756,64 +983,102 @@ window.__ModuleLoader__.load({
         }, reason => setError(t('prompt.importFailed', { detail: reason instanceof Error ? reason.message : String(reason) })))
       }
       const insert = (name) => {
-        const element = area.current
+        const intoSuffix = lastFocus.current === 'suffix' && panel.advanced
+        const element = intoSuffix ? suffixArea.current : area.current
+        const value = intoSuffix ? suffix : text
         const token = `{{${name}}}`
-        const start = element?.selectionStart ?? text.length
-        const end = element?.selectionEnd ?? text.length
-        edit(text.slice(0, start) + token + text.slice(end))
+        const start = element?.selectionStart ?? value.length
+        const end = element?.selectionEnd ?? value.length
+        const next = value.slice(0, start) + token + value.slice(end)
+        if (intoSuffix) editSuffix(next)
+        else edit(next)
         requestAnimationFrame(() => {
           element?.focus()
           element?.setSelectionRange(start + token.length, start + token.length)
         })
       }
-      const preview = info.preview === undefined ? info.error
-        : dirty && saved !== '' && info.preview.includes(saved) ? info.preview.replace(saved, text) : info.preview
+      const loadVersion = (entry) => {
+        edit(entry.prefix)
+        if (entry.suffix !== suffix) {
+          setSuffix(entry.suffix)
+          remember({ prefix: entry.prefix, suffix: entry.suffix })
+          if (entry.suffix !== saved.suffix) setPanel(previous => ({ ...previous, advanced: true }))
+        }
+        setNotice(t('prompt.historyLoaded'))
+      }
+      let preview = info.preview === undefined ? info.error : info.preview
+      if (info.preview !== undefined) {
+        if (text !== saved.prefix && saved.prefix !== '' && preview.includes(saved.prefix)) preview = preview.replace(saved.prefix, text)
+        if (suffix !== saved.suffix && saved.suffix !== '' && preview.includes(saved.suffix)) preview = preview.replace(saved.suffix, suffix)
+      }
+      const keys = (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); save(false) }
+        else if (event.key === 'Escape') onClose()
+      }
+      const busy = ui.pending.size > 0
+      const option = (checked, label, onChange, hint) => h('label', { className: 'pm-option' },
+        h('input', { type: 'checkbox', checked, disabled: busy, onChange: e => onChange(e.target.checked) }),
+        h('span', null, label, hint === undefined ? null : h('span', { className: 'pm-hint', style: { display: 'block' } }, hint)))
       return h('div', { className: 'pm-prompt' },
         h('div', { className: 'pm-hint' }, info.rowId === undefined ? t('prompt.none') : info.complete ? t('prompt.complete') : t('prompt.partial')),
         info.off ? h('div', { className: 'pm-warn', role: 'note' },
           h('span', { className: 'pm-grow' }, t('prompt.off')),
-          h('button', { type: 'button', className: 'pm-btn', disabled: ui.pending.size > 0, onClick: enablePersona }, t('action.enablePersona'))) : null,
+          h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setting('toggle', { rowId: info.rowId, enabled: true }, 'notice.saved') }, t('action.enablePersona'))) : null,
         restored ? h('div', { className: 'pm-warn', role: 'status' },
-          h('span', { className: 'pm-grow' }, base === saved ? t('prompt.draftRestored') : `${t('prompt.draftRestored')} ${t('prompt.draftStale')}`),
+          h('span', { className: 'pm-grow' }, Object.keys(base).every(key => base[key] === saved[key]) ? t('prompt.draftRestored') : `${t('prompt.draftRestored')} ${t('prompt.draftStale')}`),
           h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discardDraft'))) : null,
         h('textarea', {
           ref: area, className: 'pm-input pm-textarea', value: text, rows: 8, spellCheck: false,
-          'aria-label': t('prompt.title'), 'aria-invalid': problem !== undefined,
+          'aria-label': t('prompt.title'), 'aria-invalid': templateProblem(text, info.variables) !== undefined,
+          onFocus: () => { lastFocus.current = 'prefix' },
           onChange: e => edit(e.target.value),
-          onKeyDown: (event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); save(false) }
-            else if (event.key === 'Escape') onClose()
-          },
+          onKeyDown: keys,
         }),
         h('div', { className: 'pm-bar pm-hint' },
           info.variables?.length > 0 ? h('span', null, t('prompt.variables')) : null,
           ...(info.variables ?? []).map(name => h('button', { key: name, type: 'button', className: 'pm-chip', onClick: () => insert(name) }, `{{${name}}}`)),
           h('span', { className: 'pm-grow' }),
           h('span', null, t('prompt.chars', { n: text.length }))),
+        panel.advanced ? h('div', { className: 'pm-panel' },
+          h('label', { className: 'pm-hint', htmlFor: `pm-suffix-${preset.id}` }, t('prompt.suffix')),
+          h('textarea', {
+            id: `pm-suffix-${preset.id}`, ref: suffixArea, className: 'pm-input pm-textarea', style: { minHeight: 80 }, value: suffix, rows: 4, spellCheck: false,
+            'aria-invalid': templateProblem(suffix, info.variables) !== undefined,
+            onFocus: () => { lastFocus.current = 'suffix' },
+            onChange: e => editSuffix(e.target.value),
+            onKeyDown: keys,
+          }),
+          h('div', { className: 'pm-hint' }, complete ? t('prompt.suffixIgnored') : t('prompt.suffixHint')),
+          option(complete, t('prompt.completeLabel'), editComplete),
+          option(runtime, t('prompt.runtimeLabel'), editRuntime, t('prompt.flagsNote')),
+          info.rowId ? option(info.live === true, t('prompt.liveLabel'), value => setting('setLive', { live: value }, value ? 'notice.liveOn' : 'notice.liveOff'), t('prompt.liveHint')) : null,
+          option(info.promptTool === true, t('prompt.toolLabel'), value => setting('setPromptTool', { enabled: value }, value ? 'notice.toolOn' : 'notice.toolOff'), t('prompt.toolHint')))
+          : null,
         problem === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, ui.describeCode(problem.code, problem, '')),
         error === null ? null : h('div', { className: 'pm-error', role: 'alert' }, error),
         notice === null ? null : h('div', { className: 'pm-notice', role: 'status' }, `✓ ${notice}`),
         conflict === null ? null : h('div', { className: 'pm-conflict', role: 'alert' },
           h('strong', null, t('prompt.conflictTitle')),
           h('span', { className: 'pm-hint' }, t('prompt.conflictLatest')),
-          h('pre', null, conflict),
+          h('pre', null, conflict.suffix !== undefined && conflict.suffix !== base.suffix ? `${conflict.prefix}\n\n— ${t('prompt.suffix')} —\n${conflict.suffix}` : conflict.prefix),
           h('div', { className: 'pm-bar' },
             h('button', { type: 'button', className: 'pm-btn', onClick: loadLatest }, t('prompt.loadLatest')),
             h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: saving, onClick: () => save(true) }, t('prompt.overwrite')))),
         h('div', { className: 'pm-bar' },
-          h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': showPreview, onClick: () => setShowPreview(!showPreview) }, t(showPreview ? 'prompt.hidePreview' : 'prompt.preview')),
+          h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel.preview, onClick: () => toggle('preview') }, t(panel.preview ? 'prompt.hidePreview' : 'prompt.preview')),
+          h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel.advanced, onClick: () => toggle('advanced') }, t(panel.advanced ? 'prompt.hideAdvanced' : 'prompt.advanced')),
+          h('button', { type: 'button', className: 'pm-btn', 'aria-pressed': panel.history, onClick: () => toggle('history') }, t(panel.history ? 'prompt.hideHistory' : 'prompt.history')),
           h('button', { type: 'button', className: 'pm-btn', onClick: () => fileInput.current?.click() }, t('prompt.import')),
           h('button', { type: 'button', className: 'pm-btn', onClick: exportFile }, t('prompt.export')),
           h('input', { ref: fileInput, className: 'pm-file', type: 'file', accept: '.md,.txt,text/markdown,text/plain', onChange: importFile }),
           dirty ? h('button', { type: 'button', className: 'pm-btn', onClick: discard }, t('prompt.discard')) : null,
-          info.changed && info.rowId
-            ? h('button', { type: 'button', className: 'pm-btn', disabled: saving, onClick: () => ui.run(`prompt:${preset.id}`, 'resetRow', { id: preset.id, rowId: info.rowId }, 'notice.promptRestored', () => { ui.setDraft(preset.id, undefined); onClose() }) }, t('prompt.restore'))
-            : null,
+          info.changed && info.rowId ? h('button', { type: 'button', className: 'pm-btn', disabled: saving || busy, onClick: restoreBuiltIn }, t('prompt.restore')) : null,
           h('span', { className: 'pm-grow' }),
           h('span', { className: 'pm-hint' }, t('prompt.shortcut')),
           h('button', { type: 'button', className: 'pm-btn', onClick: onClose }, t('prompt.close')),
           h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: !dirty || problem !== undefined || saving, onClick: () => save(false) }, t('action.save'))),
-        showPreview
+        panel.history ? h(PromptHistory, { ui, preset, current: { prefix: text, suffix }, onLoad: loadVersion }) : null,
+        panel.preview
           ? h('div', { className: 'pm-yaml' },
             h('div', { className: 'pm-hint', style: { marginBottom: 6 } }, dirty ? `${t('prompt.previewNote')} ${t('prompt.previewDirty')}` : t('prompt.previewNote')),
             h('pre', null, preview))
@@ -874,6 +1139,41 @@ window.__ModuleLoader__.load({
           h('button', { type: 'submit', className: 'pm-btn pm-primary', disabled: idProblem !== undefined || ui.pending.size > 0 }, t('action.create'))))
     }
 
+    /** Open and saved sessions that use a preset, fetched when the delete confirmation opens. */
+    function RemoveUsage({ ui, preset }) {
+      const { t } = ui
+      const [usage, setUsage] = React.useState(null)
+      React.useEffect(() => {
+        let live = true
+        call('usage', { id: preset.id }).then((value) => { if (live) setUsage(value) }, () => { if (live) setUsage({ open: preset.usage }) })
+        return () => { live = false }
+      }, [preset.id])
+      if (usage === null) return h('div', { className: 'pm-hint' }, t('confirm.checking'))
+      const saved = Math.max(0, (usage.saved ?? 0) - usage.open)
+      return h(React.Fragment, null,
+        usage.open > 0 ? h('div', { className: 'pm-error' }, t('confirm.inUse', { n: usage.open })) : null,
+        saved > 0 ? h('div', { className: 'pm-error' }, t(usage.partial ? 'confirm.savedPartial' : 'confirm.saved', { n: saved })) : null)
+    }
+
+    /** What syncing would change, listed before the user confirms. */
+    function SyncSummary({ ui, preset, presets }) {
+      const { t } = ui
+      const sync = preset.sync
+      const names = items => items.map(item => item.id ?? item).join(', ')
+      const origin = preset.source === 'custom' && sync.origin !== undefined ? presets.find(p => p.id === sync.origin) : undefined
+      const lines = [
+        sync.added.length > 0 ? t('sync.added', { n: sync.added.length, names: names(sync.added) }) : undefined,
+        sync.removed.length > 0 ? t('sync.removed', { n: sync.removed.length, names: names(sync.removed) }) : undefined,
+        sync.updated.length > 0 ? t('sync.updated', { n: sync.updated.length, names: names(sync.updated) }) : undefined,
+        sync.kept > 0 ? t('sync.kept', { n: sync.kept }) : undefined,
+        sync.conflicts > 0 ? t('sync.conflicts', { n: sync.conflicts }) : undefined,
+      ].filter(Boolean)
+      return h(React.Fragment, null,
+        h('div', null, t('sync.title')),
+        origin === undefined ? null : h('div', { className: 'pm-hint' }, t('sync.origin', { name: ui.presetName(origin) })),
+        h('ul', null, lines.map(line => h('li', { key: line }, line))))
+    }
+
     function PresetCard({ ui, preset, presets, query, onlyChanged, open, onOpen, onDuplicate }) {
       const { t, pending, run, notices, errors, canTry, canSetDefault } = ui
       const [panel, setPanel] = React.useState(null)
@@ -891,6 +1191,11 @@ window.__ModuleLoader__.load({
       const error = errors.get(preset.id)
       const act = (action, payload, success) => run(`card:${preset.id}`, action, { id: preset.id, ...payload }, success, () => setPanel(null))
       const classes = ['pm-card', preset.isDefault ? 'is-default' : '', preset.broken ? 'is-broken' : '', notice ? 'is-flash' : ''].filter(Boolean).join(' ')
+      const failureTitle = (failure) => {
+        const row = preset.rows.find(candidate => candidate.id === failure.rowId)
+        const title = row === undefined ? undefined : ui.text(row.meta?.title)
+        return title === undefined || title === failure.rowId ? `${failure.rowId} (${row?.module ?? '?'})` : `${title} (${failure.rowId})`
+      }
       return h('section', { className: classes, id: `pm-preset-${preset.id}`, 'aria-label': name },
         h('div', {
           className: 'pm-head', role: 'button', tabIndex: 0, 'aria-expanded': open,
@@ -908,14 +1213,24 @@ window.__ModuleLoader__.load({
               changed > 0 ? h('span', { className: 'pm-badge is-warn' }, t('badge.modified', { n: changed })) : null,
               preset.usage > 0 ? h('span', { className: 'pm-badge' }, t('badge.usage', { n: preset.usage })) : null,
               promptChanged ? h('span', { className: 'pm-badge is-warn' }, t('badge.promptChanged')) : null,
+              preset.live ? h('span', { className: 'pm-badge is-accent' }, t('badge.live')) : null,
+              preset.sync ? h('span', { className: 'pm-badge is-accent' }, t('badge.sync')) : null,
               ui.drafts.has(preset.id) ? h('span', { className: 'pm-badge is-warn' }, t('badge.draft')) : null,
               preset.broken ? h('span', { className: 'pm-badge is-error' }, t('badge.broken')) : null),
             description ? h('div', { className: 'pm-desc' }, description) : null,
             preset.promptExcerpt ? h('div', { className: 'pm-excerpt', title: preset.promptExcerpt }, t('prompt.excerptLine', { text: preset.promptExcerpt })) : null,
             h('div', { className: 'pm-muted' }, t('summary', { on, total: preset.rows.length })),
-            preset.broken ? h('div', { className: 'pm-error' }, preset.broken) : null,
+            preset.broken && preset.failures === undefined ? h('div', { className: 'pm-error' }, preset.broken) : null,
             notice ? h('div', { className: 'pm-notice', role: 'status' }, `✓ ${t(notice)}`) : null,
             error ? h('div', { className: 'pm-error', role: 'alert' }, error) : null)),
+        preset.failures !== undefined
+          ? h('div', { className: 'pm-warn pm-cardwarn', role: 'alert' },
+            h('div', { className: 'pm-grow' },
+              h('div', null, `⚠ ${t('repair.title', { n: preset.failures.length })}`),
+              h('ul', { style: { margin: '4px 0 0', paddingLeft: 18 } }, preset.failures.map(failure => h('li', { key: failure.rowId }, `${failureTitle(failure)}: ${failure.detail}`))),
+              h('div', { className: 'pm-hint', style: { marginTop: 4 } }, t('repair.hint'))),
+            h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('repair', {}, 'notice.repaired') }, t('action.repair')))
+          : null,
         persona?.declared === false && persona.id !== null
           ? h('div', { className: 'pm-warn pm-cardwarn', role: 'note' },
             h('span', { className: 'pm-grow' }, `⚠ ${t('warn.personaOff')}`),
@@ -927,15 +1242,20 @@ window.__ModuleLoader__.load({
             onSubmit: values => act('update', { name: values.name, description: values.description }, 'notice.updated'),
             onCancel: () => setPanel(null),
           })
-          : panel === 'remove' || panel === 'reset'
+          : panel === 'remove' || panel === 'reset' || (panel === 'sync' && preset.sync)
             ? h('div', { className: 'pm-confirm', role: 'alertdialog', 'aria-label': name },
-              h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : t('confirm.reset', { name, n: changed })),
-              panel === 'remove' && preset.usage > 0 ? h('div', { className: 'pm-error' }, t('confirm.inUse', { n: preset.usage })) : null,
+              panel === 'sync' ? h(SyncSummary, { ui, preset, presets })
+                : h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : t('confirm.reset', { name, n: changed })),
+              panel === 'remove' ? h(RemoveUsage, { ui, preset }) : null,
               h('div', { className: 'pm-bar' },
-                h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy, onClick: () => act(panel, {}, panel === 'remove' ? undefined : 'notice.reset') }, t('confirm.ok')),
+                h('button', {
+                  type: 'button', className: `pm-btn ${panel === 'sync' ? 'pm-primary' : 'pm-danger'}`, disabled: busy,
+                  onClick: () => act(panel, {}, panel === 'remove' ? undefined : panel === 'sync' ? 'notice.synced' : 'notice.reset'),
+                }, t(panel === 'sync' ? 'sync.confirm' : 'confirm.ok')),
                 h('button', { type: 'button', className: 'pm-btn', onClick: () => setPanel(null) }, t('action.cancel'))))
             : h('div', { className: 'pm-actions' },
               canTry && !preset.broken ? h('button', { type: 'button', className: 'pm-btn pm-primary', onClick: () => ui.tryPreset(preset.id) }, t('action.try')) : null,
+              preset.sync ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setPanel('sync') }, t('action.sync')) : null,
               canSetDefault && !preset.isDefault && !preset.broken
                 ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => act('setDefault', {}, 'notice.default') }, t('action.setDefault'))
                 : null,
@@ -948,6 +1268,27 @@ window.__ModuleLoader__.load({
         panel === 'yaml' ? h(Yaml, { ui, preset }) : null,
         panel === 'prompt' ? h(PromptEditor, { ui, preset, onClose: () => setPanel(null) }) : null,
         open && preset.rows.length > 0 ? h('div', { className: 'pm-body' }, h(PluginList, { ui, preset, rows })) : null)
+    }
+
+    /** Wait for the blank session the main view shows, then compose it with `preset`; gives up after 3 seconds. */
+    async function selectInBlankSession(ctx, preset) {
+      try {
+        const sessions = ctx.get('sessions')
+        const presets = ctx.get('remote.agentPresets')
+        if (sessions?.list === undefined || typeof presets?.select !== 'function') return
+        for (let attempt = 0; attempt < 30; attempt++) {
+          const summaries = Object.values(sessions.list.getSnapshot()?.byId ?? {})
+          const blank = summaries.find(summary => summary?.blank === true
+            && (sessions.retainInfo?.(summary.id)?.getSnapshot()?.retainedBy?.mainView ?? 0) > 0)
+          if (blank !== undefined) {
+            await presets.select(blank.id, preset)
+            return
+          }
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      } catch (error) {
+        console.warn(`dsh-modes: could not compose the new session with ${preset}`, error)
+      }
     }
 
     function Page({ ctx, t, close }) {
@@ -1003,7 +1344,7 @@ window.__ModuleLoader__.load({
         return call(action, payload)
           .then((value) => {
             setData(value)
-            if (success !== undefined) flash(presetId, success)
+            if (success !== undefined) flash(presetId, value.effect?.synced !== undefined && success === 'notice.saved' ? 'notice.savedSynced' : success)
             after?.()
             return value
           })
@@ -1041,7 +1382,12 @@ window.__ModuleLoader__.load({
         presetName: preset => builtInCopy(preset, 'Name') ?? preset.name ?? preset.id,
         presetDescription: preset => builtInCopy(preset, 'Description') ?? preset.description,
         tryPreset: (id) => {
-          workspace.startSession(undefined, { clearPreviousDraft: false, agentPreset: id })
+          // DSH 0.2.0 starts sessions from a workspace id alone; a preset is then selected on the blank session.
+          if (workspace.startSession.length >= 2) workspace.startSession(undefined, { clearPreviousDraft: false, agentPreset: id })
+          else {
+            workspace.startSession(undefined)
+            void selectInBlankSession(ctx, id)
+          }
           close?.()
         },
       }
@@ -1081,6 +1427,7 @@ window.__ModuleLoader__.load({
             h('input', { type: 'checkbox', checked: onlyChanged, onChange: e => setOnlyChanged(e.target.checked) }),
             t('onlyChanged'))),
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
+        data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
         creating === null ? null : h('div', { className: 'pm-card' },
           h(CreateForm, {
             key: `${creating.kind}:${creating.from ?? ''}`, ui, presets, templates: data?.templates ?? [], initial: creating,
