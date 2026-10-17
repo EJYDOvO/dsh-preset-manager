@@ -1,144 +1,214 @@
 # dsh-modes
 
-在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）Web 的设置里查看和管理 Agent 模式（预设）：开关每个模式加载的插件、合并内置模式的更新、编辑系统提示词并保留历史版本、用起步模板新建模式。
+English | [中文](https://github.com/xiaohai-78/dsh-modes/blob/main/README.zh.md)
 
-View and manage DeepSeek Harness agent modes (presets) in Web Settings: toggle the plugins each mode loads, merge built-in updates without losing your changes, edit each mode's system prompt with history, live updates, and an approval-gated chat tool, and create modes from starter templates. The page follows dsh's language setting (Chinese or English).
+A **Modes** settings page for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) Web interface. You can switch what each agent mode can do, edit each mode's system prompt, create your own modes from templates, and merge built-in updates in one click after a dsh upgrade.
 
-<img src="assets/screenshot-modes.png" alt="设置 → 模式管理页面 / Settings → Modes page" width="600">
+<img src="assets/screenshot-modes.png" alt="Settings → Modes" width="640">
 
-## 兼容性
+## What it does
 
-| dsh 版本 | 验证方式 | 结果 |
-|---|---|---|
-| `0.2.0-rc.2`（npm 当前 latest，也是 Desktop 当前版本） | 安装到 dsh web，在界面里实际操作；用本地假模型抓取实际请求 | 可用；这个版本的 dsh 不提供插件的本地化名称，插件行显示包名和英文说明 |
-| `0.2.1-alpha.3` | 源码运行，界面操作并用本地假模型抓取实际请求 | 可用 |
-| `0.2.1-rc.1`（npm `next`） | 源码运行；从 alpha.3 升级的 profile 和从 npm 新装的 0.6.1 都测过，界面操作并用本地假模型抓取实际请求 | 可用；rc.1 给内置模式新增了插件市场工具（`tool-plugin-market`），改过的模式会提示「内置模式有更新」，同步后自动加入（默认关闭） |
+- **Understand each mode at a glance**: every mode gets a card that lists what it can do (run commands, read and write files, browse the web, use subagents, and so on), so you can compare modes without opening them.
+- **Switch capabilities, not plugins**: 15 capabilities, one switch each. For example, turn off "Run commands" or make files read-only, without facing dozens of plugin names.
+- **Edit the prompt**: edit each mode's system prompt with a preview and a version history. You can also let a saved prompt reach sessions that are already running, or let the model change the prompt in chat; every save asks you first.
+- **Create your own modes**: start from four templates (Develop, Write, Chat, Read-only research), or copy any existing mode.
+- **Keep up with dsh upgrades**: when dsh updates its built-in modes, merge the changes in one click and keep yours. When a plugin fails to load, turn off just the failing plugins in one click.
 
-插件依赖的 `configEditor`、`agentPresets`、`systemPrompt`、`tools` 等都是 dsh 尚未稳定的接口，其他版本可能需要适配。
+## Install
 
-## 功能
-
-设置 → **模式管理**（Modes）页面，按「这个模式能做什么、怎么说话、怎么开始用」组织：
-
-**一眼看懂每个模式**
-- 每个模式一张卡片：名称、描述，以及它能做的事（运行命令、读写文件或只读文件、网页、子代理、扩展自身），不用展开就能比较几个模式
-- 卡片下方一行状态：已启用插件数、在用的会话数、改过几项、提示词是否即时生效
-- 只有一个主按钮「用它新建会话」；设为默认、复制、查看配置（YAML）、编辑信息、恢复内置、删除都收在「⋯」菜单里
-- 需要你处理的事只显示最要紧的一条：插件加载失败、内置模式有更新、身份行被关闭、有未保存的提示词草稿，各带一个处理按钮
-- 每次操作的结果（已保存、已同步、出错原因）都显示在页面底部的提示条里，带上模式名称；不管你滚动到哪里都看得到，出错的提示会一直保留到你关闭
-- 删除、恢复内置等确认都在原位展开，「取消」在左、操作在右，焦点先落在「取消」；在表单、菜单和确认里按 Esc 只关闭它们自己，不会关掉整个设置窗口；菜单和标签页都可以用方向键操作
-
-**能力：用开关决定它能做什么**
-- 展开卡片后默认是「能力」页：15 项能力分成「能做的事」「工作方式」「上下文」三组，每项一个开关、一句说明
-- 打开一项能力会把它恢复成内置模式里的样子：按运行环境自动开关的插件（例如 Bash 和 PowerShell）恢复成「自动」，内置模式本来就关着的插件（例如 Codex 子代理）保持关闭；关闭则关掉这项能力包含的所有插件
-- 「文件」下面可以单独关掉「允许修改文件」，让模式只能读和搜索
-- 只开了一部分插件的能力标为「部分开启」
-
-**提示词**
-- 「提示词」页：编辑开头的系统提示词，点击插入 `{{model}}` 等变量，输入时实时校验变量，可预览完整的系统提示词（包括未保存的修改）；修改过的提示词可以一键恢复内置
-- 高级设置：结尾提示词（追加在工具说明、工作区规则之后）、「只用开头这段作为完整的系统提示词」、「附带运行时上下文」。这些和提示词文字一起，点「保存」才生效
-- 「在对话中」两个开关立即保存：
-  - 即时生效：保存提示词后，正在运行的会话从下一步起就使用新提示词，不用新开会话
-  - 允许在对话里修改提示词：模型可以调用 `mode_prompt` 工具读取、替换或追加这个模式的提示词；每次保存都会弹出审批，你批准后才写入
-- 历史版本：每次保存（包括在对话里修改、恢复内置）都会记下一个版本，标明来源（设置页、对话中、恢复内置、最初版本、在其他地方修改），最多保留 30 个；任意版本都可以载入到编辑器
-- 草稿保护：未保存的修改存在浏览器本地，切换标签、关闭设置或刷新页面都不会丢；可以随时放弃修改；支持导出为 `.md` 文件，或从 `.md` / `.txt` 文件导入
-- 保存冲突检测：如果你编辑期间提示词在别处（例如另一个窗口或对话里）被改了，保存会被拒绝并显示最新内容，你可以载入最新内容，或用自己的版本覆盖
-
-**全部插件：需要逐个调整时**
-- 「全部插件」页列出模式里的每一个插件，有自己的搜索和「只看改动」。插件名称优先用 dsh 提供的本地化名称，dsh 没有提供时（例如 0.2.0-rc.2）用各插件官方的中文名称和说明；行 id、模块路径等技术信息收在「详情」里
-- 按运行环境自动开关的插件可以选「自动」「开」「关」；固定后标为「已固定，不再自动切换」，随时可以改回自动
-- 修改过的插件标为「已修改」，可以单独还原；整个模式也可以一键恢复内置配置
-- 关闭身份（persona）行之前会二次确认
-
-**跟上 dsh 的更新**
-- 同步内置更新：dsh 升级后，改过的内置模式和基于内置模式创建的自定义模式会提示「内置模式有更新」。同步前会列出新增、移除和有官方更新的插件，以及会保留你的几处修改；确认后合并。你没动过的插件跟随官方，你改过的设置保留你的值，双方都改过的同一项也保留你的值并单独计数
-- 之后每次保存修改时也会顺带完成这次合并，并在提示里说明
-- 一键修复：模式里有插件加载失败时，整个模式会变成不可用。卡片上会列出失败的插件和原因，一键只关闭这些插件，让模式恢复可用
-
-**新建和删除**
-- 新建模式时选择起步方式：开发（与标准模式相同）、写作（读写文件、无终端）、聊天（只聊天和搜索网页）、只读调研（能读能搜，不能改文件、不能运行命令），或者复制任意现有模式。每个模板都带一段起步提示词（按界面语言选择中文或英文），并显示会启用多少个插件；名称和 ID 会自动填好。创建后卡片直接展开到「能力」页
-- 删除前会统计有多少个打开的会话和已保存的会话在用这个模式（已保存的会话按它实际使用的模式统计），因为删除后再打开这些会话会失败
-
-修改写入当前 profile 的 `cordis.patch.yml`。没有开启即时生效时，正在运行的会话保持原有配置，之后新建的会话使用新配置。界面支持中文和英文，跟随 dsh 的语言设置。
-
-## 工作方式
-
-| 文件 | 作用 |
-|---|---|
-| `index.js` | 宿主端插件，提供 `POST /api/dsh-modes`，动作包括 `list`、`read`、`toggle`（`force` 可以固定自动开关的行）、`followPlatform`、`applyRows`（能力开关用，一次修改多行）、`resetRow`、`reset`、`sync`、`repair`、`create`（`template` 起步模板或 `from` 复制）、`update`、`remove`、`usage`、`setDefault`、`prompt`、`setPrompt`（`base` 冲突检测）、`history`、`setLive`、`setPromptTool`；并提供 `dshModes` 服务给下面两个模块使用。修改内置模式时，通过 `configEditor.edit()` 在 profile 里写入该模式行的覆盖；插件的显示信息来自 `pluginInventory.list()` |
-| `rebase.js` | 同步内置更新用的三方合并：以你上次同步时的内置插件列表为基准，把你的修改合并到最新的内置列表上 |
-| `state.js` | 插件自己的状态文件，放在 profile 目录的 `.dsh-modes/` 下：`state.json` 记录每个模式上次同步时的内置插件列表（自定义模式还记录基于哪个内置模式、用了哪个模板），`history.json` 记录提示词历史 |
-| `live-persona.js` | 即时生效用的身份行：替换模式里的 `@deepseek-ai/dsh-persona` 行，注册同样的两个提示词分段，但每次组装提示词时读取这个模式最新保存的文字 |
-| `prompt-tool.js` | `mode_prompt` 工具：作为一行插件放进模式里，所以只有这个模式的会话能看到它；写入前通过 `tools/pre-execute` 要求用户审批 |
-| `container.js` | 自定义模式容器，配置里保存 `presets` 列表，并对每一项调用 `agentPresets.register()` |
-| `client.js` | Web 端设置页 |
-| `cordis.patch.yml` | 插入 `index.js` 和 `container.js` 两个宿主端插件行 |
-
-## 安装
+You need the dsh Web interface (`dsh web`). See [Compatibility](#compatibility) for supported versions.
 
 ```bash
 dsh plugin --profile web add dsh-modes
 ```
 
-然后启动 `dsh web`，打开 设置 → 模式管理。卸载：
+If you run dsh from source, run `pnpm dsh plugin --profile web add dsh-modes` in the source folder instead. After installing, restart `dsh web` and open **Settings → Modes**.
+
+## Quick start
+
+1. Open **Settings → Modes** and look at the built-in modes: the small labels on each card are what it can do.
+2. Click **New mode** at the top right, pick **Read-only research**, and click **Create**.
+3. The new card opens on the **Capabilities** tab: **Run commands** is off, and **Files** is on with **Allow file changes** off.
+4. Click **New session with it** on the card and ask it to change a file. This mode has no tool to write files, edit files, or run commands, so it can only read and search.
+5. Go back to the card's **Prompt** tab, change a sentence, and save. New sessions use it right away; to apply it to sessions that are already running, turn on **Live prompt** below.
+
+## Features
+
+### The mode list
+
+Each mode is one card:
+
+- **Header**: the name and description, with **Default** and **Custom** labels.
+- **Capability labels**: what the mode can do, for example "Commands · Files (read-only) · Web".
+- **Status line**: plugins on, open sessions, changes made, and whether the prompt is live.
+- **Buttons**: **New session with it** opens a new session in this mode. The **⋯** menu holds the other actions: Make default, Duplicate, View configuration (YAML), Edit details, Restore built-in, and Delete.
+- **Notices**: when something needs your attention, the card shows one notice with a button to fix it, for example "The built-in mode was updated", "plugins cannot load", or "an unsaved prompt draft".
+
+Click a card to open it. It has three tabs: **Capabilities**, **Prompt**, and **All plugins**.
+
+### Capabilities
+
+| Group | Capabilities |
+|---|---|
+| What it can do | Run commands, Files (with a separate **Allow file changes** switch), Web, Subagents and workflows, Extend itself (plugin management, plugin market, plugin API lookup) |
+| How it works | Plan mode, To-do list, Session goals, Skills, Ask you, Deliverables, Reminders |
+| Context | Workspace instructions (AGENTS.md, CLAUDE.md, and similar), Time awareness, Context compaction |
+
+- **Turning a capability on** restores it as the built-in mode has it. Plugins that switch by environment (such as Bash and PowerShell) go back to **Auto**, and plugins the built-in mode keeps off (such as the Codex subagent) stay off.
+- **Turning a capability off** switches off every plugin it includes.
+- A capability with only some of its plugins on is marked **Partly on**.
+- Capabilities the mode has no plugins for are hidden; for example, dsh before 0.2.1 has no Reminders.
+
+### Prompt
+
+- **System prompt**: edit this mode's system prompt. Insert variables such as `{{model}}` with a click, and the editor checks them as you type. **Preview full system prompt** shows everything the model receives.
+- **Advanced settings**: a closing prompt (added after tool guidance and workspace rules), "use only the opening text as the complete prompt", and "include runtime context".
+- **Save**: click **Save** or press ⌘/Ctrl + Enter. Everything above takes effect only after you save.
+- **History**: every save records a version (up to 30), labeled by where it was made: Settings, in chat, or elsewhere. You can load any version back into the editor.
+- **Import and export**: `.md` files.
+- **Restore built-in prompt**: asks before it replaces your prompt.
+- **Nothing gets lost**: unsaved edits stay in the browser as a draft, even after a page refresh. If the prompt changes elsewhere while you edit, saving is refused and you choose between loading the latest version and overwriting it with yours.
+
+The **In chat** section has two switches that **save as soon as you click them**. They apply to sessions created afterwards:
+
+- **Live prompt**: after you save the prompt, running sessions use it from their next step.
+- **Allow prompt changes in chat**: you can tell the model "change your prompt to …". The model reads or changes this mode's prompt with the `mode_prompt` tool, and **asks for your approval before every save**.
+
+### All plugins
+
+Lists every plugin in the mode, for when you need to adjust them one by one:
+
+- Search within the tab, or show only changed plugins.
+- Plugins that switch by environment offer **Auto / On / Off**.
+- Each changed plugin can be reset on its own with **Restore**.
+- **Details** shows the row id, module, and full configuration.
+
+### New modes
+
+| Start from | What it can do | Good for |
+|---|---|---|
+| Develop | Same as the Standard mode | Everyday coding |
+| Write | Read and write files, workspace instructions, to-do list, deliverables, skills, context compaction, asking you, time; **no terminal** | Documents and drafts |
+| Chat | Web, context compaction, asking you, time; **no files or terminal** | Questions and conversation |
+| Read-only research | Read and search files, web, workspace instructions, to-do list, skills, context compaction, asking you, time; **cannot change files or run commands** | Reading code and research |
+| Copy a mode | Same as the mode you copy | Small changes to an existing mode |
+
+Each template comes with a starter prompt in Chinese or English, following the interface language. The name and ID are filled in for you, and you can change both.
+
+### Keeping up with dsh upgrades
+
+- **Sync built-in update**: after a dsh upgrade, built-in modes you changed, and custom modes based on a built-in mode, show "The built-in mode was updated". Before you sync, the card lists the plugins that were added, removed, or changed upstream. When you confirm:
+  - plugins you never touched follow the built-in version;
+  - settings you changed keep your value;
+  - plugins added upstream join template-based modes switched off.
+- **One-click repair**: when a plugin in a mode fails to load, the whole mode stops working. The card lists the failing plugins with their reasons; **Turn these plugins off** switches off only those, and the mode works again.
+- **Before you delete**: deleting a custom mode first tells you how many open and saved sessions use it. Those sessions cannot be opened after the mode is deleted.
+
+## When changes take effect
+
+- Every change applies to **sessions created afterwards**; running sessions keep what they started with. The one exception is a mode with **Live prompt** on: its saved prompt text reaches running sessions from their next step.
+- Changes are written to the current dsh profile's `cordis.patch.yml`, so other windows using the same profile see them too. The Desktop app uses a different profile and is not affected.
+- The result of every action shows in a bar at the bottom of the page. Errors stay until you close them.
+
+## Compatibility
+
+| dsh version | Result |
+|---|---|
+| `0.2.0-rc.2` (npm `latest`) | Works. This dsh version provides no localized plugin names, so the plugin shows each plugin's official name instead |
+| `0.2.1-alpha.3` | Works |
+| `0.2.1-rc.1` (npm `next`) | Works. rc.1 adds a plugin market tool to the built-in modes; modes you changed show "The built-in mode was updated", and syncing adds it switched off |
+
+Every version above was installed and tested, including checks of the actual requests sent to the model through a local mock model. The dsh APIs this plugin uses are not stable yet, so other versions may need changes.
+
+## FAQ
+
+**I changed a switch or the prompt, but the chat did not change.**
+Changes apply to sessions created afterwards. Try **New session with it**. Only a mode with **Live prompt** on applies its prompt text to running sessions.
+
+**A mode stopped working after a dsh upgrade.**
+Open its card. If it reports plugins that cannot load, click **Turn these plugins off**. If it says the built-in mode was updated, click **Sync built-in update**.
+
+**I made a mess. How do I go back?**
+- One plugin: click **Restore** in **All plugins**.
+- The prompt: load any version from **History**, or click **Restore built-in prompt**.
+- A whole built-in mode: choose **Restore built-in** in the **⋯** menu.
+
+**I asked the model to change its prompt, and nothing happened.**
+**Allow prompt changes in chat** only applies to sessions created after you turned it on. Also, if dsh's approval policy is "never" (for example in unattended runs), saves are refused.
+
+**Where does the plugin keep its data?**
+- Mode configuration: the profile's `cordis.patch.yml`.
+- Sync baselines and prompt history: the `.dsh-modes/` folder in the profile directory.
+- Unsaved drafts: only in your current browser.
+
+## Uninstall
 
 ```bash
 dsh plugin --profile web remove dsh-modes
 ```
 
-插件做的修改保存在 profile 的 `cordis.patch.yml` 里，卸载插件不会删除它们：改过的内置模式在卸载后仍按修改后的配置运行。卸载前请注意：
+Before you uninstall:
 
-- 先在提示词编辑器的「更多设置」里关闭所有模式的「即时生效」和「在对话里修改提示词」。这两项会在模式里放入本插件自己的模块，卸载后这些模式会因为找不到模块而无法使用
-- 想完全还原，就把改过的内置模式恢复内置，并删除自己新建的模式
-- profile 目录下的 `.dsh-modes/` 文件夹可以一并删除
+1. **Turn off two switches first**: on each mode's **Prompt** tab, turn off **Live prompt** and **Allow prompt changes in chat** in the **In chat** section. These switches add this plugin's own modules to the mode. Once the plugin is uninstalled, such a mode cannot find them and stops working.
+2. **For a full reset**: **Restore built-in** on the built-in modes you changed, and delete the modes you created. Otherwise changed modes keep running with your changes after the uninstall.
+3. **Clean up**: you can also delete the `.dsh-modes/` folder in the profile directory.
 
-## 起步模板
+## Known limitations
 
-模板都以内置的标准模式为基础，用「允许名单」决定保留哪些插件：名单外的行在创建时一律关闭，这样模板不会开启它没写明的工具。以后同步内置更新时，标准模式新增的插件也会以关闭状态加入，除非允许名单里有它。
+- **Sync needs a baseline**: syncing compares against the built-in plugin list recorded at your last save. Modes changed with a version before 0.5.0 have no such record, so the first sync keeps every difference from the built-in version as your change. Every save after that records a baseline.
+- **Scope of Live prompt**: it applies only to the opening and closing prompt text. The "complete prompt" and "runtime context" settings still apply to new sessions only.
+- **Scope of chat edits**: `mode_prompt` reads and writes only the opening prompt text.
+- **Session count**: counting saved sessions before a delete reads each session's record. With many sessions it stops after 8 seconds and shows "at least N".
+- **Permissions**: write actions rely only on dsh's own sign-in check.
 
-| 模板 | 保留的能力 | 说明 |
-|---|---|---|
-| 开发 | 与标准模式相同 | 不改动插件和提示词 |
-| 写作 | 文件读写与搜索、工作区指令、待办、交付文件、技能、上下文压缩、提问、时间 | 没有终端、子代理和网页 |
-| 聊天 | 网页搜索与读取、上下文压缩、提问、时间 | 不碰文件和终端 |
-| 只读调研 | 文件读取与搜索、网页、工作区指令、待办、技能、上下文压缩、提问、时间 | 文件工具设为只读（`write: false`、`edit: false`），没有终端 |
+<details>
+<summary><b>Developer reference: how it works</b></summary>
 
-在 dsh `0.2.1-alpha.3` 上，我们用本地假模型抓取了实际请求来验证：用「只读调研」模板新建的模式，发给模型的工具只有 `ask_user_question`、`glob`、`grep`、`read`、`read_image`、`skill`、`todo_write`、`web_fetch`、`web_search`、`working_directory`，没有任何写文件、编辑或终端工具；系统提示词也是模板里的那段。
+### Parts
 
-## 系统提示词
+| File | Role |
+|---|---|
+| `index.js` | Host plugin. Serves `POST /api/dsh-modes` and the `dshModes` service the two modules below use. Edits to built-in modes are written as a profile override of the mode's row through `configEditor.edit()`; plugin display metadata comes from `pluginInventory.list()` |
+| `container.js` | Custom-mode container: keeps the `presets` list in its config and calls `agentPresets.register()` for each entry |
+| `rebase.js` | Three-way merge for syncing built-in updates: takes the built-in plugin list from your last save as the base and merges your changes onto the latest built-in list. On conflict, your value wins |
+| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from) and `history.json` (prompt history). Writes go to a temporary file first and then replace the original |
+| `live-persona.js` | The persona row for Live prompt: replaces the mode's `@deepseek-ai/dsh-persona` row and registers the same two prompt sections, reading the latest saved text every time the prompt is assembled |
+| `prompt-tool.js` | The `mode_prompt` tool: mounted as a row inside a mode, so only that mode's sessions see it; asks the user for approval through `tools/pre-execute` before writing |
+| `client.js` | The Web settings page (Chinese and English) |
+| `cordis.patch.yml` | Inserts the `index.js` and `container.js` host rows |
 
-提示词就是该模式身份行（`@deepseek-ai/dsh-persona`，开启即时生效后是本插件的 `dsh-modes/live-persona`）的配置：
+Actions of `/api/dsh-modes`:
 
-- `prefix`（开头）位于系统提示词的最前面，后面还会追加工具说明、工作区规则等内容；`suffix`（结尾）追加在这些内容之后。如果设了 `complete: true`（例如极简模式），开头这段就是完整的系统提示词，结尾和其他内容都不会出现。
-- `{{model}}`、`{{provider}}` 这类变量在每一步组装提示词时替换成实际值。可用的变量以当前 dsh 实际注册的为准（例如 `0.2.0-rc.2` 还有 `{{cwd}}`，`0.2.1-alpha.2` 起已移除），编辑器只列出当前可用的变量。DSH 严格校验变量，写错一个会让该模式下的每一步都失败，所以保存前（包括在对话里保存）会检查变量名是否已注册、格式是否完整，校验不过就拒绝保存。
-- 预览不需要真的创建会话：它用该模式当前版本的作用域组装提示词，不包含每一步注入的运行时上下文。
-- 保存时会带上你开始编辑时的版本；如果服务器上的提示词已经不是那个版本，就返回 `prompt-conflict`，不会覆盖。草稿保存在浏览器的 `localStorage` 里（键名前缀为 `dsh-modes:draft:`），只在当前浏览器有效。
-- 即时生效时，dsh 会把新的系统提示词作为一条系统消息追加到会话历史里，而不是改写最开头那段，所以之前缓存的提示词前缀仍然可以命中；新提示词本身仍会多消耗一些输入令牌。这个变化和其他系统提示词变化一样，会记录在会话日志里。
+- **Reads**: `list`, `read`, `prompt`, `history`, `usage`.
+- **Plugin rows**: `toggle`, `followPlatform`, `applyRows`, `resetRow`.
+- **Whole modes**: `reset`, `sync`, `repair`, `create`, `update`, `remove`, `setDefault`.
+- **Prompts**: `setPrompt`, `setLive`, `setPromptTool`.
 
-在 dsh `0.2.0-rc.2` 和 `0.2.1-alpha.3` 上，我们都用本地假模型抓取了实际请求，验证了：
+### System prompt
 
-- 开启即时生效后，保存提示词，同一个正在运行的会话下一步就用上了新提示词；
-- 模型调用 `mode_prompt` 追加一句话时，界面弹出审批；批准后工具返回「已保存，从下一步起对本会话生效」，下一次请求里就带上了追加的内容，历史版本里也记为「对话中」；
-- 没有开启即时生效时，保存后新建的会话使用新提示词，已经在运行的会话保持旧提示词。
+- **Where the prompt lives**: the prompt is the `prefix` (opening) and `suffix` (closing) of the mode's persona row. With `complete: true`, the opening text is the whole system prompt.
+- **Variable checks**: available variables are whatever the running dsh registers. For example, `0.2.0-rc.2` still has `{{cwd}}`, which `0.2.1-alpha.2` removed. dsh resolves variables strictly, and one wrong variable makes every step of that mode fail, so saves (including saves from chat) check them first.
+- **Conflict detection**: a save carries the version you started editing; if the stored version has changed since, it returns `prompt-conflict` instead of overwriting.
+- **How Live prompt works**: dsh appends the new system prompt to the session history as a system message instead of rewriting the opening one, so the previously cached prompt prefix still hits. The change is recorded in the session log.
 
-## 已知限制
+### Verification
 
-- 同步内置更新依赖上次同步时记下的内置插件列表。用 0.5.0 之前的版本改过的内置模式没有这份记录，第一次同步时无法区分「你改过的插件」和「官方改过的插件」，这些差异都会按你的修改保留；新增和删除的插件不受影响。之后每次保存都会补上记录
-- 复制自其他自定义模式的模式，会沿用来源模式的同步基准；来源模式没有记录时（例如用 0.5.0 之前的版本创建），不提供同步
-- 即时生效只对开头和结尾这两段文字生效；「完整提示词」「运行时上下文」两个开关仍只对之后新建的会话生效。开关即时生效本身也只对之后新建的会话生效
-- `mode_prompt` 只读写开头这段提示词。dsh 的审批策略设为「从不」（例如无人值守运行）时，保存会被拒绝
-- 「已保存的会话」统计需要读取每个会话的日志；会话很多时最多统计 8 秒，未统计完会显示「至少 N 个」
-- 写操作只依赖 dsh 自带的登录校验，没有额外权限确认
-- 提示词草稿只保存在当前浏览器，换浏览器或清除站点数据后会丢失；提示词历史保存在 profile 目录下，换 profile 不会带过去
+- **Test environment**: each compatible version was installed into an isolated `DSH_HOME`.
+- **Request checks**: dsh's own local mock model plus a request-recording proxy were used to check the actual requests sent to the model:
+  - the Read-only research mode sends no tool that writes files, edits files, or runs commands;
+  - with Live prompt on, the next request of the same session carries the new prompt;
+  - when the model calls `mode_prompt`, the interface asks for approval, and after approval the next request carries the changed prompt.
 
-## 开发
+### Tests
 
 ```bash
 npm test
 ```
 
-运行同步内置更新所用三方合并的单元测试。
+Runs the unit tests of the three-way merge.
 
-## 许可证
+</details>
+
+## License
 
 [MIT](LICENSE)
