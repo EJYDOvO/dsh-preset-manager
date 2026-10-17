@@ -12,6 +12,7 @@ View and manage DeepSeek Harness agent modes (presets) in Web Settings: toggle t
 |---|---|---|
 | `0.2.0-rc.2`（npm 当前 latest，也是 Desktop 当前版本） | 安装到 dsh web，在界面里实际操作；用本地假模型抓取实际请求 | 可用；这个版本的 dsh 不提供插件的本地化名称，插件行显示包名和英文说明 |
 | `0.2.1-alpha.3` | 源码运行，界面操作并用本地假模型抓取实际请求 | 可用 |
+| `0.2.1-rc.1`（npm `next`） | 源码运行；从 alpha.3 升级的 profile 和从 npm 新装的 0.6.1 都测过，界面操作并用本地假模型抓取实际请求 | 可用；rc.1 给内置模式新增了插件市场工具（`tool-plugin-market`），改过的模式会提示「内置模式有更新」，同步后自动加入（默认关闭） |
 
 插件依赖的 `configEditor`、`agentPresets`、`systemPrompt`、`tools` 等都是 dsh 尚未稳定的接口，其他版本可能需要适配。
 
