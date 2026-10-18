@@ -2,7 +2,7 @@
 
 [English](https://github.com/xiaohai-78/dsh-modes/blob/main/README.md) | 中文
 
-给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）的 Web 界面加一个「模式管理」设置页：用开关决定每个模式能做什么，按模式编辑系统提示词，用模板新建自己的模式，dsh 升级后一键合并官方更新。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）的模式管理器。它在 Web 界面的设置里加一个「模式管理」页：用开关决定每个模式能做什么，按模式编辑系统提示词，用模板新建自己的模式，dsh 升级后一键合并官方更新。
 
 <img src="assets/screenshot-modes.png" alt="设置 → 模式管理 / Settings → Modes" width="640">
 

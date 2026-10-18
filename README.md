@@ -1,8 +1,8 @@
-# dsh-modes
+# dsh-modes · Mode Manager
 
 English | [中文](https://github.com/xiaohai-78/dsh-modes/blob/main/README.zh.md)
 
-A **Modes** settings page for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) Web interface. You can switch what each agent mode can do, edit each mode's system prompt, create your own modes from templates, and merge built-in updates in one click after a dsh upgrade.
+Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It adds a **Modes** page to the Web interface's Settings, where you switch what each agent mode can do, edit each mode's system prompt, create your own modes from templates, and merge built-in updates in one click after a dsh upgrade.
 
 <img src="assets/screenshot-modes.png" alt="Settings → Modes" width="640">
 
