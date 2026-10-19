@@ -11,6 +11,8 @@ window.__ModuleLoader__.load({
     const NOTICE_MS = 4000
     const PROMPT_MAX_CHARS = 20000
     const TOOL_MAX_CHARS = 20000
+    /** Where the page points to for what changed in a release. */
+    const CHANGES_URL = 'https://github.com/xiaohai-78/dsh-modes/commits/main'
     const DRAFT_PREFIX = 'dsh-modes:draft:'
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
@@ -343,6 +345,42 @@ window.__ModuleLoader__.load({
       'err.tool-text-too-long': '说明不能超过 {max} 字',
       'err.tool-name-invalid': '工具名无效',
       'stateError.tools': '工具说明文件无法读取：{detail}',
+      'update.available': '有新版本 {latest}（当前 {version}）。',
+      'update.changes': '查看更新记录',
+      'update.upgrade': '升级…',
+      'update.manualHint': '在终端运行下面的命令升级，然后重启 dsh：',
+      'update.gitHint': '你是从 GitHub 安装的。要升级，在终端运行下面的命令，然后重启 dsh：',
+      'update.confirm': '把 dsh-modes 从 {from} 升级到 {to}？DSH 会从 {host} 下载并安装；新版本在重启 dsh 后生效，正在运行的会话不受影响，你的模式和修改都会保留。',
+      'update.confirmAction': '升级',
+      'update.installing': '正在安装 {to}…（{phase}）',
+      'update.phase.installing': '下载并安装',
+      'update.phase.applying': '应用到配置',
+      'update.phase.cancelling': '正在取消',
+      'update.cancel': '取消安装',
+      'update.doneRestart': '已安装 {to}，重启 dsh 后生效。',
+      'update.doneApplied': '已升级到 {to}，刷新页面后使用新版本。',
+      'update.restartHow': '网页版：停掉 dsh web 后重新运行；桌面应用：退出后重新打开。',
+      'update.reload': '刷新页面',
+      'update.reloaded': '插件已被替换。刷新页面后使用新版本。',
+      'update.rollback': '想退回旧版本，运行：',
+      'update.failed': '升级没有完成：{error}',
+      'update.failedHint': '可以重试，或在终端手动升级：',
+      'update.retry': '重试',
+      'update.cancelled': '已取消，已安装的版本没有变化。',
+      'update.dismiss': '知道了',
+      'update.version': 'dsh-modes {version}',
+      'update.dev': '本地开发安装，不检查更新',
+      'update.auto': '自动检查更新',
+      'update.checkNow': '立即检查',
+      'update.checking': '检查中…',
+      'update.upToDate': '已是最新版本',
+      'update.checkFailed': '检查失败：{error}',
+      'err.upgrade-running': '已经有一个升级在进行。',
+      'err.not-upgradable': '这种安装方式不能在页面里升级。',
+      'err.update-changed': '最新版本已变成 {latest}，请重新确认。',
+      'err.up-to-date': '已经是最新版本。',
+      'err.check-failed': '无法读取最新版本：{error}',
+      'err.not-running': '没有正在进行的升级。',
     }
     const EN = {
       nav: 'Modes',
@@ -668,6 +706,42 @@ window.__ModuleLoader__.load({
       'err.tool-text-too-long': 'The description cannot exceed {max} characters',
       'err.tool-name-invalid': 'Invalid tool name',
       'stateError.tools': 'The tool descriptions file cannot be read: {detail}',
+      'update.available': 'Version {latest} is available (you have {version}).',
+      'update.changes': 'See what changed',
+      'update.upgrade': 'Upgrade…',
+      'update.manualHint': 'Run this command in a terminal, then restart dsh:',
+      'update.gitHint': 'You installed from GitHub. To upgrade, run this in a terminal, then restart dsh:',
+      'update.confirm': 'Upgrade dsh-modes from {from} to {to}? DSH downloads it from {host} and installs it. The new version loads when you restart dsh; running sessions are not affected, and your modes and edits stay.',
+      'update.confirmAction': 'Upgrade',
+      'update.installing': 'Installing {to}… ({phase})',
+      'update.phase.installing': 'downloading and installing',
+      'update.phase.applying': 'applying to the configuration',
+      'update.phase.cancelling': 'cancelling',
+      'update.cancel': 'Cancel install',
+      'update.doneRestart': 'Installed {to}. It loads when you restart dsh.',
+      'update.doneApplied': 'Upgraded to {to}. Reload this page to use the new version.',
+      'update.restartHow': 'Web: stop dsh web and run it again. Desktop app: quit and reopen it.',
+      'update.reload': 'Reload page',
+      'update.reloaded': 'The plugin was replaced. Reload this page to use the new version.',
+      'update.rollback': 'To go back to the old version, run:',
+      'update.failed': 'The upgrade did not complete: {error}',
+      'update.failedHint': 'You can try again, or upgrade by hand in a terminal:',
+      'update.retry': 'Try again',
+      'update.cancelled': 'Cancelled; the installed version is unchanged.',
+      'update.dismiss': 'Dismiss',
+      'update.version': 'dsh-modes {version}',
+      'update.dev': 'Development install; updates are not checked',
+      'update.auto': 'Check for updates automatically',
+      'update.checkNow': 'Check now',
+      'update.checking': 'Checking…',
+      'update.upToDate': 'You have the latest version',
+      'update.checkFailed': 'Check failed: {error}',
+      'err.upgrade-running': 'An upgrade is already running.',
+      'err.not-upgradable': 'This kind of install cannot be upgraded from the page.',
+      'err.update-changed': 'The latest version is now {latest}; confirm again.',
+      'err.up-to-date': 'This is already the latest version.',
+      'err.check-failed': 'Could not read the latest version: {error}',
+      'err.not-running': 'No upgrade is running.',
     }
 
     const CSS = `
@@ -824,6 +898,10 @@ window.__ModuleLoader__.load({
 .pm-statelist li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pm-pre { margin: 0; max-height: 160px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
 .pm-dirtybar { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-state-warn-primary); background: var(--dsw-alias-bg-layer-2); }
+.pm-cmd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pm-cmd code { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; padding: 4px 8px; border-radius: 6px; background: var(--dsw-alias-bg-layer-3); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; }
+.pm-footer { display: flex; gap: 6px 14px; align-items: center; flex-wrap: wrap; }
+.pm-footer .pm-check { font-size: 11px; }
 @container (max-width: 520px) {
   .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
   .pm-inline { margin-left: 0; }
@@ -2178,6 +2256,144 @@ window.__ModuleLoader__.load({
           }, t('tools.restoreOne')))))
     }
 
+    /**
+     * The plugin's own update state: the version check, and a running or finished upgrade. The upgrade runs on the
+     * Host; this polls it once a second, and a Host that replaced the plugin meanwhile reads as `reloaded`.
+     */
+    function useUpdate(ui) {
+      const [info, setInfo] = React.useState(null)
+      const [checking, setChecking] = React.useState(false)
+      const [progress, setProgress] = React.useState(null)
+      const [problem, setProblem] = React.useState(null)
+      const load = (refresh) => {
+        setChecking(refresh)
+        return call('updateStatus', { refresh }).then((value) => {
+          setInfo(value)
+          setProgress(previous => (previous !== null && previous.state !== 'idle' ? previous : value.upgrade.state === 'idle' ? null : value.upgrade))
+        }, () => undefined).finally(() => setChecking(false))
+      }
+      React.useEffect(() => { void load(false) }, [])
+      const running = progress?.state === 'installing'
+      React.useEffect(() => {
+        if (!running) return undefined
+        let failures = 0
+        const replaced = () => {
+          setProgress(previous => ({ ...previous, state: 'reloaded' }))
+          void load(false)
+        }
+        const timer = setInterval(() => {
+          call('upgradeStatus').then((status) => {
+            failures = 0
+            if (status.state === 'idle') replaced()
+            else setProgress(status)
+          }, () => {
+            // The Host answers nothing or does not know the action: the installer replaced this plugin while it ran.
+            failures += 1
+            if (failures >= 5) replaced()
+          })
+        }, 1000)
+        return () => clearInterval(timer)
+      }, [running])
+      return {
+        info, checking, progress, problem,
+        check: () => load(true),
+        dismiss: () => { setProgress(null); setProblem(null) },
+        setCheck: enabled => call('setUpdateCheck', { enabled }).then(setInfo, error => setProblem(ui.describe(error))),
+        start: (version) => {
+          setProblem(null)
+          return call('upgrade', { version }).then(setProgress, error => setProblem(ui.describe(error)))
+        },
+        cancel: () => call('cancelUpgrade').then(undefined, error => setProblem(ui.describe(error))),
+      }
+    }
+
+    /** A shell command with a button that copies it. */
+    function Command({ ui, text }) {
+      const [copied, setCopied] = React.useState(false)
+      React.useEffect(() => {
+        if (!copied) return undefined
+        const timer = setTimeout(() => setCopied(false), 1500)
+        return () => clearTimeout(timer)
+      }, [copied])
+      return h('div', { className: 'pm-cmd' },
+        h('code', null, text),
+        h('button', { type: 'button', className: 'pm-btn', onClick: () => { navigator.clipboard?.writeText(text).then(() => setCopied(true), () => undefined) } },
+          copied ? ui.t('action.copied') : ui.t('action.copy')))
+    }
+
+    /** The banner for a newer release and for an upgrade in progress, finished, or failed. */
+    function UpdateBanner({ ui, update }) {
+      const { t } = ui
+      const { info, progress, problem } = update
+      const [confirming, setConfirming] = React.useState(false)
+      if (info === null) return null
+      const failure = progress?.failure
+      const reason = failure === undefined ? '' : failure.message ?? failure.code ?? failure.kind ?? 'unknown'
+      if (progress !== null && progress.state === 'installing') {
+        return h('div', { className: 'pm-warn pm-info', role: 'status' },
+          h('span', { className: 'pm-grow' }, t('update.installing', { to: progress.to, phase: t(`update.phase.${progress.phase}`) })),
+          h('button', { type: 'button', className: 'pm-btn', disabled: progress.phase === 'cancelling', onClick: update.cancel }, t('update.cancel')))
+      }
+      if (progress !== null && (progress.state === 'done' || progress.state === 'reloaded')) {
+        return h('div', { className: 'pm-panel', role: 'status' },
+          h('div', null, `✓ ${progress.state === 'reloaded' ? t('update.reloaded') : t(progress.restartRequired ? 'update.doneRestart' : 'update.doneApplied', { to: progress.to })}`),
+          progress.state === 'done' && progress.restartRequired ? h('div', { className: 'pm-hint' }, t('update.restartHow')) : null,
+          h('div', { className: 'pm-hint' }, t('update.rollback')),
+          h(Command, { ui, text: info.commands.rollback }),
+          h('div', { className: 'pm-bar pm-end' },
+            progress.restartRequired === true ? null : h('button', { type: 'button', className: 'pm-btn pm-primary', onClick: () => window.location.reload() }, t('update.reload')),
+            h('button', { type: 'button', className: 'pm-btn', onClick: update.dismiss }, t('update.dismiss'))))
+      }
+      if (progress !== null && progress.state === 'failed') {
+        return h('div', { className: 'pm-panel', role: 'alert' },
+          h('div', { className: 'pm-error' }, `⚠ ${t('update.failed', { error: reason })}`),
+          failure?.output === undefined ? null : h('pre', { className: 'pm-pre' }, failure.output),
+          h('div', { className: 'pm-hint' }, t('update.failedHint')),
+          h(Command, { ui, text: info.commands.upgrade }),
+          h('div', { className: 'pm-bar pm-end' },
+            info.canUpgrade ? h('button', { type: 'button', className: 'pm-btn', onClick: () => { update.dismiss(); setConfirming(true) } }, t('update.retry')) : null,
+            h('button', { type: 'button', className: 'pm-btn', onClick: update.dismiss }, t('update.dismiss'))))
+      }
+      if (progress !== null && progress.state === 'cancelled') {
+        return h('div', { className: 'pm-warn pm-info', role: 'status' },
+          h('span', { className: 'pm-grow' }, t('update.cancelled')),
+          h('button', { type: 'button', className: 'pm-btn', onClick: update.dismiss }, t('update.dismiss')))
+      }
+      if (!info.newer) return problem === null ? null : h('div', { className: 'pm-error', role: 'alert' }, problem)
+      return h('div', { className: 'pm-panel', role: 'region', 'aria-label': t('update.available', { latest: info.latest, version: info.version }) },
+        h('div', { className: 'pm-bar' },
+          h('span', { className: 'pm-grow' }, t('update.available', { latest: info.latest, version: info.version })),
+          h('a', { className: 'pm-link', href: CHANGES_URL, target: '_blank', rel: 'noreferrer' }, t('update.changes')),
+          info.canUpgrade ? h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: confirming, onClick: () => setConfirming(true) }, t('update.upgrade')) : null),
+        !info.canUpgrade && info.source !== 'link' ? h('div', { className: 'pm-hint' }, t(info.source === 'git' ? 'update.gitHint' : 'update.manualHint')) : null,
+        !info.canUpgrade && info.source !== 'link' ? h(Command, { ui, text: info.source === 'git' ? info.commands.git : info.commands.upgrade }) : null,
+        problem === null ? null : h('div', { className: 'pm-error', role: 'alert' }, problem),
+        confirming ? h('div', {
+          className: 'pm-confirm', style: { margin: 0 }, role: 'alertdialog', 'aria-label': t('update.upgrade'),
+          onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setConfirming(false) } },
+        },
+        h('div', null, t('update.confirm', { from: info.version, to: info.latest, host: info.host })),
+        h('div', { className: 'pm-bar pm-end' },
+          h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': true, onClick: () => setConfirming(false) }, t('action.cancel')),
+          h('button', { type: 'button', className: 'pm-btn pm-primary', onClick: () => { setConfirming(false); void update.start(info.latest) } }, t('update.confirmAction')))) : null)
+    }
+
+    /** The installed version, a manual check, and the switch for the automatic check. */
+    function UpdateFooter({ ui, update }) {
+      const { t } = ui
+      const { info, checking } = update
+      if (info === null) return null
+      const outcome = info.error !== undefined ? t('update.checkFailed', { error: info.error }) : info.checkedAt !== undefined && info.latest !== undefined && !info.newer ? t('update.upToDate') : undefined
+      return h('div', { className: 'pm-footer pm-hint' },
+        h('span', null, t('update.version', { version: info.version })),
+        info.source === 'link' ? h('span', null, t('update.dev')) : [
+          h('button', { key: 'check', type: 'button', className: 'pm-link', disabled: checking, onClick: update.check }, checking ? t('update.checking') : t('update.checkNow')),
+          h('label', { key: 'auto', className: 'pm-check' },
+            h('input', { type: 'checkbox', checked: info.checkUpdates, onChange: event => update.setCheck(event.target.checked) }), t('update.auto')),
+          outcome === undefined ? null : h('span', { key: 'outcome', className: info.error === undefined ? '' : 'pm-error' }, outcome),
+        ])
+    }
+
     function Page({ ctx, t, close }) {
       const [data, setData] = React.useState(null)
       const [pageError, setPageError] = React.useState(null)
@@ -2313,6 +2529,7 @@ window.__ModuleLoader__.load({
           close?.()
         },
       }
+      const update = useUpdate(ui)
       const presets = data?.presets ?? []
       const setCardOpen = (id, value) => setOpen((previous) => {
         const next = new Set(previous)
@@ -2347,6 +2564,7 @@ window.__ModuleLoader__.load({
           key: name, type: 'button', role: 'tab', id: `pm-view-${name}`, 'aria-selected': view === name, tabIndex: view === name ? 0 : -1,
           className: 'pm-tab', onClick: () => setView(name),
         }, t(`view.${name}`)))),
+        h(UpdateBanner, { ui, update }),
         view === 'modes' ? h('p', { className: 'pm-intro' }, t('intro')) : null,
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
@@ -2364,6 +2582,7 @@ window.__ModuleLoader__.load({
           onOpen: value => setCardOpen(preset.id, value),
           onDuplicate: setCreating,
         })),
+        h(UpdateFooter, { ui, update }),
         feedback === null ? null : h('div', { className: `pm-toast${feedback.kind === 'error' ? ' is-error' : ''}`, role: feedback.kind === 'error' ? 'alert' : 'status' },
           h('span', { className: 'pm-grow' }, `${feedback.kind === 'error' ? '⚠' : '✓'} ${feedback.text}`),
           h('button', { type: 'button', className: 'pm-toast-close', 'aria-label': t('action.dismiss'), onClick: () => setFeedback(null) }, '×')))

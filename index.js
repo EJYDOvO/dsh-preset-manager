@@ -12,10 +12,13 @@
  * with the base recorded in `<profile>/.dsh-modes/state.json` (state.js), so a
  * DSH update reaches an edited preset without discarding the user's changes.
  */
-import { dirname, join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import { allRowsById, rebase, same, stable } from './rebase.js'
 import { HISTORY_LIMIT, StateStore } from './state.js'
 import { applyWrites, catalogEntries, overridesOf, planEdits, planRestore } from './tool-edit.js'
+import { CHECK_ERROR_TTL_MS, CHECK_TTL_MS, PACKAGE_NAME, commands, fetchLatest, isNewer, registryBases, sourceKind } from './update.js'
 
 const ROUTE = '/api/dsh-modes'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
@@ -29,6 +32,17 @@ const TOOL_MODULE = 'dsh-modes/prompt-tool'
 const TOOL_ROW_ID = 'dsh-modes-prompt-tool'
 const DESCRIPTIONS_MODULE = 'dsh-modes/tool-descriptions'
 const DESCRIPTIONS_ROW_ID = 'dsh-modes-tool-descriptions'
+/** The version this plugin runs, read once from its own package.json. */
+const PACKAGE_VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
+  } catch {
+    // The package.json beside this file is unreadable; the page then reports an unknown version and offers no upgrade.
+    return 'unknown'
+  }
+})()
+/** How many lines of the installer's output a failed upgrade keeps. */
+const UPGRADE_LOG_LINES = 12
 /** How long one mode's tool scan is reused; the Refresh button and a changed row list bypass it. */
 const SCAN_TTL_MS = 5 * 60 * 1000
 const PERSONA_MODULES = new Set([PERSONA_MODULE, LIVE_MODULE])
@@ -94,7 +108,7 @@ class ActionError extends Error {
 }
 
 export function apply(ctx) {
-  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), toolsFile: undefined, scans: new Map(), seen: new Map() }
+  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), toolsFile: undefined, scans: new Map(), seen: new Map(), check: undefined, upgrade: undefined }
   ctx.provide('dshModes', {
     /** Latest saved persona config of a preset, from the loaded configuration; undefined when unknown. */
     persona: id => findPersona(savedRows(ctx, id))?.config,
@@ -147,9 +161,17 @@ const ACTIONS = {
   tools: async (m, body) => ({ presets: (await toolCatalog(m, body.refresh === true)).catalog }),
   setToolDescriptions: (m, body) => setToolDescriptions(m, body),
   restoreToolDescriptions: (m, body) => restoreToolDescriptions(m, body),
+  updateStatus: (m, body) => updateStatus(m, body.refresh === true),
+  upgradeStatus: m => publicUpgrade(m.upgrade),
+  setUpdateCheck: async (m, body) => {
+    await m.store.update('settings', (current) => { current.checkUpdates = body.enabled === true })
+    return updateStatus(m, false)
+  },
+  upgrade: (m, body) => startUpgrade(m, body),
+  cancelUpgrade: m => cancelUpgrade(m),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
-const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools'])
+const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'upgrade', 'cancelUpgrade'])
 
 async function handle(m, request) {
   let body
@@ -1225,4 +1247,136 @@ async function copyTools(m, from, id) {
   } catch (error) {
     m.ctx.logger.warn(`could not copy tool descriptions of ${from}: ${error instanceof Error ? error.message : String(error)}`)
   }
+}
+
+/** The plugin's own switches; a damaged file reads as the defaults, and the next write reports it. */
+async function readSettings(m) {
+  try {
+    return await m.store.read('settings')
+  } catch (error) {
+    m.ctx.logger.warn(error instanceof Error ? error.message : String(error))
+    return { checkUpdates: true }
+  }
+}
+
+/** How the profile depends on this package, from the dependency spec its package.json records. */
+async function installSource(m) {
+  try {
+    const manifest = JSON.parse(await readFile(join(dirname(m.ctx.configEditor.documentPath), 'package.json'), 'utf8'))
+    return sourceKind(manifest.dependencies?.[PACKAGE_NAME])
+  } catch (error) {
+    m.ctx.logger.warn(`could not read how ${PACKAGE_NAME} is installed: ${error instanceof Error ? error.message : String(error)}`)
+    return 'unknown'
+  }
+}
+
+/** Ask the registries DSH is configured with for the latest release, and remember the answer. */
+async function checkLatest(m, manager) {
+  let registries
+  try {
+    registries = await manager?.registries()
+  } catch (error) {
+    m.ctx.logger.warn(`could not read the configured registries: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  const found = await fetchLatest(registryBases(registries), globalThis.fetch)
+  m.check = found.ok
+    ? { at: Date.now(), latest: { version: found.version, tarball: found.tarball, registry: found.registry } }
+    : { at: Date.now(), error: found.error }
+  return m.check
+}
+
+/**
+ * What the page shows about this plugin's version: the installed one, the latest release when a check has run, and
+ * what can be done about it. A check runs when the switch allows it and the last answer is older than its lifetime,
+ * or when `refresh` asks for one; a development install (`link:`) is never checked.
+ * @param {object} m - manager context and caches.
+ * @param {boolean} refresh - check now, whatever the switch and the cache say.
+ */
+async function updateStatus(m, refresh) {
+  const manager = m.ctx.get('pluginManager')
+  const settings = await readSettings(m)
+  const source = await installSource(m)
+  const profile = basename(dirname(m.ctx.configEditor.documentPath))
+  let check = m.check
+  const lifetime = check?.error === undefined ? CHECK_TTL_MS : CHECK_ERROR_TTL_MS
+  const stale = check === undefined || Date.now() - check.at > lifetime
+  if (source !== 'link' && (refresh || (settings.checkUpdates !== false && stale))) check = await checkLatest(m, manager)
+  const newer = check?.latest !== undefined && isNewer(check.latest.version, PACKAGE_VERSION)
+  return {
+    version: PACKAGE_VERSION,
+    profile,
+    source,
+    checkUpdates: settings.checkUpdates !== false,
+    ...check === undefined ? {} : { checkedAt: check.at },
+    ...check?.error === undefined ? {} : { error: check.error },
+    ...check?.latest === undefined ? {} : { latest: check.latest.version, newer, host: new URL(check.latest.registry).host },
+    canUpgrade: newer && manager !== undefined && (source === 'registry' || source === 'tarball'),
+    commands: commands(profile, PACKAGE_VERSION),
+    upgrade: publicUpgrade(m.upgrade),
+  }
+}
+
+/** The part of an upgrade the page may see. */
+function publicUpgrade(upgrade) {
+  if (upgrade === undefined) return { state: 'idle' }
+  const { requestId: _requestId, ...visible } = upgrade
+  return visible
+}
+
+/** The failure an installation reports, reduced to what the page words. */
+function upgradeFailure(result) {
+  const output = typeof result.packageResult?.output === 'string'
+    ? result.packageResult.output.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '').trim().split('\n').slice(-UPGRADE_LOG_LINES).join('\n')
+    : undefined
+  return {
+    ...result.error?.code === undefined ? {} : { code: result.error.code },
+    ...result.error?.diagnostic === undefined ? {} : { message: result.error.diagnostic },
+    ...result.packageResult?.kind === undefined ? {} : { kind: result.packageResult.kind },
+    ...output === undefined || output === '' ? {} : { output },
+  }
+}
+
+/**
+ * Install the latest release with the plugin manager, from the registry's tarball address, without waiting for it:
+ * the page polls `upgradeStatus`. The manager restores the profile's manifest and lockfile when the install fails or
+ * is cancelled, and a successful install usually loads at the next start.
+ * @param {object} m - manager context and caches.
+ * @param {{ version?: unknown }} body - the version the user confirmed; a newer release since then is refused.
+ */
+async function startUpgrade(m, body) {
+  const manager = m.ctx.get('pluginManager')
+  if (manager === undefined) throw new ActionError('unavailable', 'The plugin manager is not available')
+  if (m.upgrade?.state === 'installing') throw new ActionError('upgrade-running', 'An upgrade is already running')
+  const source = await installSource(m)
+  if (source !== 'registry' && source !== 'tarball') throw new ActionError('not-upgradable', 'This install cannot be upgraded from the page', { source })
+  const check = await checkLatest(m, manager)
+  if (check.latest === undefined) throw new ActionError('check-failed', `Could not read the latest version: ${check.error}`, { error: check.error })
+  if (!isNewer(check.latest.version, PACKAGE_VERSION)) throw new ActionError('up-to-date', 'This is already the latest version')
+  if (body.version !== check.latest.version) throw new ActionError('update-changed', `The latest version is now ${check.latest.version}`, { latest: check.latest.version })
+  const requestId = `${PACKAGE_NAME}-upgrade-${Date.now()}`
+  const upgrade = { state: 'installing', from: PACKAGE_VERSION, to: check.latest.version, phase: 'installing', startedAt: Date.now(), requestId }
+  m.upgrade = upgrade
+  const stop = m.ctx.on('plugin-manager/install-state', (progress) => {
+    if (progress.requestId === requestId) upgrade.phase = progress.phase
+  })
+  manager.installBundle(check.latest.tarball, { requestId }).then((result) => {
+    const applied = result.application === 'applied' || result.application === 'restart-required' || result.application === 'overridden'
+    Object.assign(upgrade, {
+      state: applied ? 'done' : result.application === 'cancelled' ? 'cancelled' : 'failed',
+      endedAt: Date.now(),
+      ...applied ? { restartRequired: result.application !== 'applied', ...result.restartReason === undefined ? {} : { reason: result.restartReason } } : {},
+      ...applied || result.application === 'cancelled' ? {} : { failure: upgradeFailure(result) },
+    })
+  }, (error) => {
+    Object.assign(upgrade, { state: 'failed', endedAt: Date.now(), failure: { message: error instanceof Error ? error.message : String(error) } })
+  }).finally(stop)
+  return publicUpgrade(upgrade)
+}
+
+/** Stop the running installation; the manager restores the profile files before it answers `cancelled`. */
+async function cancelUpgrade(m) {
+  const manager = m.ctx.get('pluginManager')
+  if (manager === undefined || m.upgrade?.state !== 'installing') throw new ActionError('not-running', 'No upgrade is running')
+  const outcome = await manager.cancelInstall(m.upgrade.requestId)
+  return { status: outcome.status }
 }

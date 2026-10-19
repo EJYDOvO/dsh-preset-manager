@@ -26,7 +26,7 @@
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "files": ["index.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
   "scripts": {
     "test": "node --test test/"
   },

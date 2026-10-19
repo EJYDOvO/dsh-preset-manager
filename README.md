@@ -13,6 +13,7 @@ Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 - **Edit the prompt**: edit each mode's system prompt with a preview and a version history. You can also let a saved prompt reach sessions that are already running, or let the model change the prompt in chat; every save asks you first.
 - **Edit tool descriptions**: rewrite the description of any tool the model sees, for several modes at once, and restore the built-in text of one tool, one mode, or everything with one click. The tools' own definitions are never changed.
 - **Create your own modes**: start from four templates (Develop, Write, Chat, Read-only research), or copy any existing mode.
+- **Update the plugin itself**: the page tells you when a newer version of this plugin exists and can install it with DSH's own installer, after you confirm.
 - **Keep up with dsh upgrades**: when dsh updates its built-in modes, merge the changes in one click and keep yours. When a plugin fails to load, turn off just the failing plugins in one click.
 
 ## Install
@@ -116,6 +117,17 @@ Each template comes with a starter prompt in Chinese or English, following the i
 - **One-click repair**: when a plugin in a mode fails to load, the whole mode stops working. The card lists the failing plugins with their reasons; **Turn these plugins off** switches off only those, and the mode works again.
 - **Before you delete**: deleting a custom mode first tells you how many open and saved sessions use it. Those sessions cannot be opened after the mode is deleted.
 
+### Updates
+
+The page checks for a newer version of this plugin and can install it.
+
+- **Check**: when you open the page, the plugin asks the npm registry DSH is configured with (a mirror works) for the latest version of `dsh-modes`, at most once every 12 hours. The request names only the package. Turn it off with **Check for updates automatically** at the bottom of the page; **Check now** still works. Development installs (`link:`) are never checked.
+- **Upgrade**: a banner shows a newer release with **Upgrade…**. After you confirm, DSH's own installer downloads that release's tarball from the registry and installs it, with progress and a **Cancel install** button. The installer restores the profile's files when an install fails or is cancelled. Only the `latest` release is offered, never a prerelease, and the tarball address must be this package's file on the registry that answered.
+- **After the upgrade**: usually the new version loads when you restart dsh (web: run `dsh web` again; desktop app: quit and reopen). Running sessions are not affected, and your modes and edits stay. In some DSH versions the plugin is replaced on the spot, and the page asks you to reload. The banner shows the command that goes back to the old version.
+- **Installed from GitHub**: the banner shows `dsh plugin --profile web add github:xiaohai-78/dsh-modes` instead of a button.
+- **By hand**: Plugins page → **Add plugin** → paste `https://registry.npmjs.org/dsh-modes/-/dsh-modes-<version>.tgz`, or run `dsh plugin --profile web add dsh-modes@latest` in a terminal. Without `@latest` the command does nothing, because DSH keeps the version it installed.
+- **From an older version**: versions released before the update check have no banner. Upgrade them by hand once.
+
 ## When changes take effect
 
 - Every change applies to **sessions created afterwards**; running sessions keep what they started with. The one exception is a mode with **Live prompt** on: its saved prompt text reaches running sessions from their next step.
@@ -172,6 +184,9 @@ Before you uninstall:
 - **Sync needs a baseline**: syncing compares against the built-in plugin list recorded at your last save. Modes changed with a version before 0.5.0 have no such record, so the first sync keeps every difference from the built-in version as your change. Every save after that records a baseline.
 - **Scope of Live prompt**: it applies only to the opening and closing prompt text. The "complete prompt" and "runtime context" settings still apply to new sessions only.
 - **Scope of chat edits**: `mode_prompt` reads and writes only the opening prompt text.
+- **Update check**: it needs a reachable registry. When the registry cannot be reached the footer says the check failed. A mirror can lag behind npm, so the newest release may show up later.
+- **Version record after an upgrade**: an upgrade from the page records the dependency as the tarball address instead of a version number. That does not affect use or later upgrades.
+- **A new version that cannot start**: DSH does not keep running the old one. Run the rollback command from the banner in a terminal.
 - **Code mode (PTC)**: tool descriptions are not supported there yet. In code mode the model reads tool descriptions as comments inside the generated SDK text, which an edit does not rewrite.
 - **Tools registered at session start**: the list comes from the tools each mode registers. A tool that is registered only when a session starts (for example `subagent`) appears after a session of that mode has made its first request.
 - **Plugins that repeat tool descriptions**: a plugin that copies descriptions into the prompt, such as a tool-activator's `<available_tools>` list, still shows the built-in text. The tool definitions sent to the model carry your edit.
@@ -191,7 +206,8 @@ Before you uninstall:
 | `rebase.js` | Three-way merge for syncing built-in updates: takes the built-in plugin list from your last save as the base and merges your changes onto the latest built-in list. On conflict, your value wins |
 | `tool-descriptions.js` | The row that applies tool description edits: mounted inside a mode, listens to `system-prompt/assemble` first in its chain, and replaces the `description` of the edited tools in the tool list of every request |
 | `tool-edit.js` | Pure planning for tool description edits: validation, batch edits with conflict checks, restores, history, and the per-mode tool list |
-| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), and `tool-descriptions.json` (tool description edits and their history). Writes go to a temporary file first and then replace the original |
+| `update.js` | Version check and upgrade helpers without DSH services: version comparison, how the profile depends on the package, the registries to ask, and validation of the registry's tarball address |
+| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), and `settings.json` (the update check switch). Writes go to a temporary file first and then replace the original |
 | `live-persona.js` | The persona row for Live prompt: replaces the mode's `@deepseek-ai/dsh-persona` row and registers the same two prompt sections, reading the latest saved text every time the prompt is assembled |
 | `prompt-tool.js` | The `mode_prompt` tool: mounted as a row inside a mode, so only that mode's sessions see it; asks the user for approval through `tools/pre-execute` before writing |
 | `client.js` | The Web settings page (Chinese and English) |
@@ -199,10 +215,11 @@ Before you uninstall:
 
 Actions of `/api/dsh-modes`:
 
-- **Reads**: `list`, `read`, `prompt`, `history`, `usage`, `tools`.
+- **Reads**: `list`, `read`, `prompt`, `history`, `usage`, `tools`, `updateStatus`, `upgradeStatus`.
 - **Plugin rows**: `toggle`, `followPlatform`, `applyRows`, `resetRow`.
 - **Whole modes**: `reset`, `sync`, `repair`, `create`, `update`, `remove`, `setDefault`.
 - **Prompts**: `setPrompt`, `setLive`, `setPromptTool`.
+- **Updates**: `setUpdateCheck`, `upgrade` (starts the install and answers at once), `cancelUpgrade`.
 - **Tool descriptions**: `setToolDescriptions` (a batch of `{ preset, tool, text, expected? }` items, answered with one result per item), `restoreToolDescriptions` (`items`, `presets`, or `all`).
 
 ### System prompt
@@ -219,6 +236,12 @@ Actions of `/api/dsh-modes`:
 - **The tool list**: `agentPresets.acquireScope(id)` mounts a mode's plugins in a scope the registry releases again, and `tools.schemas(scope)` lists its tools without a session. A scan is reused for five minutes while the mode's rows are unchanged; **Refresh** scans again.
 - **Rows**: the first edit of a mode adds the row `dsh-modes-tool-descriptions` with `config.preset` set to the mode; restoring the last edit removes it. Copying a mode points the copied row at the new mode.
 
+### Updates
+
+- **Check**: the Host fetches `<registry>/dsh-modes/latest` with the process `fetch`, so DSH's outbound proxy applies. The registries come from `pluginManager.registries()` (the configured one, then its fallbacks), and the answer is reused for 12 hours (30 minutes after a failure).
+- **How the profile depends on the package**: read from `dependencies['dsh-modes']` in the profile's `package.json`: a version or tag (`registry`), a tarball address (`tarball`), a git address (`git`), or a path (`link`). The plugin manager's own record is not used, because `0.2.0-rc.2` does not report it.
+- **Install**: `pluginManager.installBundle(tarballAddress, { requestId })`. A tarball address does not name the installed package, so the manager accepts it over an installed package, and it restores the manifest and lockfile when the install fails or is cancelled. The Host does not wait for it: the page polls `upgradeStatus` every second. When the installer replaces the plugin during the install, the page sees an unknown action or an idle state and asks for a reload.
+
 ### Verification
 
 - **Test environment**: each compatible version was installed into an isolated `DSH_HOME`.
@@ -226,6 +249,7 @@ Actions of `/api/dsh-modes`:
   - the Read-only research mode sends no tool that writes files, edits files, or runs commands;
   - with Live prompt on, the next request of the same session carries the new prompt;
   - when the model calls `mode_prompt`, the interface asks for approval, and after approval the next request carries the changed prompt;
+  - updates: a build labelled `0.5.0` found the real latest release on npm and upgraded to it through DSH's installer. The dependency became the registry tarball address and the plugin stayed enabled. `0.2.0-rc.2` asked for a restart, and `0.2.1-rc.1` replaced the plugin on the spot. The same kind of install from the Plugins page was also checked across a restart: a custom mode created before the upgrade still worked. A failed install left the manifest, lockfile, and files as they were. The latest-release answers of npm and of the China mirror pass the tarball address check. The switch, the manual check, and the development install were checked in the page;
   - tool descriptions: a new session of an edited mode sends the edited text for exactly the edited tools, a running session sends a later edit with its next request, and after a restore the next request carries the built-in text again; checked on `0.2.0-rc.2` and `0.2.1-rc.1`.
 
 ### Tests
@@ -234,7 +258,7 @@ Actions of `/api/dsh-modes`:
 npm test
 ```
 
-Runs the unit tests of the three-way merge, the tool description planner, and the description row.
+Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, and the upgrade flow against a fake plugin manager.
 
 </details>
 
