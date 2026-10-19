@@ -5,6 +5,8 @@
  *   with (`base`); for a custom preset also the built-in preset it follows
  *   (`origin`) and the starter template it was created from (`template`).
  * - `history.json` — per preset, the most recent prompt versions, oldest first.
+ * - `tool-descriptions.json` — per preset, the tool description overrides (`tools`: name → `{ text, base }`) and
+ *   the most recent changes to them (`history`, oldest first); read on every model step by the row in tool-descriptions.js.
  *
  * Writes replace the file atomically (temporary file, then rename) and run one
  * at a time within this process. A file that exists but cannot be parsed is
@@ -19,6 +21,7 @@ export const HISTORY_LIMIT = 30
 const FILES = {
   state: { name: 'state.json', empty: () => ({ version: 1, presets: {} }) },
   history: { name: 'history.json', empty: () => ({ version: 1, presets: {} }) },
+  tools: { name: 'tool-descriptions.json', empty: () => ({ version: 1, presets: {} }) },
 }
 
 /** A state file that exists but is not a JSON object with a `presets` map. */
@@ -40,7 +43,7 @@ export class StateStore {
 
   /**
    * Read one state file.
-   * @param {'state' | 'history'} kind - which file.
+   * @param {'state' | 'history' | 'tools'} kind - which file.
    * @returns {Promise<{version: number, presets: Record<string, any>}>} its content, or the empty form when absent.
    * @throws {StateFileError} when the file exists but is not valid.
    */
@@ -68,7 +71,7 @@ export class StateStore {
 
   /**
    * Read, change, and atomically replace one state file, after every earlier update.
-   * @param {'state' | 'history'} kind - which file.
+   * @param {'state' | 'history' | 'tools'} kind - which file.
    * @param {(current: {version: number, presets: Record<string, any>}) => void} change - mutates the parsed content in place.
    * @returns {Promise<void>} settles once the new content is on disk.
    */

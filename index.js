@@ -15,6 +15,7 @@
 import { dirname, join } from 'node:path'
 import { allRowsById, rebase, same, stable } from './rebase.js'
 import { HISTORY_LIMIT, StateStore } from './state.js'
+import { applyWrites, catalogEntries, overridesOf, planEdits, planRestore } from './tool-edit.js'
 
 const ROUTE = '/api/dsh-modes'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
@@ -26,6 +27,10 @@ const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
 const LIVE_MODULE = 'dsh-modes/live-persona'
 const TOOL_MODULE = 'dsh-modes/prompt-tool'
 const TOOL_ROW_ID = 'dsh-modes-prompt-tool'
+const DESCRIPTIONS_MODULE = 'dsh-modes/tool-descriptions'
+const DESCRIPTIONS_ROW_ID = 'dsh-modes-tool-descriptions'
+/** How long one mode's tool scan is reused; the Refresh button and a changed row list bypass it. */
+const SCAN_TTL_MS = 5 * 60 * 1000
 const PERSONA_MODULES = new Set([PERSONA_MODULE, LIVE_MODULE])
 const PROMPT_MAX_CHARS = 20000
 const PROMPT_EXCERPT_CHARS = 160
@@ -89,7 +94,7 @@ class ActionError extends Error {
 }
 
 export function apply(ctx) {
-  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)) }
+  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), toolsFile: undefined, scans: new Map(), seen: new Map() }
   ctx.provide('dshModes', {
     /** Latest saved persona config of a preset, from the loaded configuration; undefined when unknown. */
     persona: id => findPersona(savedRows(ctx, id))?.config,
@@ -100,6 +105,10 @@ export function apply(ctx) {
       await setPrompt(m, id, { prefix }, { prefix: base }, source)
       return { live: findPersona(presetRows(ctx, id).plugins)?.name === LIVE_MODULE }
     },
+    /** The saved tool description overrides of a preset: tool name → text. */
+    toolDescriptions: async id => new Map([...overridesOf(await readTools(m)).get(id) ?? []].map(([tool, override]) => [tool, override.text])),
+    /** Remember the tool descriptions a preset's request carried, so the page can list tools a registry scan cannot see. */
+    observeTools: (id, tools) => observeTools(m, id, tools),
   })
   ctx.inject(['connection'], (c) => {
     c.effect(() => c.connection.fetch.register({
@@ -135,9 +144,12 @@ const ACTIONS = {
   history: (m, body) => history(m, String(body.id)),
   setLive: (m, body) => setLive(m, String(body.id), body.live === true),
   setPromptTool: (m, body) => setPromptTool(m, String(body.id), body.enabled === true),
+  tools: async (m, body) => ({ presets: (await toolCatalog(m, body.refresh === true)).catalog }),
+  setToolDescriptions: (m, body) => setToolDescriptions(m, body),
+  restoreToolDescriptions: (m, body) => restoreToolDescriptions(m, body),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
-const READS = new Set(['list', 'read', 'prompt', 'history', 'usage'])
+const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools'])
 
 async function handle(m, request) {
   let body
@@ -378,6 +390,13 @@ async function list(m) {
   const custom = new Map(customPresets(ctx).map(preset => [preset.id, preset]))
   const usage = liveUsage(ctx)
   const conditions = knownConditions(declared, state)
+  let toolEdits = new Map()
+  let toolsError
+  try {
+    toolEdits = overridesOf(await readTools(m))
+  } catch (error) {
+    toolsError = error instanceof Error ? error.message : String(error)
+  }
   const rows = roster.map((row) => {
     const declaration = declared.get(row.id)
     const own = custom.get(row.id)
@@ -402,6 +421,7 @@ async function list(m) {
       ...typeof prefix === 'string' ? { promptExcerpt: prefix.slice(0, PROMPT_EXCERPT_CHARS) } : {},
       ...persona?.name === LIVE_MODULE ? { live: true } : {},
       ...rowsById(plugins).get(TOOL_ROW_ID)?.disabled === undefined && rowsById(plugins).has(TOOL_ROW_ID) ? { promptTool: true } : {},
+      ...toolEdits.has(row.id) ? { toolEdits: toolEdits.get(row.id).size } : {},
       ...failures.size === 0 ? {} : { failures: [...failures].map(([rowId, detail]) => ({ rowId, detail })) },
       ...sync === undefined ? {} : { sync },
       rows: flat,
@@ -426,6 +446,7 @@ async function list(m) {
     defaultId: presets.defaultId,
     canSetDefault: ctx.get('settings') !== undefined,
     ...stateError === undefined ? {} : { stateError },
+    ...toolsError === undefined ? {} : { toolsError },
   }
 }
 
@@ -643,6 +664,7 @@ async function reset(m, id) {
   const before = promptFields(findPersona(declaration.plugins))
   await m.ctx.configEditor.edit(declaration.entry, (_current, inherited) => inherited)
   await recordState(m, (next) => { delete next.presets[id] })
+  await dropTools(m, id)
   await recordHistory(m, id, before, promptFields(findPersona(declaration.builtIn)), 'restore')
 }
 
@@ -665,11 +687,11 @@ function text(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
 
-/** Point copied live persona rows at the preset that now owns them. */
+/** Point copied live persona and tool description rows at the preset that now owns them. */
 function retarget(rows, id) {
   const visit = list => list.map((row) => {
     if (row.group === true && Array.isArray(row.config)) return { ...row, config: visit(row.config) }
-    return row.name === LIVE_MODULE ? { ...row, config: { ...row.config, preset: id } } : row
+    return row.name === LIVE_MODULE || row.name === DESCRIPTIONS_MODULE ? { ...row, config: { ...row.config, preset: id } } : row
   })
   return visit(rows)
 }
@@ -719,6 +741,7 @@ async function create(m, { id, name, description, template, from, locale }) {
   }
   await ctx.configEditor.edit(containerEntry(ctx), current => ({ ...current, presets: [...(current.presets ?? []), preset] }))
   if (origin !== undefined && origin.base !== undefined) await recordState(m, (next) => { next.presets[id] = origin })
+  if (template === undefined) await copyTools(m, String(from ?? 'standard'), id)
 }
 
 async function update(m, { id, name, description }) {
@@ -746,6 +769,7 @@ async function remove(m, id) {
   } catch (error) {
     ctx.logger.warn(`could not drop prompt history of ${id}: ${error instanceof Error ? error.message : String(error)}`)
   }
+  await dropTools(m, id)
 }
 
 /** How long a usage count may read session logs before it reports a partial count. */
@@ -1024,4 +1048,181 @@ function setPromptTool(m, id, enabled) {
     if (!enabled) return present ? removeRow(rows, TOOL_ROW_ID) : rows
     return present ? withDisabled(rows, TOOL_ROW_ID, false, true) : [...rows, { id: TOOL_ROW_ID, name: TOOL_MODULE }]
   })
+}
+
+/** The tool description overrides file; read once, and again after each write this manager makes. */
+async function readTools(m) {
+  m.toolsFile ??= await m.store.read('tools')
+  return m.toolsFile
+}
+
+/** Change the overrides file; the next read sees the written content. */
+async function updateTools(m, change) {
+  try {
+    await m.store.update('tools', change)
+  } finally {
+    m.toolsFile = undefined
+  }
+}
+
+/** Remember the descriptions one preset's request carried, for tools a registry scan does not list. */
+function observeTools(m, id, tools) {
+  const seen = m.seen.get(id) ?? new Map()
+  for (const tool of tools) {
+    if (tool.name !== 'run_code' && typeof tool.description === 'string') seen.set(tool.name, tool.description)
+  }
+  m.seen.set(id, seen)
+}
+
+/**
+ * The tools one preset registers and whether it presents them as code (`run_code`), read from a scope the registry
+ * mounts for the preset and releases again; no session is needed. A scan is reused while the preset's rows are unchanged.
+ * @param {object} m - manager context and caches.
+ * @param {string} id - preset id.
+ * @param {string} fingerprint - a stable text of the preset's rows; a different one forces a new scan.
+ * @param {boolean} refresh - scan again whatever the cache holds.
+ * @returns {Promise<{ ptc: boolean, tools: Map<string, string> }>} tool name → built-in description.
+ */
+async function scanPreset(m, id, fingerprint, refresh) {
+  const cached = m.scans.get(id)
+  if (!refresh && cached !== undefined && cached.fingerprint === fingerprint && Date.now() - cached.at < SCAN_TTL_MS) return cached.value
+  const tools = m.ctx.get('tools')
+  if (tools === undefined) throw new ActionError('unavailable', 'The tool registry is not available')
+  const lease = await m.ctx.agentPresets.acquireScope(id)
+  let schemas
+  try {
+    schemas = tools.schemas(lease.key)
+  } finally {
+    await lease[Symbol.asyncDispose]()
+  }
+  const value = {
+    ptc: schemas.some(schema => schema.name === 'run_code'),
+    tools: new Map(schemas.filter(schema => schema.name !== 'run_code').map(schema => [schema.name, schema.description])),
+  }
+  m.scans.set(id, { fingerprint, at: Date.now(), value })
+  return value
+}
+
+/**
+ * Every preset's tools with their overrides, for the page, and the same facts as the planner needs them.
+ * @param {object} m - manager context and caches.
+ * @param {boolean} refresh - scan every preset again.
+ * @returns {Promise<{ catalog: object[], planning: Map<string, object> }>} `catalog` is what the page shows.
+ */
+async function toolCatalog(m, refresh = false) {
+  const { ctx } = m
+  const roster = await ctx.agentPresets.list()
+  const declared = declarations(ctx)
+  const custom = new Map(customPresets(ctx).map(preset => [preset.id, preset]))
+  const content = await readTools(m)
+  const stored = overridesOf(content)
+  const catalog = []
+  const planning = new Map()
+  for (const row of roster) {
+    const plugins = custom.get(row.id)?.plugins ?? declared.get(row.id)?.plugins
+    const editable = plugins !== undefined
+    let scan
+    try {
+      scan = await scanPreset(m, row.id, stable(plugins ?? null), refresh)
+    } catch (error) {
+      catalog.push({ id: row.id, editable, ptc: false, tools: [], error: error instanceof Error ? error.message : String(error) })
+      continue
+    }
+    const tools = catalogEntries({ scanned: scan.tools, seen: m.seen.get(row.id), overrides: stored.get(row.id), history: content.presets[row.id]?.history })
+    planning.set(row.id, { editable, ptc: scan.ptc, tools: new Map(tools.map(tool => [tool.name, tool.original])) })
+    catalog.push({ id: row.id, editable, ptc: scan.ptc, tools })
+  }
+  return { catalog, planning }
+}
+
+/** Mount the description row in a preset that has overrides, and take it out of one that has none. */
+async function syncDescriptionsRow(m, id) {
+  const wanted = overridesOf(await readTools(m)).has(id)
+  const present = rowsById(savedRows(m.ctx, id) ?? []).has(DESCRIPTIONS_ROW_ID)
+  if (wanted === present) return
+  await editPlugins(m, id, rows => (wanted
+    ? [...rows, { id: DESCRIPTIONS_ROW_ID, name: DESCRIPTIONS_MODULE, config: { preset: id } }]
+    : removeRow(rows, DESCRIPTIONS_ROW_ID)))
+}
+
+/**
+ * Store planned overrides one preset at a time, then bring the preset's row in line; a preset whose row cannot be
+ * changed gets its stored overrides back.
+ * @returns {Promise<Map<string, string>>} the presets that failed, with the reason.
+ */
+async function commitTools(m, writes, source) {
+  const failed = new Map()
+  for (const [id, changes] of writes) {
+    const previous = structuredClone((await readTools(m)).presets[id])
+    try {
+      await updateTools(m, content => applyWrites(content, new Map([[id, changes]]), source, Date.now()))
+      await syncDescriptionsRow(m, id)
+    } catch (error) {
+      failed.set(id, error instanceof Error ? error.message : String(error))
+      try {
+        await updateTools(m, (content) => {
+          if (previous === undefined) delete content.presets[id]
+          else content.presets[id] = previous
+        })
+      } catch (rollback) {
+        m.ctx.logger.warn(`could not roll back the tool descriptions of ${id}: ${rollback instanceof Error ? rollback.message : String(rollback)}`)
+      }
+    }
+  }
+  return failed
+}
+
+/** Report a stored change that did not complete as an error for every item of its preset. */
+function withFailures(results, failed) {
+  return results.map(result => (failed.has(result.preset) && (result.status === 'saved' || result.status === 'restored')
+    ? { ...result, status: 'error', error: failed.get(result.preset) }
+    : result))
+}
+
+/**
+ * Save tool descriptions for several modes and tools in one call.
+ * @param {object} m - manager context and caches.
+ * @param {{ edits?: unknown }} body - `{ preset, tool, text, expected? }` items, see {@link planEdits}.
+ * @returns {Promise<{ results: object[], tools: object[] }>} one result per item, and the refreshed catalog.
+ */
+async function setToolDescriptions(m, body) {
+  if (!Array.isArray(body.edits) || body.edits.length === 0) throw new ActionError('bad-request', 'edits must be a non-empty list')
+  const { planning } = await toolCatalog(m)
+  const plan = planEdits({ edits: body.edits, presets: planning, overrides: overridesOf(await readTools(m)) })
+  const failed = await commitTools(m, plan.writes, 'page')
+  return { results: withFailures(plan.results, failed), tools: (await toolCatalog(m)).catalog }
+}
+
+/**
+ * Remove tool description overrides.
+ * @param {object} m - manager context and caches.
+ * @param {{ items?: unknown, presets?: unknown, all?: unknown }} body - what to restore, see {@link planRestore}.
+ * @returns {Promise<{ results: object[], tools: object[] }>} one result per override, and the refreshed catalog.
+ */
+async function restoreToolDescriptions(m, body) {
+  if (!Array.isArray(body.items) && !Array.isArray(body.presets) && body.all !== true) throw new ActionError('bad-request', 'Name items, presets, or all')
+  const plan = planRestore({ selector: body, overrides: overridesOf(await readTools(m)) })
+  const failed = await commitTools(m, plan.writes, 'restore')
+  return { results: withFailures(plan.results, failed), tools: (await toolCatalog(m)).catalog }
+}
+
+/** Forget a preset's tool description overrides and history. */
+async function dropTools(m, id) {
+  try {
+    await updateTools(m, (content) => { delete content.presets[id] })
+  } catch (error) {
+    m.ctx.logger.warn(`could not drop tool descriptions of ${id}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+/** Give a new preset the overrides of the preset it was copied from, without the history. */
+async function copyTools(m, from, id) {
+  try {
+    await updateTools(m, (content) => {
+      const source = content.presets[from]
+      if (source?.tools !== undefined && Object.keys(source.tools).length > 0) content.presets[id] = { tools: structuredClone(source.tools) }
+    })
+  } catch (error) {
+    m.ctx.logger.warn(`could not copy tool descriptions of ${from}: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }

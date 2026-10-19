@@ -10,6 +10,7 @@ window.__ModuleLoader__.load({
     const BUILT_IN_COPY = { standard: 'Standard', ptc: 'Ptc', minimal: 'Minimal', cordis: 'Cordis' }
     const NOTICE_MS = 4000
     const PROMPT_MAX_CHARS = 20000
+    const TOOL_MAX_CHARS = 20000
     const DRAFT_PREFIX = 'dsh-modes:draft:'
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
@@ -284,6 +285,64 @@ window.__ModuleLoader__.load({
       'notice.removed': '已删除',
       'prompt.restoreConfirm': '把提示词恢复为内置版本？当前提示词会保留在历史版本里。',
       'prompt.restoreDirty': '编辑器里未保存的修改会被丢弃。',
+      'view.modes': '模式',
+      'view.tools': '工具描述',
+      'meta.toolEdits': '{n} 项工具说明已改',
+      'confirm.resetTools': '另有 {n} 项工具说明的修改也会恢复为内置原文。',
+      'tools.intro': '改写发给模型的工具说明。工具的内置定义不会被修改，随时可以恢复原文。已改过说明的模式，保存后的修改在下一步对话就会生效；模式第一次被改写时，要新建会话才会生效。代码模式（PTC）暂不支持。',
+      'tools.modes': '应用到这些模式',
+      'tools.selectAll': '全选',
+      'tools.selectNone': '全不选',
+      'tools.modeEdited': '已改 {n} 项',
+      'tools.modePtc': 'PTC 模式暂不支持',
+      'tools.modeReadOnly': '来自其他插件，不能编辑',
+      'tools.modeError': '读取工具失败：{error}',
+      'tools.search': '搜索工具名或说明',
+      'tools.loading': '正在读取各模式的工具…',
+      'tools.empty': '没有匹配的工具',
+      'tools.noModes': '没有可编辑的模式',
+      'tools.scopeAll': '没有勾选模式，列表显示所有可编辑模式的工具。',
+      'tools.edited': '已改 {n}/{total} 个模式',
+      'tools.outdated': '内置说明已更新',
+      'tools.draft': '未保存',
+      'tools.text': '说明文字',
+      'tools.chars': '{n} / {max} 字',
+      'tools.differ': '所选模式目前使用的说明不同，这里显示的是「{name}」的。',
+      'tools.builtIn': '内置原文',
+      'tools.builtInFor': '{modes}',
+      'tools.perMode': '各模式状态',
+      'tools.stateEdited': '已修改',
+      'tools.stateBuiltIn': '内置',
+      'tools.stateOutdated': '已修改 · 内置已更新',
+      'tools.restoreOne': '恢复原文',
+      'tools.previous': '更早的版本',
+      'tools.use': '使用',
+      'tools.save': '保存到 {n} 个模式',
+      'tools.saveAll': '保存全部（{tools} 个工具 × {modes} 个模式）',
+      'tools.discard': '放弃修改',
+      'tools.discardAll': '放弃全部修改',
+      'tools.restoreSelected': '恢复这个工具的原文（所选模式）',
+      'tools.restoreModes': '恢复所选模式的全部原文…',
+      'tools.restoreAll': '恢复所有模式的全部原文…',
+      'tools.dirty': '有 {n} 个工具的修改尚未保存',
+      'tools.confirmTool': '把「{tool}」在 {n} 个模式里恢复为内置原文？',
+      'tools.confirmModes': '把所选 {modes} 个模式里已改的 {n} 条说明恢复为内置原文？',
+      'tools.confirmAll': '把所有模式里已改的 {n} 条说明恢复为内置原文？',
+      'tools.nothingToRestore': '没有已改的说明',
+      'tools.summary': '已保存 {saved} 条 · 恢复 {restored} 条 · 无变化 {unchanged} 条',
+      'tools.summaryFailed': '有 {n} 条没有完成',
+      'tools.failureLine': '{mode} · {tool}：{reason}',
+      'tools.status.conflict': '已被别处修改，刷新后再试',
+      'tools.status.ptc': 'PTC 模式暂不支持',
+      'tools.status.not-editable': '这个模式不能编辑',
+      'tools.status.unknown-tool': '这个模式没有这个工具',
+      'tools.status.unknown-preset': '没有这个模式',
+      'tools.status.invalid': '内容无效',
+      'tools.status.error': '保存失败：{error}',
+      'err.tool-text-empty': '说明不能为空；要还原请使用「恢复原文」',
+      'err.tool-text-too-long': '说明不能超过 {max} 字',
+      'err.tool-name-invalid': '工具名无效',
+      'stateError.tools': '工具说明文件无法读取：{detail}',
     }
     const EN = {
       nav: 'Modes',
@@ -551,6 +610,64 @@ window.__ModuleLoader__.load({
       'notice.removed': 'Deleted',
       'prompt.restoreConfirm': 'Restore the built-in prompt? The current prompt stays in the history.',
       'prompt.restoreDirty': 'Unsaved edits in the editor are discarded.',
+      'view.modes': 'Modes',
+      'view.tools': 'Tool descriptions',
+      'meta.toolEdits': 'Tool descriptions edited: {n}',
+      'confirm.resetTools': 'Edited tool descriptions ({n}) are restored to their built-in text as well.',
+      'tools.intro': 'Rewrite the tool descriptions sent to the model. The built-in tool definitions are never changed, so you can always restore the original text. In a mode that already has edits, a save reaches running sessions on their next step; the first edit of a mode reaches new sessions only. Code mode (PTC) is not supported yet.',
+      'tools.modes': 'Apply to these modes',
+      'tools.selectAll': 'Select all',
+      'tools.selectNone': 'Select none',
+      'tools.modeEdited': '{n} edited',
+      'tools.modePtc': 'PTC mode is not supported yet',
+      'tools.modeReadOnly': 'Declared by another plugin; cannot be edited',
+      'tools.modeError': 'Could not read its tools: {error}',
+      'tools.search': 'Search tool names or descriptions',
+      'tools.loading': 'Reading the tools of every mode…',
+      'tools.empty': 'No matching tools',
+      'tools.noModes': 'No mode can be edited',
+      'tools.scopeAll': 'No mode is ticked, so the list shows the tools of every editable mode.',
+      'tools.edited': 'Edited: {n}/{total} modes',
+      'tools.outdated': 'Built-in text changed',
+      'tools.draft': 'Unsaved',
+      'tools.text': 'Description',
+      'tools.chars': '{n} / {max} characters',
+      'tools.differ': 'The selected modes currently use different texts; this shows the one of "{name}".',
+      'tools.builtIn': 'Built-in text',
+      'tools.builtInFor': '{modes}',
+      'tools.perMode': 'State per mode',
+      'tools.stateEdited': 'Edited',
+      'tools.stateBuiltIn': 'Built-in',
+      'tools.stateOutdated': 'Edited · built-in text changed',
+      'tools.restoreOne': 'Restore original',
+      'tools.previous': 'Earlier versions',
+      'tools.use': 'Use',
+      'tools.save': 'Save to ticked modes ({n})',
+      'tools.saveAll': 'Save all (tools: {tools}, modes: {modes})',
+      'tools.discard': 'Discard changes',
+      'tools.discardAll': 'Discard all changes',
+      'tools.restoreSelected': 'Restore original (selected modes)',
+      'tools.restoreModes': 'Restore everything in the selected modes…',
+      'tools.restoreAll': 'Restore everything in all modes…',
+      'tools.dirty': 'Unsaved changes: {n}',
+      'tools.confirmTool': 'Restore the built-in text of "{tool}" in the chosen modes ({n})?',
+      'tools.confirmModes': 'Restore the built-in text of {n} edited descriptions in the ticked modes ({modes})?',
+      'tools.confirmAll': 'Restore the built-in text of all edited descriptions ({n}) in every mode?',
+      'tools.nothingToRestore': 'No edited descriptions',
+      'tools.summary': 'Saved {saved} · restored {restored} · unchanged {unchanged}',
+      'tools.summaryFailed': '{n} did not complete',
+      'tools.failureLine': '{mode} · {tool}: {reason}',
+      'tools.status.conflict': 'Changed elsewhere; refresh and try again',
+      'tools.status.ptc': 'PTC mode is not supported yet',
+      'tools.status.not-editable': 'This mode cannot be edited',
+      'tools.status.unknown-tool': 'This mode has no such tool',
+      'tools.status.unknown-preset': 'No such mode',
+      'tools.status.invalid': 'Invalid text',
+      'tools.status.error': 'Could not save: {error}',
+      'err.tool-text-empty': 'The description cannot be empty; use "Restore original" to go back to the built-in text',
+      'err.tool-text-too-long': 'The description cannot exceed {max} characters',
+      'err.tool-name-invalid': 'Invalid tool name',
+      'stateError.tools': 'The tool descriptions file cannot be read: {detail}',
     }
 
     const CSS = `
@@ -691,6 +808,22 @@ window.__ModuleLoader__.load({
 .pm-menu-list .pm-danger { color: var(--dsw-alias-state-error-primary); }
 .pm-behavior { display: flex; flex-direction: column; margin-top: 6px; padding-top: 4px; border-top: .5px solid var(--dsw-alias-border-l3); }
 .pm-behavior .pm-capline + .pm-capline { border-top: .5px solid var(--dsw-alias-border-l4); }
+.pm-views { margin: 0; }
+.pm-tools { display: flex; flex-direction: column; gap: 10px; }
+.pm-toolrow { border: .5px solid var(--dsw-alias-settings-card-stroke); border-radius: 10px; background: var(--dsw-alias-settings-card-fill); }
+.pm-toolrow.is-dirty { border-color: var(--dsw-alias-state-warn-primary); }
+.pm-toolhead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; box-sizing: border-box; padding: 9px 12px; font: inherit; text-align: left; border: 0; border-radius: 10px; background: none; color: inherit; cursor: pointer; }
+.pm-toolhead:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-toolhead:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
+.pm-toolname { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; font-weight: 600; }
+.pm-toolbody { display: flex; flex-direction: column; gap: 10px; padding: 4px 12px 12px; }
+.pm-modelist { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.pm-modelist .pm-option { align-items: center; }
+.pm-modelist .pm-option.is-off { color: var(--dsw-alias-label-tertiary); cursor: default; }
+.pm-statelist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.pm-statelist li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pm-pre { margin: 0; max-height: 160px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+.pm-dirtybar { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-state-warn-primary); background: var(--dsw-alias-bg-layer-2); }
 @container (max-width: 520px) {
   .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
   .pm-inline { margin-left: 0; }
@@ -1703,6 +1836,7 @@ window.__ModuleLoader__.load({
         changed > 0 ? t('meta.changed', { n: changed }) : undefined,
         preset.live ? t('meta.live') : undefined,
         preset.promptTool ? t('meta.promptTool') : undefined,
+        preset.toolEdits > 0 ? t('meta.toolEdits', { n: preset.toolEdits }) : undefined,
       ].filter(Boolean)
       const failureTitle = (failure) => {
         const row = preset.rows.find(candidate => candidate.id === failure.rowId)
@@ -1774,7 +1908,7 @@ window.__ModuleLoader__.load({
               onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); closePanel() } },
             },
               panel === 'sync' ? h(SyncSummary, { ui, preset, presets })
-                : h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : t('confirm.reset', { name, n: changed })),
+                : h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : `${t('confirm.reset', { name, n: changed })}${preset.toolEdits > 0 ? ` ${t('confirm.resetTools', { n: preset.toolEdits })}` : ''}`),
               panel === 'remove' ? h(RemoveUsage, { ui, preset }) : null,
               h('div', { className: 'pm-bar pm-end' },
                 h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': panel === 'sync' ? undefined : true, onClick: closePanel }, t('action.cancel')),
@@ -1824,6 +1958,226 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** The text a tool carries in one mode: its override, else the built-in text. */
+    function effectiveText(entry) {
+      return entry.text ?? entry.original ?? ''
+    }
+
+    /** A mode the tool view can edit: declared in an editable row, not code mode, and readable. */
+    function usableMode(mode) {
+      return mode.editable === true && mode.ptc !== true && mode.error === undefined
+    }
+
+    /**
+     * One tool of the tool view: a header that opens an editor for the selected modes, with the per-mode state,
+     * earlier versions, and the built-in text.
+     */
+    function ToolRow({ ui, name, rows, saveCount, draft, open, busy, onToggle, onDraft, onSave, onRestore }) {
+      const { t } = ui
+      const base = rows.length === 0 ? '' : effectiveText(rows[0].entry)
+      const differ = rows.some(row => effectiveText(row.entry) !== base)
+      const value = draft ?? base
+      const dirty = draft !== undefined && rows.some(row => effectiveText(row.entry) !== draft)
+      const edited = rows.filter(row => row.entry.text !== undefined)
+      const outdated = edited.some(row => row.entry.outdated === true)
+      const invalid = value.trim() === '' ? 'tool-text-empty' : value.length > TOOL_MAX_CHARS ? 'tool-text-too-long' : undefined
+      const previous = [...new Set(rows.flatMap(row => row.entry.previous ?? []))].filter(text => text !== value).slice(0, 5)
+      const originals = new Map()
+      for (const row of rows) {
+        if (row.entry.original === undefined) continue
+        originals.set(row.entry.original, [...originals.get(row.entry.original) ?? [], ui.nameOf(row.mode.id)])
+      }
+      return h('div', { className: `pm-toolrow${dirty ? ' is-dirty' : ''}`, role: 'listitem' },
+        h('button', { type: 'button', className: 'pm-toolhead', 'aria-expanded': open, onClick: onToggle },
+          h(Chevron, { open }),
+          h('span', { className: 'pm-toolname' }, name),
+          edited.length > 0 ? h('span', { className: 'pm-badge is-accent' }, t('tools.edited', { n: edited.length, total: rows.length })) : null,
+          outdated ? h('span', { className: 'pm-badge is-warn' }, t('tools.outdated')) : null,
+          dirty ? h('span', { className: 'pm-badge is-warn' }, t('tools.draft')) : null),
+        open ? h('div', { className: 'pm-toolbody' },
+          differ ? h('div', { className: 'pm-hint' }, t('tools.differ', { name: ui.nameOf(rows[0].mode.id) })) : null,
+          h('label', { className: 'pm-hint', htmlFor: `pm-tool-${name}` }, t('tools.text')),
+          h('textarea', {
+            id: `pm-tool-${name}`, className: 'pm-input pm-textarea', rows: 6, value, spellCheck: false,
+            'aria-invalid': invalid !== undefined || undefined,
+            onChange: event => onDraft(event.target.value === base ? undefined : event.target.value),
+          }),
+          h('div', { className: `pm-hint${invalid !== undefined ? ' is-error' : ''}` },
+            invalid === undefined ? t('tools.chars', { n: value.length, max: TOOL_MAX_CHARS }) : ui.describeCode(invalid, { max: TOOL_MAX_CHARS }, invalid)),
+          h('div', { className: 'pm-bar' },
+            h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: busy || !dirty || invalid !== undefined || saveCount === 0, onClick: onSave }, t('tools.save', { n: saveCount })),
+            h('button', { type: 'button', className: 'pm-btn', disabled: busy || saveCount === 0 || edited.length === 0, onClick: () => onRestore(edited.map(row => row.mode.id)) }, t('tools.restoreSelected')),
+            draft !== undefined ? h('button', { type: 'button', className: 'pm-btn', onClick: () => onDraft(undefined) }, t('tools.discard')) : null),
+          h('div', { className: 'pm-hint' }, t('tools.perMode')),
+          h('ul', { className: 'pm-statelist' }, rows.map(row => h('li', { key: row.mode.id },
+            h('span', null, ui.nameOf(row.mode.id)),
+            h('span', { className: `pm-badge${row.entry.outdated ? ' is-warn' : row.entry.text !== undefined ? ' is-accent' : ''}` },
+              t(row.entry.outdated ? 'tools.stateOutdated' : row.entry.text !== undefined ? 'tools.stateEdited' : 'tools.stateBuiltIn')),
+            row.entry.text !== undefined
+              ? h('button', { type: 'button', className: 'pm-link', disabled: busy || saveCount === 0, onClick: () => onRestore([row.mode.id]) }, t('tools.restoreOne'))
+              : null))),
+          previous.length > 0 ? h('div', { className: 'pm-history' },
+            h('div', { className: 'pm-hint' }, t('tools.previous')),
+            previous.map(text => h('div', { key: text, className: 'pm-history-item' },
+              h('pre', null, text),
+              h('div', { className: 'pm-bar' }, h('button', { type: 'button', className: 'pm-btn', onClick: () => onDraft(text === base ? undefined : text) }, t('tools.use')))))) : null,
+          originals.size > 0 ? h('details', null,
+            h('summary', { className: 'pm-hint' }, t('tools.builtIn')),
+            [...originals].map(([text, modes]) => h('div', { key: text, style: { marginTop: 6 } },
+              originals.size > 1 ? h('div', { className: 'pm-hint' }, t('tools.builtInFor', { modes: modes.join(', ') })) : null,
+              h('pre', { className: 'pm-pre' }, text)))) : null) : null)
+    }
+
+    /**
+     * The tool view: pick modes, edit the description of one or several tools, and save them to every picked mode in
+     * one call, or restore the built-in text of a tool, of whole modes, or of everything.
+     */
+    function ToolDescriptions({ ui, reloadKey }) {
+      const { t } = ui
+      const [catalog, setCatalog] = React.useState(null)
+      const [loadError, setLoadError] = React.useState(null)
+      const [selected, setSelected] = React.useState(null)
+      const [query, setQuery] = React.useState('')
+      const [drafts, setDrafts] = React.useState(() => new Map())
+      const [expanded, setExpanded] = React.useState(null)
+      const [busy, setBusy] = React.useState(false)
+      const [failures, setFailures] = React.useState([])
+      const [confirm, setConfirm] = React.useState(null)
+      React.useEffect(() => {
+        let alive = true
+        setLoadError(null)
+        call('tools', { refresh: reloadKey > 0 }).then((value) => {
+          if (!alive) return
+          setCatalog(value.presets)
+          setSelected((previous) => {
+            if (previous !== null) return previous
+            const usable = value.presets.filter(usableMode)
+            const first = usable.find(mode => mode.id === ui.defaultId) ?? usable[0]
+            return new Set(first === undefined ? [] : [first.id])
+          })
+        }, (error) => { if (alive) setLoadError(ui.describe(error)) })
+        return () => { alive = false }
+      }, [reloadKey])
+
+      const modes = catalog ?? []
+      const usable = modes.filter(usableMode)
+      const chosen = usable.filter(mode => selected?.has(mode.id))
+      const scope = chosen.length > 0 ? chosen : usable
+      const maps = React.useMemo(() => new Map(modes.map(mode => [mode.id, new Map(mode.tools.map(tool => [tool.name, tool]))])), [catalog])
+      const needle = query.trim().toLowerCase()
+      const names = [...new Set(scope.flatMap(mode => mode.tools.map(tool => tool.name)))].sort().filter((name) => {
+        if (needle === '') return true
+        return name.toLowerCase().includes(needle) || scope.some(mode => effectiveText(maps.get(mode.id).get(name) ?? {}).toLowerCase().includes(needle))
+      })
+      const rowsIn = list => name => list.flatMap(mode => (maps.get(mode.id).has(name) ? [{ mode, entry: maps.get(mode.id).get(name) }] : []))
+      const chosenRows = rowsIn(chosen)
+      const viewRows = rowsIn(scope)
+      const dirtyNames = [...drafts.keys()].filter(name => chosenRows(name).some(row => effectiveText(row.entry) !== drafts.get(name)))
+      const editedCount = modes => modes.reduce((total, mode) => total + mode.tools.filter(tool => tool.text !== undefined).length, 0)
+
+      const finish = (value, tools) => {
+        ui.setList(value)
+        setCatalog(value.effect.tools)
+        const results = value.effect.results
+        const bad = results.filter(result => !['saved', 'restored', 'unchanged'].includes(result.status))
+        setFailures(bad)
+        const count = status => results.filter(result => result.status === status).length
+        const summary = t('tools.summary', { saved: count('saved'), restored: count('restored'), unchanged: count('unchanged') })
+        ui.announce(bad.length > 0 ? 'error' : 'notice', bad.length > 0 ? `${summary} · ${t('tools.summaryFailed', { n: bad.length })}` : summary)
+        if (tools !== undefined) {
+          setDrafts((previous) => {
+            const next = new Map(previous)
+            for (const name of tools) if (!bad.some(result => result.tool === name)) next.delete(name)
+            return next
+          })
+        }
+      }
+      const send = (action, payload, tools) => {
+        setBusy(true)
+        setFailures([])
+        setConfirm(null)
+        call(action, payload).then(value => finish(value, tools), error => ui.announce('error', ui.describe(error))).finally(() => setBusy(false))
+      }
+      const save = (tools) => {
+        const edits = tools.flatMap(name => chosen.flatMap(mode => (maps.get(mode.id).has(name)
+          ? [{ preset: mode.id, tool: name, text: drafts.get(name), expected: maps.get(mode.id).get(name).text ?? null }]
+          : [])))
+        if (edits.length > 0) send('setToolDescriptions', { edits }, tools)
+      }
+      const restoreItems = (name, ids) => send('restoreToolDescriptions', { items: ids.map(preset => ({ preset, tool: name })) })
+      const setDraft = (name, text) => setDrafts((previous) => {
+        const next = new Map(previous)
+        if (text === undefined) next.delete(name)
+        else next.set(name, text)
+        return next
+      })
+      const toggleMode = (id, on) => setSelected((previous) => {
+        const next = new Set(previous)
+        if (on) next.add(id)
+        else next.delete(id)
+        return next
+      })
+      const confirmCount = confirm === null ? 0 : confirm.kind === 'all' ? editedCount(modes) : confirm.kind === 'modes' ? editedCount(chosen) : confirm.ids.length
+      const reason = (result) => {
+        const detail = result.status === 'invalid' ? ui.describeCode(result.code, result.max === undefined ? undefined : { max: result.max }, result.status) : t(`tools.status.${result.status}`, { error: result.error ?? '' })
+        return t('tools.failureLine', { mode: ui.nameOf(result.preset), tool: result.tool, reason: detail })
+      }
+
+      if (loadError !== null) return h('div', { className: 'pm-error', role: 'alert' }, loadError)
+      if (catalog === null) return h('div', { className: 'pm-muted' }, t('tools.loading'))
+      return h('div', { className: 'pm-tools' },
+        h('p', { className: 'pm-intro' }, t('tools.intro')),
+        ui.toolsError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError.tools', { detail: ui.toolsError })),
+        usable.length === 0 ? h('div', { className: 'pm-muted' }, t('tools.noModes')) : null,
+        h('div', { className: 'pm-panel', role: 'group', 'aria-label': t('tools.modes') },
+          h('div', { className: 'pm-bar' },
+            h('strong', { className: 'pm-grow' }, t('tools.modes')),
+            h('button', { type: 'button', className: 'pm-link', onClick: () => setSelected(new Set(usable.map(mode => mode.id))) }, t('tools.selectAll')),
+            h('button', { type: 'button', className: 'pm-link', onClick: () => setSelected(new Set()) }, t('tools.selectNone'))),
+          h('div', { className: 'pm-modelist' }, modes.map((mode) => {
+            const ok = usableMode(mode)
+            const edits = mode.tools.filter(tool => tool.text !== undefined).length
+            const why = mode.error !== undefined ? t('tools.modeError', { error: mode.error }) : mode.ptc ? t('tools.modePtc') : !mode.editable ? t('tools.modeReadOnly') : undefined
+            return h('label', { key: mode.id, className: `pm-option${ok ? '' : ' is-off'}`, title: why },
+              h('input', { type: 'checkbox', checked: ok && selected?.has(mode.id) === true, disabled: !ok, onChange: event => toggleMode(mode.id, event.target.checked) }),
+              h('span', null, ui.nameOf(mode.id)),
+              edits > 0 ? h('span', { className: 'pm-hint' }, t('tools.modeEdited', { n: edits })) : null,
+              why !== undefined ? h('span', { className: 'pm-hint' }, why) : null)
+          })),
+          chosen.length === 0 && usable.length > 0 ? h('div', { className: 'pm-hint' }, t('tools.scopeAll')) : null),
+        dirtyNames.length > 0 ? h('div', { className: 'pm-dirtybar', role: 'status' },
+          h('span', { className: 'pm-grow' }, t('tools.dirty', { n: dirtyNames.length })),
+          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: busy || chosen.length === 0, onClick: () => save(dirtyNames) }, t('tools.saveAll', { tools: dirtyNames.length, modes: chosen.length })),
+          h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setDrafts(new Map()) }, t('tools.discardAll'))) : null,
+        failures.length > 0 ? h('div', { className: 'pm-warn', role: 'alert' },
+          h('ul', { style: { margin: 0, paddingLeft: 18 } }, failures.map(result => h('li', { key: `${result.preset}:${result.tool}` }, reason(result))))) : null,
+        h('input', { className: 'pm-input', style: { width: '100%' }, type: 'search', value: query, placeholder: t('tools.search'), 'aria-label': t('tools.search'), onChange: event => setQuery(event.target.value) }),
+        names.length === 0 ? h('div', { className: 'pm-muted' }, t('tools.empty')) : h('div', { role: 'list', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, names.map(name => h(ToolRow, {
+          key: name, ui, name, rows: viewRows(name), saveCount: chosen.length, draft: drafts.get(name), open: expanded === name, busy,
+          onToggle: () => setExpanded(expanded === name ? null : name),
+          onDraft: text => setDraft(name, text),
+          onSave: () => save([name]),
+          onRestore: ids => setConfirm({ kind: 'tool', tool: name, ids }),
+        }))),
+        h('div', { className: 'pm-bar' },
+          h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy || editedCount(chosen) === 0, onClick: () => setConfirm({ kind: 'modes' }) }, t('tools.restoreModes')),
+          h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy || editedCount(modes) === 0, onClick: () => setConfirm({ kind: 'all' }) }, t('tools.restoreAll'))),
+        confirm === null ? null : h('div', {
+          className: 'pm-confirm', style: { margin: 0 }, role: 'alertdialog', 'aria-label': t('tools.restoreAll'),
+          onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setConfirm(null) } },
+        },
+        h('div', null, confirm.kind === 'tool' ? t('tools.confirmTool', { tool: confirm.tool, n: confirm.ids.length })
+          : confirm.kind === 'modes' ? t('tools.confirmModes', { n: confirmCount, modes: chosen.length })
+            : t('tools.confirmAll', { n: confirmCount })),
+        h('div', { className: 'pm-bar pm-end' },
+          h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': true, onClick: () => setConfirm(null) }, t('action.cancel')),
+          h('button', {
+            type: 'button', className: 'pm-btn pm-danger', disabled: busy,
+            onClick: () => (confirm.kind === 'tool' ? restoreItems(confirm.tool, confirm.ids)
+              : send('restoreToolDescriptions', confirm.kind === 'all' ? { all: true } : { presets: chosen.map(mode => mode.id) })),
+          }, t('tools.restoreOne')))))
+    }
+
     function Page({ ctx, t, close }) {
       const [data, setData] = React.useState(null)
       const [pageError, setPageError] = React.useState(null)
@@ -1835,6 +2189,8 @@ window.__ModuleLoader__.load({
       const [focusId, setFocusId] = React.useState(null)
       const [drafts, setDrafts] = React.useState(() => new Map())
       const [feedback, setFeedback] = React.useState(null)
+      const [view, setView] = React.useState('modes')
+      const [reloadKey, setReloadKey] = React.useState(0)
       const feedbackTimer = React.useRef(undefined)
       const dataRef = React.useRef(null)
       dataRef.current = data
@@ -1941,6 +2297,11 @@ window.__ModuleLoader__.load({
         canTry: typeof workspace?.startSession === 'function',
         canSetDefault: data?.canSetDefault === true,
         presetName: preset => builtInCopy(preset, 'Name') ?? preset.name ?? preset.id,
+        nameOf: id => presetNameOf(id),
+        announce: (kind, text) => announce(kind, undefined, text),
+        setList: value => setData(value),
+        defaultId: data?.defaultId,
+        toolsError: data?.toolsError,
         presetDescription: preset => builtInCopy(preset, 'Description') ?? preset.description,
         tryPreset: (id) => {
           // DSH 0.2.0 starts sessions from a workspace id alone; a preset is then selected on the blank session.
@@ -1971,19 +2332,33 @@ window.__ModuleLoader__.load({
         h('style', null, CSS),
         h('div', { className: 'pm-bar' },
           h('h3', { className: 'pm-grow' }, t('title')),
-          h('button', { type: 'button', className: 'pm-btn', onClick: load }, t('refresh')),
-          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: data === null, onClick: () => setCreating({ kind: 'develop' }) }, t('newPreset'))),
-        h('p', { className: 'pm-intro' }, t('intro')),
+          h('button', { type: 'button', className: 'pm-btn', onClick: () => { load(); setReloadKey(key => key + 1) } }, t('refresh')),
+          view === 'modes' ? h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: data === null, onClick: () => setCreating({ kind: 'develop' }) }, t('newPreset')) : null),
+        h('div', {
+          className: 'pm-tabs pm-views', role: 'tablist', 'aria-label': t('title'),
+          onKeyDown: (event) => {
+            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+            event.preventDefault()
+            const next = view === 'modes' ? 'tools' : 'modes'
+            setView(next)
+            event.currentTarget.querySelector(`#pm-view-${next}`)?.focus()
+          },
+        }, ['modes', 'tools'].map(name => h('button', {
+          key: name, type: 'button', role: 'tab', id: `pm-view-${name}`, 'aria-selected': view === name, tabIndex: view === name ? 0 : -1,
+          className: 'pm-tab', onClick: () => setView(name),
+        }, t(`view.${name}`)))),
+        view === 'modes' ? h('p', { className: 'pm-intro' }, t('intro')) : null,
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
-        creating === null ? null : h('div', { className: 'pm-card' },
+        view === 'tools' ? h(ToolDescriptions, { ui, reloadKey }) : null,
+        view === 'tools' || creating === null ? null : h('div', { className: 'pm-card' },
           h(CreateForm, {
             key: `${creating.kind}:${creating.from ?? ''}`, ui, presets, templates: data?.templates ?? [], initial: creating,
             onSubmit: create, onCancel: () => { setCreating(null); setErrors((previous) => { const next = new Map(previous); next.delete(CREATE_ERROR); return next }) },
           }),
           errors.get(CREATE_ERROR) ? h('div', { className: 'pm-error', role: 'alert', style: { padding: '0 14px 12px' } }, errors.get(CREATE_ERROR)) : null),
-        data === null && pageError === null ? h('div', { className: 'pm-muted' }, t('loading')) : null,
-        presets.map(preset => h(PresetCard, {
+        data === null && pageError === null && view === 'modes' ? h('div', { className: 'pm-muted' }, t('loading')) : null,
+        view === 'tools' ? null : presets.map(preset => h(PresetCard, {
           key: preset.id, ui, preset, presets,
           open: open.has(preset.id),
           onOpen: value => setCardOpen(preset.id, value),
