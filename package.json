@@ -29,7 +29,7 @@
   },
   "files": ["index.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "skill-policy.js", "skill-store.js", "skill-files.js", "fs-retry.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test \"test/*.test.js\""
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
