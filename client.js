@@ -6,6 +6,8 @@ window.__ModuleLoader__.load({
     const NS = 'dsh-modes'
     const ROUTE = '/api/dsh-modes'
     const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
+    /** The skill name grammar of the DSH skill registry; the Host repeats this check. */
+    const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
     /** Copy keys the official Agent presets page registers for the four shipped presets. */
     const BUILT_IN_COPY = { standard: 'Standard', ptc: 'Ptc', minimal: 'Minimal', cordis: 'Cordis' }
     const NOTICE_MS = 4000
@@ -320,7 +322,10 @@ window.__ModuleLoader__.load({
       'skills.versionIn': '「{mode}」使用的版本',
       'skills.notInMode': '这个模式找不到它',
       'skills.currentFile': '当前文件',
-      'skills.noTool': '这些模式没有技能工具，不受影响：{modes}',
+      'skills.noTool': '这些模式未开启「技能」能力，不受影响：{modes}',
+      'skills.capOff': '这些模式未开启「技能」能力，技能对它们不起作用，也不会出现在下面的开关里：{modes}',
+      'skills.capOn': '为「{mode}」开启',
+      'skills.capEnabled': '已为「{mode}」开启技能能力 · 之后新建的会话生效',
       'skills.versions': '版本',
       'skills.notePlaceholder': '备注（可选）',
       'skills.saveVersion': '保存当前为新版本',
@@ -348,6 +353,66 @@ window.__ModuleLoader__.load({
       'skills.source.manual': '手动保存',
       'skills.source.before-edit': '编辑前自动保存',
       'skills.source.before-restore': '恢复前自动保存',
+      'skills.source.before-import': '导入前自动保存',
+      'skills.create': '新建技能',
+      'skills.import': '导入技能',
+      'skills.newName': '名称',
+      'skills.newNameHint': '小写字母、数字和连字符，例如 weekly-report',
+      'skills.newNameInvalid': '只能用小写字母、数字和连字符，连字符不能在开头、结尾或连用',
+      'skills.newNameTaken': '已有同名技能',
+      'skills.newDescription': '描述',
+      'skills.newDescriptionHint': '一句话说明什么时候用它，模型靠这句话决定是否加载',
+      'skills.where': '放在',
+      'skills.whereDsh': '{path}（只给 DSH 用）',
+      'skills.whereAgents': '{path}（和其他 Agent 工具共用）',
+      'skills.onIn': '在这些模式开启',
+      'skills.createAction': '创建并编辑',
+      'skills.created': '已创建「{name}」',
+      'skills.newEffect': '进行中的会话从下一步可用',
+      'skills.importFrom.agents': 'Codex / Claude Code',
+      'skills.importFrom.folder': '文件夹',
+      'skills.folderPlaceholder': '一个技能文件夹，或装着多个技能的文件夹，例如 ~/my-skills',
+      'skills.read': '读取',
+      'skills.group.codex': 'Codex',
+      'skills.group.claude': 'Claude Code',
+      'skills.group.claude-plugin': 'Claude Code 插件',
+      'skills.group.codex-system': 'Codex 自带技能',
+      'skills.group.folder': '文件夹',
+      'skills.groupMissing': '没有这个文件夹',
+      'skills.groupEmpty': '没有找到技能',
+      'skills.systemHint': '这些技能依赖 Codex 自己的工具，在 DSH 里可能用不了',
+      'skills.st.new': '可导入',
+      'skills.st.imported': '已导入为「{name}」',
+      'skills.st.updated': '来源有更新',
+      'skills.st.exists': '已有同名技能',
+      'skills.st.rename': '名字需要修改',
+      'skills.st.invalid': '无法导入',
+      'skills.problem.no-frontmatter': 'SKILL.md 缺少 name 或 description',
+      'skills.problem.unreadable': '读不了 SKILL.md',
+      'skills.importAs': '导入为',
+      'skills.conflictRename': '改名导入',
+      'skills.conflictReplace': '覆盖现有技能（先存一个版本）',
+      'skills.updatedHint': '重新导入会覆盖「{name}」，当前文件会先存成一个版本',
+      'skills.nameDuplicate': '和另一个要导入的技能重名',
+      'skills.selectReady': '全选可导入',
+      'skills.selectNone': '全不选',
+      'skills.importSelected': '导入所选（{n}）',
+      'skills.copyNote': '导入是复制：来源之后有变化，这里和技能列表都会提示，可以一键重新导入',
+      'skills.importDone': '已导入 {n} 个',
+      'skills.importUpdated': '已更新 {n} 个',
+      'skills.importFailed': '{n} 个没有完成',
+      'skills.importFailure': '{name}：{reason}',
+      'skills.importSkipped': '「{name}」里有 {n} 个链接指向技能以外，没有复制',
+      'skills.origin': '来源：{source} · {path}',
+      'skills.origin.codex': 'Codex',
+      'skills.origin.codex-system': 'Codex 自带',
+      'skills.origin.claude': 'Claude Code',
+      'skills.origin.claude-plugin': 'Claude Code 插件',
+      'skills.origin.folder': '文件夹',
+      'skills.sourceChanged': '来源有更新',
+      'skills.sourceMissing': '来源已不存在',
+      'skills.reimport': '从来源重新导入',
+      'skills.confirmReimport': '用来源的最新内容覆盖「{name}」？当前文件会先存成一个版本',
       'skills.status.unknown-preset': '没有这个模式',
       'skills.status.not-editable': '这个模式不能编辑',
       'skills.status.invalid': '无效',
@@ -362,6 +427,12 @@ window.__ModuleLoader__.load({
       'err.skill-text-too-long': '技能文件不能超过 {max} 字',
       'err.skill-conflict': '文件在你编辑期间被改动了',
       'err.skill-too-large': '技能超过 {files} 个文件或 {megabytes} MB，不能保存版本',
+      'err.skill-exists': '已有名为「{name}」的技能',
+      'err.skill-description-empty': '请填写描述',
+      'err.skill-description-invalid': '描述只能有一行，最多 {max} 字',
+      'err.folder-missing': '找不到文件夹 {path}',
+      'err.skill-no-frontmatter': 'SKILL.md 缺少 name 或 description',
+      'err.skill-linked': '这个技能文件夹是链接，覆盖它会改到其他工具的文件',
       'meta.toolEdits': '{n} 项工具说明已改',
       'meta.skillEdits': '{n} 项技能设置',
       'confirm.resetSkills': '这个模式的 {n} 项技能设置也会清除（版本会保留）。',
@@ -370,7 +441,7 @@ window.__ModuleLoader__.load({
       'scope.label': '模式',
       'scope.all': '所有模式',
       'scope.unavailable': '「{mode}」：{reason}，这里显示所有模式',
-      'scope.noSkillTool': '没有技能工具',
+      'scope.noSkillTool': '未开启「技能」能力',
       'effect.live': '进行中的会话从下一步生效',
       'effect.fresh': '{modes} 第一次设置，新建会话后生效',
       'effect.mixed': '{live} 进行中的会话从下一步生效；{fresh} 第一次设置，新建会话后生效',
@@ -764,7 +835,10 @@ window.__ModuleLoader__.load({
       'skills.versionIn': 'Version used in {mode}',
       'skills.notInMode': 'Not found in this mode',
       'skills.currentFile': 'Current file',
-      'skills.noTool': 'These modes have no skill tool and are not affected: {modes}',
+      'skills.noTool': 'These modes have the Skills capability off and are not affected: {modes}',
+      'skills.capOff': 'These modes have the Skills capability off, so skills do nothing in them and they are not in the switches below: {modes}',
+      'skills.capOn': 'Turn it on for {mode}',
+      'skills.capEnabled': 'Skills capability on for {mode} · applies to new sessions',
       'skills.versions': 'Versions',
       'skills.notePlaceholder': 'Note (optional)',
       'skills.saveVersion': 'Save current as a version',
@@ -792,6 +866,66 @@ window.__ModuleLoader__.load({
       'skills.source.manual': 'Saved by hand',
       'skills.source.before-edit': 'Saved before an edit',
       'skills.source.before-restore': 'Saved before a restore',
+      'skills.source.before-import': 'Saved before an import',
+      'skills.create': 'New skill',
+      'skills.import': 'Import skills',
+      'skills.newName': 'Name',
+      'skills.newNameHint': 'Lowercase letters, digits, and hyphens, e.g. weekly-report',
+      'skills.newNameInvalid': 'Use lowercase letters, digits, and single hyphens, not at the start or end',
+      'skills.newNameTaken': 'A skill with this name exists',
+      'skills.newDescription': 'Description',
+      'skills.newDescriptionHint': 'One sentence on when to use it; the model decides from it whether to load the skill',
+      'skills.where': 'Save in',
+      'skills.whereDsh': '{path} (DSH only)',
+      'skills.whereAgents': '{path} (shared with other agent tools)',
+      'skills.onIn': 'On in these modes',
+      'skills.createAction': 'Create and edit',
+      'skills.created': 'Created {name}',
+      'skills.newEffect': 'Available to running sessions from their next step',
+      'skills.importFrom.agents': 'Codex / Claude Code',
+      'skills.importFrom.folder': 'Folder',
+      'skills.folderPlaceholder': 'A skill folder, or a folder of skills, e.g. ~/my-skills',
+      'skills.read': 'Read',
+      'skills.group.codex': 'Codex',
+      'skills.group.claude': 'Claude Code',
+      'skills.group.claude-plugin': 'Claude Code plugins',
+      'skills.group.codex-system': 'Skills shipped with Codex',
+      'skills.group.folder': 'Folder',
+      'skills.groupMissing': 'This folder does not exist',
+      'skills.groupEmpty': 'No skills found',
+      'skills.systemHint': 'These skills rely on Codex\'s own tools and may not work in DSH',
+      'skills.st.new': 'Ready',
+      'skills.st.imported': 'Imported as {name}',
+      'skills.st.updated': 'Source changed',
+      'skills.st.exists': 'Name in use',
+      'skills.st.rename': 'Needs a new name',
+      'skills.st.invalid': 'Cannot import',
+      'skills.problem.no-frontmatter': 'SKILL.md is missing name or description',
+      'skills.problem.unreadable': 'SKILL.md cannot be read',
+      'skills.importAs': 'Import as',
+      'skills.conflictRename': 'Import under a new name',
+      'skills.conflictReplace': 'Replace the existing skill (saves a version first)',
+      'skills.updatedHint': 'Importing again replaces {name}; its current files are saved as a version first',
+      'skills.nameDuplicate': 'Another skill being imported has this name',
+      'skills.selectReady': 'Select all ready',
+      'skills.selectNone': 'Select none',
+      'skills.importSelected': 'Import selected ({n})',
+      'skills.copyNote': 'Imports are copies: when a source changes later, this list and the skill list say so, and you can import it again',
+      'skills.importDone': 'Imported {n}',
+      'skills.importUpdated': 'Updated {n}',
+      'skills.importFailed': '{n} did not complete',
+      'skills.importFailure': '{name}: {reason}',
+      'skills.importSkipped': '{name}: {n} links point outside the skill and were not copied',
+      'skills.origin': 'From {source} · {path}',
+      'skills.origin.codex': 'Codex',
+      'skills.origin.codex-system': 'Codex (shipped)',
+      'skills.origin.claude': 'Claude Code',
+      'skills.origin.claude-plugin': 'Claude Code plugin',
+      'skills.origin.folder': 'Folder',
+      'skills.sourceChanged': 'Source changed',
+      'skills.sourceMissing': 'Source is gone',
+      'skills.reimport': 'Import again from the source',
+      'skills.confirmReimport': 'Replace {name} with the latest content of its source? Its current files are saved as a version first.',
       'skills.status.unknown-preset': 'No such mode',
       'skills.status.not-editable': 'This mode cannot be edited',
       'skills.status.invalid': 'Invalid',
@@ -806,6 +940,12 @@ window.__ModuleLoader__.load({
       'err.skill-text-too-long': 'The skill file cannot exceed {max} characters',
       'err.skill-conflict': 'The file changed while you were editing',
       'err.skill-too-large': 'The skill has more than {files} files or {megabytes} MB, so it cannot be saved as a version',
+      'err.skill-exists': 'A skill named {name} already exists',
+      'err.skill-description-empty': 'Enter a description',
+      'err.skill-description-invalid': 'The description must be one line of at most {max} characters',
+      'err.folder-missing': 'No folder at {path}',
+      'err.skill-no-frontmatter': 'SKILL.md is missing name or description',
+      'err.skill-linked': 'This skill folder is a link; replacing it would change another tool\'s files',
       'meta.toolEdits': 'Tool descriptions edited: {n}',
       'meta.skillEdits': 'Skill settings: {n}',
       'confirm.resetSkills': 'Its skill settings ({n}) are cleared as well; saved versions are kept.',
@@ -814,7 +954,7 @@ window.__ModuleLoader__.load({
       'scope.label': 'Mode',
       'scope.all': 'All modes',
       'scope.unavailable': '"{mode}": {reason}; showing all modes here',
-      'scope.noSkillTool': 'No skill tool',
+      'scope.noSkillTool': 'Skills capability off',
       'effect.live': 'Running sessions pick it up on their next step',
       'effect.fresh': '{modes}: first setting, takes effect in new sessions',
       'effect.mixed': '{live}: running sessions pick it up on their next step; {fresh}: first setting, takes effect in new sessions',
@@ -977,6 +1117,7 @@ window.__ModuleLoader__.load({
 .pm-form label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .pm-form .is-wide { grid-column: 1 / -1; }
 .pm-form .pm-bar { grid-column: 1 / -1; justify-content: flex-end; }
+.pm-form label.pm-option { flex-direction: row; align-items: center; color: var(--dsw-alias-label-primary); font-size: 13px; }
 .pm-hint { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
 .pm-hint.is-error { color: var(--dsw-alias-state-error-primary); }
 .pm-confirm { margin: 0 14px 12px 40px; padding: 10px 12px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); display: flex; flex-direction: column; gap: 8px; }
@@ -1075,6 +1216,16 @@ window.__ModuleLoader__.load({
 .pm-cmd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pm-cmd code { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; padding: 4px 8px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; }
 .pm-footer { display: flex; gap: 6px 14px; align-items: center; flex-wrap: wrap; }
+.pm-importgroup { display: flex; flex-direction: column; border-top: .5px solid var(--dsw-alias-border-l4); }
+.pm-importgroup .pm-toolhead { padding: 8px 0; }
+.pm-importitems { display: flex; flex-direction: column; gap: 10px; padding: 0 0 10px 24px; }
+.pm-importrow { display: flex; gap: 10px; align-items: flex-start; }
+.pm-importrow > input { margin-top: 3px; }
+.pm-importrow .pm-rowtitle { cursor: pointer; }
+.pm-skeleton { display: flex; flex-direction: column; gap: 8px; }
+.pm-skeleton span { display: block; height: 14px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); animation: pm-pulse .9s ease-in-out infinite alternate; }
+.pm-skeleton span:nth-child(2) { width: 80%; }
+.pm-skeleton span:nth-child(3) { width: 60%; }
 .pm-footer .pm-check { font-size: 11px; }
 @container (max-width: 520px) {
   .pm-body, .pm-confirm, .pm-yaml, .pm-prompt { margin-left: 0; padding-left: 14px; }
@@ -2646,8 +2797,9 @@ window.__ModuleLoader__.load({
      * One skill. Viewed for all modes, its switch is the switch for all modes; viewed for one mode (`focus`), its switch and
      * version menu act on that mode and the switch for all modes moves into the opened part.
      */
-    function SkillRow({ ui, skill, modes, focus, open, busy, onToggle, send }) {
+    function SkillRow({ ui, skill, modes, focus, open, busy, onToggle, send, autoEdit, onAutoEdited, onReimport }) {
       const { t } = ui
+      const [reimport, setReimport] = React.useState(false)
       const [note, setNote] = React.useState('')
       const [confirm, setConfirm] = React.useState(null)
       const [preview, setPreview] = React.useState(null)
@@ -2675,6 +2827,13 @@ window.__ModuleLoader__.load({
         const text = value.text.replace(/\r\n?/g, '\n')
         setEditor({ text, base: text })
       }, error => ui.announce('error', ui.describe(error)))
+      // A skill created in the page opens with its file in the editor.
+      React.useEffect(() => {
+        if (!autoEdit || !open) return
+        onAutoEdited()
+        void openEditor()
+      }, [autoEdit, open])
+      const origin = skill.imported
       const saveEditor = (overwrite) => send('writeSkillFile', { skill: skill.name, text: editor.text, ...overwrite ? {} : { base: editor.base } }, 'skills.saved')
         .then((ok) => { if (ok) setEditor(null) }, (failure) => {
           if (failure?.code === 'skill-conflict') setEditor(previous => ({ ...previous, conflict: failure.details?.current ?? '' }))
@@ -2689,7 +2848,8 @@ window.__ModuleLoader__.load({
             here === undefined && pinCount > 0 ? h('span', { className: 'pm-badge is-accent' }, t('skills.pinnedIn', { n: pinCount })) : null,
             here !== undefined && !skill.off && here.off ? h('span', { className: 'pm-badge' }, t('skills.offHere')) : null,
             here?.pin !== undefined ? h('span', { className: 'pm-badge is-accent' }, t('skills.pinnedBadge', { version: here.pin })) : null,
-            skill.exists === false ? h('span', { className: 'pm-badge is-error' }, t('skills.missing')) : null),
+            skill.exists === false ? h('span', { className: 'pm-badge is-error' }, t('skills.missing')) : null,
+            origin?.state === 'changed' ? h('span', { className: 'pm-badge is-accent' }, t('skills.sourceChanged')) : null),
           ...here === undefined
             ? [h('span', { key: 'label', className: 'pm-hint' }, t('skills.allModes')), h(React.Fragment, { key: 'switch' }, master)]
             : [
@@ -2745,7 +2905,19 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy || users.length > 0, title: users.length > 0 ? t('skills.usedBy', { modes: users.join(', ') }) : undefined, onClick: () => setConfirm({ kind: 'delete', id: version.id }) }, t('action.remove'))))
           })),
           h('div', { className: 'pm-hint' }, t('skills.file')),
-          skill.path ? h('div', { className: 'pm-cmd' }, h('code', null, skill.path)) : h('div', { className: 'pm-hint' }, t('skills.noFile')),
+          skill.path ? h('div', { className: 'pm-cmd' }, h('code', { title: skill.path }, skill.display ?? skill.path)) : h('div', { className: 'pm-hint' }, t('skills.noFile')),
+          origin === undefined ? null : h('div', { className: 'pm-bar' },
+            h('span', { className: 'pm-hint pm-grow' }, t('skills.origin', { source: t(`skills.origin.${origin.source}`), path: origin.display })),
+            origin.state === 'missing' ? h('span', { className: 'pm-badge' }, t('skills.sourceMissing')) : null,
+            origin.state === 'changed' && !reimport ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setReimport(true) }, t('skills.reimport')) : null),
+          reimport ? h('div', {
+            className: 'pm-confirm', style: { margin: 0 }, role: 'alertdialog', 'aria-label': t('skills.reimport'),
+            onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setReimport(false) } },
+          },
+          h('div', null, t('skills.confirmReimport', { name: skill.name })),
+          h('div', { className: 'pm-bar pm-end' },
+            h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': true, onClick: () => setReimport(false) }, t('action.cancel')),
+            h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: busy, onClick: () => onReimport().then(() => setReimport(false)) }, t('skills.reimport')))) : null,
           skill.source === 'user-agents' ? h('div', { className: 'pm-hint' }, t('skills.shared')) : null,
           !skill.editable && skill.path ? h('div', { className: 'pm-hint' }, t('skills.bundled')) : null,
           skill.editable && editor === null ? h('div', { className: 'pm-bar' }, h('button', { type: 'button', className: 'pm-btn', disabled: busy || skill.exists === false, onClick: openEditor }, t('skills.edit'))) : null,
@@ -2763,6 +2935,212 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: busy || editor.text === editor.base || editor.text.trim() === '', onClick: () => saveEditor(false) }, t('action.save'))))) : null)
     }
 
+    /** The folder menu for new skills: DSH's own folder or the one shared with other agent tools. */
+    function WhereSelect({ ui, roots, value, onChange, id }) {
+      const { t } = ui
+      return h('select', { id, className: 'pm-input', value, onChange: event => onChange(event.target.value) },
+        h('option', { value: 'dsh' }, t('skills.whereDsh', { path: roots.dsh })),
+        h('option', { value: 'agents' }, t('skills.whereAgents', { path: roots.agents })))
+    }
+
+    /** The form for a new skill: name, description, folder, and the modes it starts on in. */
+    function CreateSkillPanel({ ui, view, busy, onCancel, onCreate }) {
+      const { t } = ui
+      const usable = view.modes.filter(mode => mode.editable && mode.hasSkillTool && mode.error === undefined)
+      const [name, setName] = React.useState('')
+      const [description, setDescription] = React.useState('')
+      const [target, setTarget] = React.useState('dsh')
+      const [modes, setModes] = React.useState(() => new Set(usable.map(mode => mode.id)))
+      const trimmed = name.trim()
+      const nameError = trimmed === '' ? undefined : !SKILL_NAME.test(trimmed) ? t('skills.newNameInvalid') : view.skills.some(skill => skill.name === trimmed) ? t('skills.newNameTaken') : undefined
+      const ready = trimmed !== '' && nameError === undefined && description.trim() !== '' && !busy
+      const toggle = (id, on) => setModes((previous) => {
+        const next = new Set(previous)
+        if (on) next.add(id)
+        else next.delete(id)
+        return next
+      })
+      const submit = (event) => {
+        event.preventDefault()
+        if (ready) onCreate({ name: trimmed, description: description.trim(), target, ...modes.size === usable.length ? {} : { modes: [...modes] } })
+      }
+      return h('div', { className: 'pm-card' },
+        h('form', {
+          className: 'pm-form', onSubmit: submit, 'aria-label': t('skills.create'),
+          onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel() } },
+        },
+        h('strong', { className: 'is-wide' }, t('skills.create')),
+        h('label', null, t('skills.newName'),
+          h('input', { className: 'pm-input', value: name, autoFocus: true, spellCheck: false, placeholder: 'weekly-report', 'aria-invalid': nameError !== undefined, onChange: event => setName(event.target.value) }),
+          h('span', { className: `pm-hint${nameError === undefined ? '' : ' is-error'}` }, nameError ?? t('skills.newNameHint'))),
+        h('label', null, t('skills.where'), h(WhereSelect, { ui, roots: view.roots, value: target, onChange: setTarget })),
+        h('label', { className: 'is-wide' }, t('skills.newDescription'),
+          h('input', { className: 'pm-input', value: description, maxLength: 1024, onChange: event => setDescription(event.target.value) }),
+          h('span', { className: 'pm-hint' }, t('skills.newDescriptionHint'))),
+        usable.length === 0 ? null : h('div', { className: 'is-wide', role: 'group', 'aria-label': t('skills.onIn') },
+          h('div', { className: 'pm-hint', style: { marginBottom: 4 } }, t('skills.onIn')),
+          h('div', { className: 'pm-modelist' }, usable.map(mode => h('label', { key: mode.id, className: 'pm-option' },
+            h('input', { type: 'checkbox', checked: modes.has(mode.id), onChange: event => toggle(mode.id, event.target.checked) }),
+            h('span', null, ui.nameOf(mode.id)))))),
+        h('div', { className: 'pm-bar' },
+          h('button', { type: 'button', className: 'pm-btn', onClick: onCancel }, t('action.cancel')),
+          h('button', { type: 'submit', className: 'pm-btn pm-primary', disabled: !ready }, t('skills.createAction')))))
+    }
+
+    /** The name a selected import item gets, and whether it is imported as a new skill (and so must not clash). */
+    function importName(item, choice) {
+      if (item.status === 'updated') return { name: item.as, fresh: false }
+      if (item.status === 'exists' && choice.replace) return { name: item.name, fresh: false }
+      if (item.status === 'exists' || item.status === 'rename') return { name: choice.name.trim(), fresh: true }
+      return { name: item.name, fresh: true }
+    }
+
+    /** The import list: skills in the Codex and Claude Code folders, or in one folder, to copy in. */
+    function ImportSkillsPanel({ ui, view, busy, onClose, onImport }) {
+      const { t } = ui
+      const [from, setFrom] = React.useState('agents')
+      const [folder, setFolder] = React.useState('')
+      const [sources, setSources] = React.useState(null)
+      const [loading, setLoading] = React.useState(false)
+      const [error, setError] = React.useState(null)
+      const [choices, setChoices] = React.useState(() => new Map())
+      const [target, setTarget] = React.useState('dsh')
+      const [openGroups, setOpenGroups] = React.useState(() => new Set())
+      const [report, setReport] = React.useState([])
+      const load = (path) => {
+        setLoading(true)
+        setError(null)
+        return call('skillSources', path === undefined ? {} : { folder: path }).then((value) => {
+          setSources(value)
+          setChoices(new Map(value.groups.flatMap(group => group.items.map((item) => {
+            const prefix = group.source === 'folder' ? '' : `${group.source.split('-')[0]}-`
+            return [item.path, {
+              on: (item.status === 'new' || item.status === 'rename') && group.source !== 'codex-system',
+              name: item.status === 'rename' ? item.suggested : item.status === 'exists' ? `${prefix}${item.name}${prefix === '' ? '-2' : ''}` : item.name ?? '',
+              replace: false,
+            }]
+          }))))
+        }, (failure) => { setSources(null); setError(ui.describe(failure)) }).finally(() => setLoading(false))
+      }
+      React.useEffect(() => { if (from === 'agents') void load() }, [from])
+      const items = sources === null ? [] : sources.groups.flatMap(group => group.items)
+      const selectable = item => ['new', 'rename', 'exists', 'updated'].includes(item.status)
+      const selected = items.filter(item => selectable(item) && choices.get(item.path)?.on)
+      const taken = new Set(view.skills.map(skill => skill.name))
+      const names = selected.map(item => importName(item, choices.get(item.path)))
+      const errorOf = (item) => {
+        if (!choices.get(item.path)?.on) return undefined
+        const { name, fresh } = importName(item, choices.get(item.path))
+        if (!fresh) return undefined
+        if (!SKILL_NAME.test(name)) return t('skills.newNameInvalid')
+        if (taken.has(name)) return t('skills.newNameTaken')
+        if (names.filter(entry => entry.name === name).length > 1) return t('skills.nameDuplicate')
+        return undefined
+      }
+      const ready = selected.length > 0 && selected.every(item => errorOf(item) === undefined) && !busy && !loading
+      const choose = (path, fields) => setChoices(previous => new Map(previous).set(path, { ...previous.get(path), ...fields }))
+      const selectAll = on => setChoices((previous) => {
+        const next = new Map(previous)
+        for (const group of sources?.groups ?? []) {
+          for (const item of group.items) {
+            if (on && (item.status === 'new' || item.status === 'rename') && group.source !== 'codex-system') next.set(item.path, { ...next.get(item.path), on: true })
+            if (!on) next.set(item.path, { ...next.get(item.path), on: false })
+          }
+        }
+        return next
+      })
+      const submit = () => {
+        const payload = selected.map((item) => {
+          const choice = choices.get(item.path)
+          const { name, fresh } = importName(item, choice)
+          return { path: item.path, source: item.source, ...fresh && name !== item.name ? { name } : {}, ...item.status === 'exists' && choice.replace ? { replace: true } : {} }
+        })
+        onImport(payload, target).then((results) => {
+          if (results === null) return
+          setReport(results.flatMap((result) => {
+            const label = result.name ?? result.path
+            if (result.status === 'error') return [{ key: result.path, error: true, text: t('skills.importFailure', { name: label, reason: ui.describeCode(result.code, result.details, result.error) }) }]
+            return result.skipped?.length > 0 ? [{ key: result.path, text: t('skills.importSkipped', { name: label, n: result.skipped.length }) }] : []
+          }))
+          void load(from === 'folder' ? folder : undefined)
+        })
+      }
+      const badge = (item) => {
+        const tone = { new: ' is-accent', updated: ' is-accent', exists: ' is-warn', rename: ' is-warn', invalid: ' is-error' }[item.status] ?? ''
+        return h('span', { className: `pm-badge${tone}` }, t(`skills.st.${item.status}`, { name: item.as ?? '' }))
+      }
+      const row = (item) => {
+        const choice = choices.get(item.path) ?? { on: false, name: '', replace: false }
+        const problem = errorOf(item)
+        const id = `pm-import-${item.path}`
+        return h('div', { key: item.path, className: 'pm-importrow' },
+          h('input', { id, type: 'checkbox', checked: selectable(item) && choice.on, disabled: !selectable(item) || busy, onChange: event => choose(item.path, { on: event.target.checked }) }),
+          h('div', { className: 'pm-rowmain' },
+            h('label', { className: 'pm-rowtitle', htmlFor: id },
+              h('span', { className: 'pm-toolname' }, item.name ?? item.folder),
+              badge(item)),
+            item.description ? h('div', { className: 'pm-rowdesc' }, item.description) : null,
+            item.status === 'invalid' ? h('div', { className: 'pm-hint is-error' }, t(`skills.problem.${item.problem}`)) : null,
+            choice.on && item.status === 'updated' ? h('div', { className: 'pm-hint' }, t('skills.updatedHint', { name: item.as })) : null,
+            choice.on && item.status === 'exists' ? h('div', { className: 'pm-bar' },
+              h('select', { className: 'pm-input', value: choice.replace ? 'replace' : 'rename', 'aria-label': t('skills.st.exists'), onChange: event => choose(item.path, { replace: event.target.value === 'replace' }) },
+                h('option', { value: 'rename' }, t('skills.conflictRename')),
+                h('option', { value: 'replace' }, t('skills.conflictReplace')))) : null,
+            choice.on && (item.status === 'rename' || (item.status === 'exists' && !choice.replace)) ? h('div', { className: 'pm-bar' },
+              h('span', { className: 'pm-hint' }, t('skills.importAs')),
+              h('input', { className: 'pm-input pm-grow', value: choice.name, spellCheck: false, 'aria-label': t('skills.importAs'), 'aria-invalid': problem !== undefined, onChange: event => choose(item.path, { name: event.target.value }) })) : null,
+            problem === undefined ? null : h('div', { className: 'pm-hint is-error' }, problem),
+            h('div', { className: 'pm-hint' }, item.display)))
+      }
+      const group = (entry) => {
+        const system = entry.source === 'codex-system'
+        if (system && entry.items.length === 0) return null
+        const open = !system || openGroups.has(entry.source)
+        return h('section', { key: entry.source, className: 'pm-importgroup', 'aria-label': t(`skills.group.${entry.source}`) },
+          h('button', {
+            type: 'button', className: 'pm-toolhead', 'aria-expanded': open,
+            onClick: () => setOpenGroups((previous) => { const next = new Set(previous); if (next.has(entry.source)) next.delete(entry.source); else next.add(entry.source); return next }),
+          },
+          h(Chevron, { open }),
+          h('strong', null, t(`skills.group.${entry.source}`)),
+          h('span', { className: 'pm-hint' }, entry.dir),
+          entry.items.length > 0 ? h('span', { className: 'pm-badge' }, String(entry.items.length)) : null),
+          !open ? null : h('div', { className: 'pm-importitems' },
+            system ? h('div', { className: 'pm-hint' }, t('skills.systemHint')) : null,
+            !entry.exists ? h('div', { className: 'pm-hint' }, t('skills.groupMissing'))
+              : entry.items.length === 0 ? h('div', { className: 'pm-hint' }, t('skills.groupEmpty'))
+                : entry.items.map(row)))
+      }
+      return h('div', {
+        className: 'pm-panel', role: 'group', 'aria-label': t('skills.import'),
+        onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() } },
+      },
+      h('div', { className: 'pm-bar' },
+        h('strong', { className: 'pm-grow' }, t('skills.import')),
+        h('button', { type: 'button', className: 'pm-btn', onClick: onClose }, t('action.cancel'))),
+      h('div', { className: 'pm-seg', role: 'radiogroup', 'aria-label': t('skills.import') }, ['agents', 'folder'].map(name => h('button', {
+        key: name, type: 'button', role: 'radio', 'aria-checked': from === name,
+        onClick: () => { setFrom(name); setSources(null); setError(null); setReport([]) },
+      }, t(`skills.importFrom.${name}`)))),
+      from === 'folder' ? h('form', { className: 'pm-bar', onSubmit: (event) => { event.preventDefault(); if (folder.trim() !== '') void load(folder.trim()) } },
+        h('input', { className: 'pm-input pm-grow', value: folder, spellCheck: false, placeholder: t('skills.folderPlaceholder'), 'aria-label': t('skills.importFrom.folder'), onChange: event => setFolder(event.target.value) }),
+        h('button', { type: 'submit', className: 'pm-btn', disabled: loading || folder.trim() === '' }, t('skills.read'))) : null,
+      error === null ? null : h('div', { className: 'pm-error', role: 'alert' }, error),
+      loading && sources === null ? h('div', { className: 'pm-skeleton', 'aria-busy': true }, h('span'), h('span'), h('span')) : null,
+      sources === null ? null : h(React.Fragment, null,
+        items.some(selectable) ? h('div', { className: 'pm-bar' },
+          h('button', { type: 'button', className: 'pm-link', onClick: () => selectAll(true) }, t('skills.selectReady')),
+          h('button', { type: 'button', className: 'pm-link', onClick: () => selectAll(false) }, t('skills.selectNone'))) : null,
+        sources.groups.map(group),
+        report.length === 0 ? null : h('ul', { className: 'pm-hint', style: { margin: 0, paddingLeft: 18 } }, report.map(line => h('li', { key: line.key, className: line.error ? 'is-error' : undefined }, line.text))),
+        h('div', { className: 'pm-hint' }, t('skills.copyNote')),
+        h('div', { className: 'pm-bar' },
+          h('label', { className: 'pm-hint', htmlFor: 'pm-import-where' }, t('skills.where')),
+          h(WhereSelect, { ui, roots: sources.roots, value: target, onChange: setTarget, id: 'pm-import-where' }),
+          h('span', { className: 'pm-grow' }),
+          h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: !ready, onClick: submit }, t('skills.importSelected', { n: selected.length })))))
+    }
+
     /** The skills view: every skill the modes see, switched on or off for all modes or per mode, pinned to saved versions. */
     function SkillsView({ ui, reloadKey }) {
       const { t } = ui
@@ -2772,6 +3150,8 @@ window.__ModuleLoader__.load({
       const [query, setQuery] = React.useState('')
       const [expanded, setExpanded] = React.useState(null)
       const [busy, setBusy] = React.useState(false)
+      const [panel, setPanel] = React.useState(null)
+      const [editName, setEditName] = React.useState(null)
       React.useEffect(() => { setBulk(null) }, [ui.scope])
       React.useEffect(() => {
         let alive = true
@@ -2800,6 +3180,64 @@ window.__ModuleLoader__.load({
         }).finally(() => setBusy(false))
       }
       const quiet = (action, payload, success) => send(action, payload, success).catch(() => false)
+      /** Switch a mode's Skills capability on, as its card's switch does, then read the skills again. */
+      const enableSkills = (id) => {
+        const preset = ui.presets.find(candidate => candidate.id === id)
+        const capability = CAPABILITIES.find(candidate => candidate.id === 'skills')
+        const changes = preset === undefined ? [] : enableChanges(capabilityRows(capability, preset).counted)
+        if (changes.length === 0) return
+        setBusy(true)
+        call('applyRows', { id, changes })
+          .then((value) => {
+            ui.setList(value)
+            return call('skills', {}).then((next) => {
+              setView(next)
+              ui.announce('notice', t('skills.capEnabled', { mode: ui.nameOf(id) }), { long: true })
+            })
+          })
+          .catch(error => ui.announce('error', ui.describe(error)))
+          .finally(() => setBusy(false))
+      }
+      /** Create a skill, then open it with its file in the editor. */
+      const createSkill = (payload) => {
+        setBusy(true)
+        return call('createSkill', payload).then((value) => {
+          ui.setList(value)
+          setView(value.effect.skills)
+          setPanel(null)
+          setExpanded(value.effect.name)
+          setEditName(value.effect.name)
+          const rows = value.effect.rows ?? []
+          if (rows.length > 0) ui.announce('error', t('skills.rowFailed', { modes: rows.map(row => ui.nameOf(row.id)).join(', ') }))
+          else ui.announce('notice', [t('skills.created', { name: value.effect.name }), t('skills.newEffect'), t('effect.slash')].join(' · '), { long: true })
+        }, error => ui.announce('error', ui.describe(error))).finally(() => setBusy(false))
+      }
+      /**
+       * Import skill folders.
+       * @returns {Promise<object[] | null>} one result per item, or null when the request failed as a whole.
+       */
+      const runImport = (items, target) => {
+        setBusy(true)
+        return call('importSkills', { items, target }).then((value) => {
+          ui.setList(value)
+          setView(value.effect.skills)
+          const results = value.effect.results
+          const count = (...statuses) => results.filter(result => statuses.includes(result.status)).length
+          const failed = count('error')
+          const done = results.length - failed
+          const parts = [
+            count('imported') > 0 ? t('skills.importDone', { n: count('imported') }) : undefined,
+            count('updated', 'replaced') > 0 ? t('skills.importUpdated', { n: count('updated', 'replaced') }) : undefined,
+            failed > 0 ? t('skills.importFailed', { n: failed }) : undefined,
+            ...done > 0 ? [t('skills.newEffect'), t('effect.slash')] : [],
+          ].filter(Boolean)
+          ui.announce(failed > 0 ? 'error' : 'notice', parts.join(' · '), failed > 0 ? undefined : { long: true })
+          return results
+        }, (error) => {
+          ui.announce('error', ui.describe(error))
+          return null
+        }).finally(() => setBusy(false))
+      }
       /** The modes a skill action changed: those with a `saved` result, or every mode with a skill tool for the master switch. */
       const touchedBy = (action, effect) => {
         if (action === 'setSkillModes') return [...new Set((effect.results ?? []).filter(result => result.status === 'saved').map(result => result.preset))]
@@ -2809,6 +3247,8 @@ window.__ModuleLoader__.load({
       if (loadError !== null) return h('div', { className: 'pm-error', role: 'alert' }, loadError)
       if (view === null) return h('div', { className: 'pm-muted' }, t('skills.loading'))
       const usable = view.modes.filter(mode => mode.editable && mode.hasSkillTool)
+      // Modes the page could manage but whose Skills capability is off: they have no skill tool to filter.
+      const capOff = view.modes.filter(mode => mode.editable && !mode.hasSkillTool && mode.error === undefined)
       const focus = usable.some(mode => mode.id === ui.scope) ? ui.scope : ''
       const needle = query.trim().toLowerCase()
       // Viewed for one mode, the list holds the skills that mode finds, and those it has a setting for.
@@ -2829,10 +3269,20 @@ window.__ModuleLoader__.load({
         view.modes.some(mode => mode.error !== undefined) ? h('div', { className: 'pm-warn' }, view.modes.filter(mode => mode.error !== undefined).map(mode => `${ui.nameOf(mode.id)}: ${mode.error}`).join('; ')) : null,
         h('div', { className: 'pm-bar' },
           h(ScopeSelect, { ui, modes: view.modes, usable, reasonOf: skillReason }),
-          focus === '' ? null : h('span', { className: 'pm-hint pm-grow' }, t('skills.modeSummary', { on: onHere, total: shown.length })),
-          focus === '' ? null : h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(true).length === 0, onClick: () => runBulk(true) }, t('skills.allOn')),
-          focus === '' ? null : h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(false).length === 0, onClick: () => setBulk('off') }, t('skills.allOff'))),
+          h('span', { className: 'pm-hint pm-grow' }, focus === '' ? null : t('skills.modeSummary', { on: onHere, total: shown.length })),
+          h('button', { type: 'button', className: 'pm-btn', 'aria-expanded': panel === 'create', disabled: busy, onClick: () => setPanel(panel === 'create' ? null : 'create') }, t('skills.create')),
+          h('button', { type: 'button', className: 'pm-btn', 'aria-expanded': panel === 'import', disabled: busy && panel !== 'import', onClick: () => setPanel(panel === 'import' ? null : 'import') }, t('skills.import'))),
+        focus === '' ? null : h('div', { className: 'pm-bar pm-end' },
+          h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(true).length === 0, onClick: () => runBulk(true) }, t('skills.allOn')),
+          h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(false).length === 0, onClick: () => setBulk('off') }, t('skills.allOff'))),
         scopeNote(ui, view.modes, usable, skillReason),
+        capOff.length === 0 ? null : h('div', { className: 'pm-warn pm-info', role: 'note' },
+          h('span', { className: 'pm-grow' }, t('skills.capOff', { modes: capOff.map(mode => ui.nameOf(mode.id)).join(ui.lang === 'zh' ? '、' : ', ') })),
+          capOff.filter(mode => ui.presets.some(preset => preset.id === mode.id && preset.rows.some(row => row.id === 'tool-skill'))).map(mode => h('button', {
+            key: mode.id, type: 'button', className: 'pm-btn', disabled: busy, onClick: () => enableSkills(mode.id),
+          }, t('skills.capOn', { mode: ui.nameOf(mode.id) })))),
+        panel === 'create' ? h(CreateSkillPanel, { ui, view, busy, onCancel: () => setPanel(null), onCreate: createSkill }) : null,
+        panel === 'import' ? h(ImportSkillsPanel, { ui, view, busy, onClose: () => setPanel(null), onImport: runImport }) : null,
         bulk === 'off' ? h('div', {
           className: 'pm-confirm', style: { margin: 0 }, role: 'alertdialog', 'aria-label': t('skills.allOff'),
           onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setBulk(null) } },
@@ -2845,6 +3295,8 @@ window.__ModuleLoader__.load({
         focus !== '' && matching.length > shown.length ? h('div', { className: 'pm-hint' }, t('skills.hiddenOthers', { n: matching.length - shown.length, mode: ui.nameOf(focus) })) : null,
         shown.length === 0 ? h('div', { className: 'pm-muted' }, t(view.skills.length === 0 ? 'skills.none' : 'skills.empty')) : h('div', { role: 'list', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, shown.map(skill => h(SkillRow, {
           key: skill.name, ui, skill, modes: view.modes, focus, open: expanded === skill.name, busy,
+          autoEdit: editName === skill.name, onAutoEdited: () => setEditName(null),
+          onReimport: () => runImport([{ path: skill.imported.from, source: skill.imported.source }], 'dsh'),
           onToggle: () => setExpanded(expanded === skill.name ? null : skill.name),
           send: (action, payload, success) => (action === 'writeSkillFile' ? send(action, payload, success) : quiet(action, payload, success)),
         }))))
@@ -3004,6 +3456,7 @@ window.__ModuleLoader__.load({
         defaultId: data?.defaultId,
         toolsError: data?.toolsError,
         presetDescription: preset => builtInCopy(preset, 'Description') ?? preset.description,
+        presets: data?.presets ?? [],
         tryPreset: (id) => {
           // DSH 0.2.0 starts sessions from a workspace id alone; a preset is then selected on the blank session.
           if (workspace.startSession.length >= 2) workspace.startSession(undefined, { clearPreviousDraft: false, agentPreset: id })

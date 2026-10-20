@@ -153,7 +153,7 @@ export function withoutVersion(content, skill, version) {
 function unquote(value) {
   const text = value.trim()
   if (text.length >= 2 && ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith('\'') && text.endsWith('\'')))) {
-    return text.startsWith('"') ? text.slice(1, -1).replace(/\\"/g, '"').replace(/\\n/g, '\n') : text.slice(1, -1).replace(/''/g, '\'')
+    return text.startsWith('"') ? text.slice(1, -1).replace(/\\(["\\nt])/g, (_, escaped) => ({ n: '\n', t: '\t' })[escaped] ?? escaped) : text.slice(1, -1).replace(/''/g, '\'')
   }
   return text
 }

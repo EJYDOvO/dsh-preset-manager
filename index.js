@@ -13,14 +13,15 @@
  * DSH update reaches an edited preset without discarding the user's changes.
  */
 import { readFileSync } from 'node:fs'
-import { readFile, rm, stat } from 'node:fs/promises'
+import { mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { allRowsById, rebase, same, stable } from './rebase.js'
 import { HISTORY_LIMIT, StateStore } from './state.js'
 import { applyWrites, catalogEntries, overridesOf, planEdits, planRestore } from './tool-edit.js'
 import { CHECK_ERROR_TTL_MS, CHECK_TTL_MS, PACKAGE_NAME, commands, fetchLatest, isNewer, registryBases, sourceKind } from './update.js'
 import { NOTE_MAX_CHARS, SKILL_NAME, VERSION_ID, isEditableSkill, needsRow, nextVersionId, parseSkillFile, planSkillChanges, plainLines, policyFor, withGlobal, withLineEndingsOf, withoutVersion } from './skill-store.js'
-import { SkillFileError, readVersionMeta, restoreVersion, writeText, writeVersion } from './skill-files.js'
+import { SkillFileError, readVersionMeta, restoreVersion, skillLocation, writeText, writeVersion } from './skill-files.js'
+import { DESCRIPTION_MAX_CHARS, copySkill, displayPath, expandHome, findPluginSkills, fingerprint, hasSkillFile, importRoots, listSkillDirs, newSkillText, readCandidate, replaceSkill, skillRoots, sourceState } from './skill-import.js'
 
 const ROUTE = '/api/dsh-modes'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
@@ -196,9 +197,12 @@ const ACTIONS = {
   readSkillFile: (m, body) => readSkillFile(m, body),
   writeSkillFile: (m, body) => writeSkillFile(m, body),
   readSkillVersion: (m, body) => readSkillVersion(m, body),
+  skillSources: (m, body) => skillSources(m, body),
+  createSkill: (m, body) => createSkill(m, body),
+  importSkills: (m, body) => importSkills(m, body),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
-const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion'])
+const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion', 'skillSources'])
 
 async function handle(m, request) {
   let body
@@ -1578,6 +1582,11 @@ async function skillsView(m, refresh = false) {
     const path = live.get(name)?.path ?? content.skills?.[name]?.info?.path
     return [name, typeof path === 'string' ? await stat(path).then(() => true, () => false) : undefined]
   })))
+  // Where an imported skill came from, and whether that folder changed since.
+  const sources = new Map(await Promise.all(sorted.filter(name => typeof content.skills?.[name]?.imported?.from === 'string').map(async (name) => {
+    const record = content.skills[name].imported
+    return [name, { from: record.from, display: displayPath(record.from), source: record.source, at: record.at, state: await sourceState(record.from, record).catch(() => 'missing') }]
+  })))
   const skills = sorted.map((name) => {
     const record = content.skills?.[name]
     const info = live.get(name) ?? record?.info
@@ -1585,6 +1594,7 @@ async function skillsView(m, refresh = false) {
       name,
       ...info ?? {},
       ...exists.get(name) === undefined ? {} : { exists: exists.get(name) },
+      ...typeof info?.path === 'string' ? { display: displayPath(info.path) } : {},
       editable: isEditableSkill(info),
       off: (content.global?.off ?? []).includes(name),
       modes: Object.fromEntries(modes.map(mode => [mode.id, {
@@ -1593,9 +1603,10 @@ async function skillsView(m, refresh = false) {
         ...content.presets?.[mode.id]?.pins?.[name] === undefined ? {} : { pin: content.presets[mode.id].pins[name] },
       }])),
       versions: [...record?.versions ?? []].reverse(),
+      ...sources.has(name) ? { imported: sources.get(name) } : {},
     }
   })
-  return { modes, skills }
+  return { modes, skills, roots: displayRoots() }
 }
 
 /**
@@ -1785,6 +1796,218 @@ async function readSkillVersion(m, body) {
   const found = await skillVersion(m, skill, version)
   if (found === undefined) throw new ActionError('unknown-version', `Unknown version: ${version}`)
   return { skill, version, meta: found.meta, text: await readFile(found.file, 'utf8') }
+}
+
+/** Where an import says its skill came from; anything else reads as a folder the user named. */
+const IMPORT_SOURCES = new Set(['codex', 'codex-system', 'claude', 'claude-plugin', 'folder'])
+/** How long the page waits after writing a skill folder, so the filesystem provider's watcher has seen it. */
+const WATCH_SETTLE_MS = 800
+
+/** Whether a path exists. */
+async function exists(path) {
+  return stat(path).then(() => true, () => false)
+}
+
+/** The folder a new skill goes to: `dsh` (`<DSH home>/skills`, the default) or `agents` (shared with other tools). */
+function rootFor(target) {
+  const roots = skillRoots()
+  if (target === undefined || target === 'dsh') return { root: roots.dsh, source: 'user-dsh' }
+  if (target === 'agents') return { root: roots.agents, source: 'user-agents' }
+  throw new ActionError('bad-request', 'target must be dsh or agents')
+}
+
+/** The two skill folders for display. */
+function displayRoots() {
+  const roots = skillRoots()
+  return { dsh: displayPath(roots.dsh), agents: displayPath(roots.agents) }
+}
+
+/** Whether a known skill or a folder in either skill root already uses a name. */
+async function nameTaken(content, name) {
+  const known = content.skills?.[name]?.info?.path
+  if (typeof known === 'string' && await exists(known)) return true
+  return (await Promise.all(Object.values(skillRoots()).map(root => exists(join(root, name))))).some(Boolean)
+}
+
+/** Remember a skill the page wrote, so the view lists it before the provider's watcher reports it. */
+async function recordSkill(m, name, { info, imported }) {
+  await m.store.update('skills', (next) => {
+    next.skills ??= {}
+    const record = next.skills[name] ??= {}
+    record.info = info
+    if (imported !== undefined) record.imported = imported
+  })
+  m.skillsFile = undefined
+}
+
+/** Give the provider's watcher time to see a written skill folder, then drop the cached scans. */
+async function settle(m) {
+  await new Promise(done => setTimeout(done, WATCH_SETTLE_MS))
+  m.skillScans.clear()
+}
+
+/**
+ * Turn a new skill off in the modes left out of `modes`.
+ * @param {unknown} modes - mode ids the skill stays on in; anything but an array leaves it on everywhere.
+ * @returns {Promise<{ rows: object[], mounted: string[] }>} as {@link setSkillModes} reports them.
+ */
+async function keepOnlyIn(m, name, modes) {
+  if (!Array.isArray(modes)) return { rows: [], mounted: [] }
+  const view = await skillsView(m)
+  const changes = view.modes
+    .filter(mode => mode.editable && mode.hasSkillTool && mode.error === undefined && !modes.includes(mode.id))
+    .map(mode => ({ preset: mode.id, skill: name, enabled: false }))
+  if (changes.length === 0) return { rows: [], mounted: [] }
+  const outcome = await setSkillModes(m, { changes })
+  return { rows: outcome.rows, mounted: outcome.mounted }
+}
+
+/**
+ * Create a skill folder with a `SKILL.md` to write in.
+ * @param {{ name?: unknown, description?: unknown, target?: unknown, modes?: unknown }} body - a kebab-case name, a
+ *   one-line description, the folder (`dsh` or `agents`), and the modes it stays on in.
+ * @returns {Promise<object>} the name, the rows and mounts of the mode settings, and the refreshed view.
+ */
+async function createSkill(m, body) {
+  const name = checkSkill(body.name)
+  const description = typeof body.description === 'string' ? body.description.trim() : ''
+  if (description === '') throw new ActionError('skill-description-empty', 'A skill needs a description')
+  if (description.length > DESCRIPTION_MAX_CHARS || /[\r\n]/.test(description)) throw new ActionError('skill-description-invalid', `The description must be one line of at most ${DESCRIPTION_MAX_CHARS} characters`, { max: DESCRIPTION_MAX_CHARS })
+  const { root, source } = rootFor(body.target)
+  if (await nameTaken(await readSkills(m), name)) throw new ActionError('skill-exists', `A skill named ${name} already exists`, { name })
+  const dir = join(root, name)
+  await mkdir(root, { recursive: true })
+  await mkdir(dir)
+  try {
+    await writeFile(join(dir, 'SKILL.md'), newSkillText({ name, description }), { flag: 'wx' })
+  } catch (error) {
+    await rm(dir, { recursive: true, force: true })
+    throw error
+  }
+  await recordSkill(m, name, { info: { description, path: join(dir, 'SKILL.md'), source, invocation: { modelInvocable: true, userInvocable: true } } })
+  const modes = await keepOnlyIn(m, name, body.modes)
+  await settle(m)
+  return { name, ...modes, skills: await skillsView(m) }
+}
+
+/** The skill an earlier import of the folder `dir` created, as `[name, record]`. */
+function importedFrom(content, dir) {
+  return Object.entries(content.skills ?? {}).find(([, record]) => record?.imported?.from === dir)
+}
+
+/**
+ * One skill folder as the import list shows it.
+ * @returns {Promise<object>} the candidate with `status`: `new`, `imported` (unchanged since), `updated` (the source
+ *   changed since its import), `exists` (another skill has the name), `rename` (DSH would ignore the name), or
+ *   `invalid`; `as` names the skill an earlier import created.
+ */
+async function candidateFor(content, dir, source) {
+  const base = { path: dir, display: displayPath(dir), source }
+  let candidate
+  try {
+    candidate = await readCandidate(dir)
+  } catch (error) {
+    return { ...base, folder: basename(dir), status: 'invalid', problem: 'unreadable', error: error instanceof Error ? error.message : String(error) }
+  }
+  const item = { ...base, ...candidate }
+  if (candidate.problem === 'no-frontmatter') return { ...item, status: 'invalid' }
+  const previous = importedFrom(content, dir)
+  if (previous !== undefined) {
+    const state = await sourceState(dir, previous[1].imported).catch(() => 'missing')
+    return { ...item, as: previous[0], status: state === 'changed' ? 'updated' : 'imported' }
+  }
+  if (candidate.problem === 'name-invalid') return { ...item, status: 'rename' }
+  return { ...item, status: await nameTaken(content, candidate.name) ? 'exists' : 'new' }
+}
+
+/**
+ * The skills other agent tools keep, or the skills in one folder, for the import list.
+ * @param {{ folder?: unknown }} body - a folder to read instead of the Codex and Claude Code folders; it may be a skill
+ *   itself or hold skill folders.
+ * @returns {Promise<{ roots: object, groups: object[] }>} the two folders new skills go to, and one group per source.
+ */
+async function skillSources(m, body) {
+  const content = await readSkills(m)
+  const folder = typeof body.folder === 'string' && body.folder.trim() !== '' ? expandHome(body.folder) : undefined
+  if (folder !== undefined && !(await stat(folder).then(info => info.isDirectory(), () => false))) {
+    throw new ActionError('folder-missing', `No folder at ${folder}`, { path: displayPath(folder) })
+  }
+  const roots = folder === undefined ? importRoots() : [{ source: 'folder', dir: folder }]
+  const groups = []
+  for (const root of roots) {
+    const dirs = root.source === 'claude-plugin' ? await findPluginSkills(root.dir)
+      : root.source === 'folder' && await hasSkillFile(root.dir) ? [root.dir]
+        : await listSkillDirs(root.dir)
+    const items = []
+    for (const dir of dirs) items.push(await candidateFor(content, await realpath(dir), root.source))
+    groups.push({ source: root.source, dir: displayPath(root.dir), exists: await exists(root.dir), items })
+  }
+  return { roots: displayRoots(), groups }
+}
+
+/**
+ * Copy one skill folder in, or over the skill an earlier import of it (or `replace`) names.
+ * @returns {Promise<object>} the source, the skill's name, `status` (`imported`, `updated`, or `replaced`), the version
+ *   saved before a replacement, and links left out of the copy.
+ */
+async function importOne(m, item, target) {
+  if (typeof item?.path !== 'string' || item.path.trim() === '') throw new ActionError('bad-request', 'Each item needs a path')
+  const dir = await realpath(expandHome(item.path))
+  if (!(await hasSkillFile(dir))) throw new ActionError('skill-no-file', `No SKILL.md in ${dir}`, { skill: basename(dir) })
+  const candidate = await readCandidate(dir)
+  if (candidate.problem === 'no-frontmatter') throw new ActionError('skill-no-frontmatter', `${dir}/SKILL.md needs name and description frontmatter`)
+  const content = await readSkills(m)
+  const previous = importedFrom(content, dir)
+  const name = item.name !== undefined ? checkSkill(item.name) : previous?.[0] ?? checkSkill(candidate.name)
+  const rename = name === candidate.name ? undefined : name
+  const sum = await fingerprint(dir)
+  const existing = content.skills?.[name]?.info
+  const existingPath = typeof existing?.path === 'string' && await exists(existing.path) ? existing.path : undefined
+  const { root, source } = rootFor(target)
+  const imported = { from: dir, source: IMPORT_SOURCES.has(item.source) ? item.source : 'folder', quick: sum.quick, content: sum.content, at: Date.now() }
+  if (existingPath === undefined && !(await exists(join(root, name)))) {
+    const to = join(root, name)
+    const { skipped } = await copySkill({ from: dir, to, name: rename })
+    await recordSkill(m, name, { info: { description: candidate.description, path: join(to, 'SKILL.md'), source, invocation: { modelInvocable: true, userInvocable: true } }, imported })
+    return { path: displayPath(dir), name, status: 'imported', skipped }
+  }
+  const again = previous?.[0] === name
+  if (!again && item.replace !== true) throw new ActionError('skill-exists', `A skill named ${name} already exists`, { name })
+  const info = existingPath === undefined ? { path: join(root, name, 'SKILL.md'), source } : existing
+  if (!isEditableSkill(info) || skillLocation(info.path).layout !== 'directory') throw new ActionError('skill-read-only', `Skill ${name} belongs to an installed package and cannot be changed`, { skill: name })
+  const backup = existingPath === undefined ? undefined : await saveVersion(m, name, 'before-import')
+  const { skipped } = await replaceSkill({ from: dir, to: dirname(info.path), name: rename })
+  await recordSkill(m, name, { info: { ...info, description: candidate.description }, imported })
+  return { path: displayPath(dir), name, status: again ? 'updated' : 'replaced', ...backup === undefined ? {} : { backup }, skipped }
+}
+
+/**
+ * Copy skill folders in. Each item is done on its own, so one failure leaves the others imported.
+ * @param {{ items?: unknown, target?: unknown }} body - `{ path, source?, name?, replace? }` items and the folder new
+ *   copies go to (`dsh` or `agents`).
+ * @returns {Promise<{ results: object[], skills: object }>} one result per item, and the refreshed view.
+ */
+async function importSkills(m, body) {
+  if (!Array.isArray(body.items) || body.items.length === 0) throw new ActionError('bad-request', 'items must be a non-empty list')
+  rootFor(body.target)
+  const results = []
+  for (const item of body.items) {
+    try {
+      results.push(await importOne(m, item, body.target))
+    } catch (error) {
+      const known = error instanceof ActionError || error instanceof SkillFileError
+      results.push({
+        path: typeof item?.path === 'string' ? displayPath(expandHome(item.path)) : '',
+        ...typeof item?.name === 'string' ? { name: item.name } : {},
+        status: 'error',
+        code: known ? error.code : 'failed',
+        error: error instanceof Error ? error.message : String(error),
+        ...known && error.details !== undefined ? { details: error.details } : {},
+      })
+    }
+  }
+  if (results.some(result => result.status !== 'error')) await settle(m)
+  return { results, skills: await skillsView(m) }
 }
 
 /** Give a new preset the skill settings of the preset it was copied from. */

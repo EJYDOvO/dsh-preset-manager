@@ -2,9 +2,11 @@
 
 English | [中文](https://github.com/xiaohai-78/dsh-modes/blob/main/README.zh.md)
 
-Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It adds a **Modes** page to the Web interface's Settings, where you switch what each agent mode can do, edit each mode's system prompt, create your own modes from templates, and merge built-in updates in one click after a dsh upgrade.
+Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It adds a **Modes** page to the Web interface's Settings, where you switch what each agent mode can do, edit each mode's system prompt and the tool descriptions the model reads, manage skills per mode (saved versions, new skills, and imports from Codex, Claude Code, or a folder), create your own modes from templates, and merge built-in updates in one click after a dsh upgrade.
 
-<img src="assets/screenshot-modes.png" alt="Settings → Modes" width="640">
+<img src="assets/screenshot-modes.png" alt="Settings → Modes: the mode list" width="640">
+
+<img src="assets/screenshot-skills.png" alt="Skills: per-mode switches and pinned versions" width="316"> <img src="assets/screenshot-import.png" alt="Import skills from Codex and Claude Code" width="316">
 
 ## What it does
 
@@ -13,7 +15,8 @@ Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 - **Edit the prompt**: edit each mode's system prompt with a preview and a version history. You can also let a saved prompt reach sessions that are already running, or let the model change the prompt in chat; every save asks you first.
 - **Edit tool descriptions**: rewrite the description of any tool the model sees, for several modes at once, and restore the built-in text of one tool, one mode, or everything with one click. The tools' own definitions are never changed.
 - **Create your own modes**: start from four templates (Develop, Write, Chat, Read-only research), or copy any existing mode.
-- **Control skills per mode**: turn a skill on or off in each mode or in all of them, pin a mode to a saved version of a skill, and keep a history of versions you can view, restore, or delete. Skill files are never moved.
+- **Control skills per mode**: turn a skill on or off in each mode or in all of them, pin a mode to a saved version of a skill, and keep a history of versions you can view, restore, or delete. Switching and pinning never move skill files.
+- **Create and import skills**: write a new skill in the page, or copy skills in from Codex, Claude Code, or any folder, several at once. When an imported skill's source changes, the page says so and imports it again in one click.
 - **Update the plugin itself**: the page tells you when a newer version of this plugin exists and can install it with DSH's own installer, after you confirm.
 - **Keep up with dsh upgrades**: when dsh updates its built-in modes, merge the changes in one click and keep yours. When a plugin fails to load, turn off just the failing plugins in one click.
 
@@ -92,8 +95,12 @@ Open **Settings → Modes → Tool descriptions**. It rewrites the description o
 
 Open **Settings → Modes → Skills**. It lists every skill the modes find, with its description and file.
 
+- **New skill**: **New skill** asks for a name (lowercase letters, digits, and hyphens), a one-line description, the folder (`~/.dsh/skills`, read by DSH only, or `~/.agents/skills`, shared with other agent tools), and the modes it starts on in. It writes `<folder>/<name>/SKILL.md` and opens it in the editor.
+- **Import**: **Import skills** lists the skills in `~/.codex/skills`, `~/.claude/skills`, and Claude Code plugins under `~/.claude/plugins`, or, under **Folder**, the skills in a folder you name (a skill folder, or a folder of skill folders; a path in quotes, as Windows' **Copy as path** gives it, works too). Each line says whether it is ready, already imported, changed at its source, named like an existing skill (import it under another name, or replace that skill after a version of it is saved), or named in a way DSH would ignore (it is imported under the suggested name, and the copy's `name` is rewritten). Skills shipped with Codex are listed folded and unticked, because they use Codex's own tools.
+- **Imports are copies**: the files are copied into the folder you choose, so editing them in DSH never changes the source. Links that point outside the skill, `.git`, and `.DS_Store` are left out. When the source changes later, the skill's line shows **Source changed**; **Import again from the source** in its opened part replaces the copy after saving the current files as a version.
 - **View by mode**: the **Mode** menu at the top, shared with the Tool descriptions view, shows all modes or one mode. In one mode, the list holds the skills that mode finds, with how many are on, and each line's switch and version menu act on that mode directly; **Turn all on** and **Turn all off** (which asks first) change every listed skill in it. **Manage skills** in a mode card's menu opens this view for that mode.
 - **On or off**: viewing all modes, the switch on a skill's line turns it off in every mode; viewing one mode, that switch is in the opened part. Opened, the skill shows a switch for each mode that has the skill tool; a mode that does not find the skill, or has no skill tool, is shown as not affected.
+- **Modes with the Skills capability off**: such a mode has no skill tool, so skills do nothing in it and it is left out of the switches. A note at the top names these modes, with a button that turns the capability on, as the switch on the mode card's **Capabilities** tab does. Modes made from the Chat template start with it off.
 - **Pin a version**: each mode has a version menu: **Current file**, or a saved version. A pinned mode gets that version's description and instructions, and its resources from the saved copy, while other modes keep using the current file.
 - **Versions**: **Save current as a version** copies the skill's files (up to 1,000 files and 25 MB) with an optional note. Editing the file here, or restoring a version, first saves the current file as a version, labelled so you can tell them apart. **View** shows a version's `SKILL.md`; **Restore to file** copies it over the current files and keeps files the version lacks; **Delete** is refused while a mode uses the version.
 - **Edit SKILL.md**: edit the file in the page. A file that changed while you edited is not overwritten unless you choose to.
@@ -145,6 +152,7 @@ The page checks for a newer version of this plugin and can install it.
 
 - Every change applies to **sessions created afterwards**; running sessions keep what they started with. The one exception is a mode with **Live prompt** on: its saved prompt text reaches running sessions from their next step.
 - **Skills**: the first setting of a mode adds one row of this plugin to it, so it reaches new sessions only; after that, a change reaches the running sessions of that mode on their next step. The `/` menu in the composer keeps its list until the page reloads.
+- **New and imported skills**: DSH watches its skill folders, so a new skill reaches the catalog of running sessions from their next step without a restart; the `/` menu shows it after a page reload.
 - **Tool descriptions**: the first edit of a mode adds one row of this plugin to it, so that edit reaches new sessions only. After that, every save or restore reaches the running sessions of that mode on their next step.
 - Changes are written to the current dsh profile's `cordis.patch.yml`, so other windows using the same profile see them too. The Desktop app uses a different profile and is not affected.
 - The result of every action shows in a bar at the bottom of the page. Errors stay until you close them. After a tool description or skill save, the bar also says when it takes effect: running sessions from their next step, or only new sessions for a mode's first setting, with a **New session with it** button when one mode needs a new session. A session that started before a mode's first setting never sees later changes either; start a new one.
@@ -200,6 +208,10 @@ Before you uninstall:
 - **Scope of Live prompt**: it applies only to the opening and closing prompt text. The "complete prompt" and "runtime context" settings still apply to new sessions only.
 - **Scope of chat edits**: `mode_prompt` reads and writes only the opening prompt text.
 - **Skills listed**: the page lists the skills the modes find without a workspace: user, custom, and packaged skills. Project skills (`<project>/.dsh/skills`, `<project>/.agents/skills`) depend on a session's workspace and are not listed.
+- **Skills written for other tools**: DSH reads `name`, `description`, `whenToUse`, `metadata`, `disable-model-invocation`, and `user-invocable`; other fields, such as Claude Code's `allowed-tools` or `model`, have no effect. A skill that relies on another tool's own tools (for example Codex's image generation) is imported but may not work in DSH.
+- **Where import looks**: `$CODEX_HOME/skills` (default `~/.codex/skills`), `$CLAUDE_CONFIG_DIR/skills` (default `~/.claude/skills`), and `skills/<name>/SKILL.md` up to six levels below `~/.claude/plugins`, keeping the most recently changed copy of a plugin cached in several versions. Project skills such as `<project>/.claude/skills` are imported through **Folder**. A skill as a single `<name>.md` file is not listed.
+- **Replacing on Windows**: the files are overwritten one by one, so a failure part way leaves a mix of old and new files. Restore the version saved before the import from the skill's version list.
+- **A new skill just written**: the page waits 0.8 seconds for DSH's file watcher before it reads the list again. If a new skill still shows "This mode cannot find it", click **Refresh**.
 - **Skills turned off in every mode**: this needs the policy row in every mode, so every built-in mode gets a profile override.
 - **Order against other skill plugins**: the row's entries use rank -1000. A plugin that registers entries in the same scope with a lower rank wins over them.
 - **A hidden skill's details**: once a skill is hidden in every mode, the page shows the description and file it had when last seen.
@@ -228,6 +240,7 @@ Before you uninstall:
 | `skill-policy.js` | The skill policy row: mounted inside a mode, it registers a skill provider in the mode's scope that lists an entry nobody may invoke for each hidden skill and the saved version for each pinned one, at rank -1000 |
 | `skill-store.js` | Pure rules for skill settings: merging the all-modes list into a mode, batch changes, version ids, which modes need the row, and reading SKILL.md frontmatter |
 | `skill-files.js` | Copies a skill into a version directory, restores one over the current files, and writes files through links |
+| `skill-import.js` | Finds skill folders in Codex, Claude Code, and a named folder; reads a candidate's frontmatter; fingerprints, copies, and replaces skill folders; writes a new skill's `SKILL.md` |
 | `update.js` | Version check and upgrade helpers without DSH services: version comparison, how the profile depends on the package, the registries to ask, and validation of the registry's tarball address |
 | `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), `settings.json` (the update check switch), and `skills.json` (skill settings, the details each skill had when last seen, and the version index; the versions' files are in `skill-versions/<skill>/<version>/`). Writes go to a temporary file first and then replace the original |
 | `live-persona.js` | The persona row for Live prompt: replaces the mode's `@deepseek-ai/dsh-persona` row and registers the same two prompt sections, reading the latest saved text every time the prompt is assembled |
@@ -263,6 +276,7 @@ Actions of `/api/dsh-modes`:
 
 - **Mechanism**: the DSH skill registry merges the providers of an agent's scope chain; the nearest scope wins a duplicate name, and within one scope the lower rank wins. Each mode mounts its own `skill-filesystem` row, so the policy row registers in the same scope with rank -1000. A hidden skill gets an entry with `modelInvocable` and `userInvocable` false, which removes it from the model's catalog and from the `/` menu; a pinned skill gets an entry whose body is the saved version and whose `resourceBase` is the saved copy.
 - **Live changes**: after every change the manager calls the providers' `invalidate`, and `tool-skill` appends a replacement catalog on the next model step. Earlier catalogs stay in the history.
+- **Create and import**: new skills go to `$DSH_HOME/skills` or `$DSH_AGENTS_HOME/skills` (defaults `~/.dsh/skills` and `~/.agents/skills`), the user roots the filesystem provider scans. DSH watches every folder in a skill root, and Windows cannot rename a watched folder. So on Windows a copy is written straight into its folder with `SKILL.md` last, and a replacement overwrites the files in place (`SKILL.md` last) and removes the ones the source lacks; elsewhere a copy is written beside its final folder and renamed into it, and a replacement is copied first and swapped in. A linked folder is never replaced. `skills.json` records each import as `skills.<name>.imported` with the source folder, its source kind, and two fingerprints: one of file paths, sizes, and modification times, and one of paths and contents, so an unchanged source is recognised without reading its files.
 - **The list**: `agentPresets.acquireScope(id)` and `skills.snapshot({ scope })` give each mode's skills and `tools.schemas(scope)` whether the mode has the skill tool, without a session. The web profile turns the host's own `skill-filesystem` row off, so no unhidden copy exists outside the modes; the page therefore remembers each skill's details while it is visible.
 
 ### Updates
@@ -280,6 +294,7 @@ Actions of `/api/dsh-modes`:
   - when the model calls `mode_prompt`, the interface asks for approval, and after approval the next request carries the changed prompt;
   - skills: in a new Standard session a skill turned off was missing from the catalog, a pinned skill showed the saved version's description and its loaded instructions were the saved body while the file held an edit, a skill turned off in every mode disappeared from a running session's next request, and restoring a version brought the file back after saving the edited one; checked on `0.2.0-rc.2` and `0.2.1-rc.1`;
   - updates: a build labelled `0.5.0` found the real latest release on npm and upgraded to it through DSH's installer. The dependency became the registry tarball address and the plugin stayed enabled. `0.2.0-rc.2` asked for a restart, and `0.2.1-rc.1` replaced the plugin on the spot. The same kind of install from the Plugins page was also checked across a restart: a custom mode created before the upgrade still worked. A failed install left the manifest, lockfile, and files as they were. The latest-release answers of npm and of the China mirror pass the tarball address check. The switch, the manual check, and the development install were checked in the page;
+  - creating and importing skills: on `0.2.1-rc.2` (npm) and `0.2.1-rc.1` (source), with sample skills in Codex, Claude Code, a Claude Code plugin, and a folder, the import list showed each status, copies were written under new names where needed with the copied `name` rewritten, every mode's skill catalog (`skills.snapshot`) listed the new skills, a new skill left out of one mode was off there, and a changed source was flagged and imported again after a version was saved. Not checked through model requests: a running session picking up a new skill;
   - tool descriptions: a new session of an edited mode sends the edited text for exactly the edited tools, a running session sends a later edit with its next request, and after a restore the next request carries the built-in text again; checked on `0.2.0-rc.2` and `0.2.1-rc.1`.
 
 ### Tests
@@ -288,7 +303,7 @@ Actions of `/api/dsh-modes`:
 npm test
 ```
 
-Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, and the skill settings, version files, and skill policy row.
+Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, and the skill settings, version files, skill policy row, and skill import (folder listing, fingerprints, copies that leave out outside links, renames, and replacements).
 
 </details>
 
