@@ -32,8 +32,11 @@ test('finds the skill folders from the environment, falling back to the home dir
 test('expands and shortens the home directory', () => {
   assert.equal(expandHome('~/x/y', '/home/u'), join('/home/u', 'x', 'y'))
   assert.equal(expandHome('~', '/home/u'), '/home/u')
-  assert.equal(displayPath(join('/home/u', 'x'), '/home/u'), `~${sep}x`)
-  assert.equal(displayPath('/other/x', '/home/u'), '/other/x')
+  // A home directory is written with the platform's separators, so the fixture is too.
+  const home = join('/home', 'u')
+  assert.equal(displayPath(join(home, 'x'), home), `~${sep}x`)
+  assert.equal(displayPath(home, home), '~')
+  assert.equal(displayPath(join('/other', 'x'), home), join('/other', 'x'))
 })
 
 test('drops the quotes that a copied Windows path carries', () => {
