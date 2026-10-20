@@ -30,6 +30,10 @@ test('tells how the profile depends on the package from the manager\'s source sp
   assert.equal(sourceKind('link:/Users/me/dsh-modes'), 'link')
   assert.equal(sourceKind('/Users/me/dsh-modes'), 'link')
   assert.equal(sourceKind('file:../dsh-modes'), 'link')
+  assert.equal(sourceKind('C:\\Users\\me\\dsh-modes'), 'link')
+  assert.equal(sourceKind('D:/work/dsh-modes'), 'link')
+  assert.equal(sourceKind('link:C:\\Users\\me\\dsh-modes'), 'link')
+  assert.equal(sourceKind('\\\\server\\share\\dsh-modes'), 'link')
   assert.equal(sourceKind(undefined), 'unknown')
 })
 

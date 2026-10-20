@@ -53,7 +53,7 @@ export function isNewer(latest, installed) {
 export function sourceKind(source) {
   if (typeof source !== 'string' || source.trim() === '') return 'unknown'
   const spec = source.trim()
-  if (/^(link|file|workspace):/.test(spec) || spec.startsWith('/') || spec.startsWith('~') || spec.startsWith('.') || /^[A-Za-z]:[\\/]/.test(spec)) return 'link'
+  if (/^(link|file|workspace):/.test(spec) || spec.startsWith('/') || spec.startsWith('\\') || spec.startsWith('~') || spec.startsWith('.') || /^[A-Za-z]:[\\/]/.test(spec)) return 'link'
   if (/^https?:\/\/.+\.(tgz|tar\.gz)(\?.*)?$/i.test(spec)) return 'tarball'
   if (/^(github|gitlab|bitbucket|git\+|git:|git@|ssh:)/.test(spec) || /^[\w.-]+\/[\w.-]+(#.*)?$/.test(spec) || /^https?:\/\/.*\.git(#.*)?$/.test(spec)) return 'git'
   return 'registry'

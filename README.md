@@ -13,6 +13,7 @@ Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 - **Edit the prompt**: edit each mode's system prompt with a preview and a version history. You can also let a saved prompt reach sessions that are already running, or let the model change the prompt in chat; every save asks you first.
 - **Edit tool descriptions**: rewrite the description of any tool the model sees, for several modes at once, and restore the built-in text of one tool, one mode, or everything with one click. The tools' own definitions are never changed.
 - **Create your own modes**: start from four templates (Develop, Write, Chat, Read-only research), or copy any existing mode.
+- **Control skills per mode**: turn a skill on or off in each mode or in all of them, pin a mode to a saved version of a skill, and keep a history of versions you can view, restore, or delete. Skill files are never moved.
 - **Update the plugin itself**: the page tells you when a newer version of this plugin exists and can install it with DSH's own installer, after you confirm.
 - **Keep up with dsh upgrades**: when dsh updates its built-in modes, merge the changes in one click and keep yours. When a plugin fails to load, turn off just the failing plugins in one click.
 
@@ -80,12 +81,24 @@ The **In chat** section has two switches that **save as soon as you click them**
 
 Open **Settings → Modes → Tool descriptions**. It rewrites the description of a tool: the text that tells the model what the tool does and when to use it. The tool's own definition is never changed, so the built-in text always comes back.
 
-- **Pick the modes**: tick the modes an edit applies to. Code mode (PTC) and modes declared by other plugins are greyed out. With nothing ticked, the list shows the tools of every editable mode and editing is off.
-- **Batch edits**: edit one tool for several modes at once, or edit several tools and save them together with **Save all**. Drafts stay until you save or discard them. Under each tool you see its built-in text, its state in every ticked mode, and earlier versions you can load back.
+- **Pick the mode**: the **Mode** menu at the top is shared with the Skills view, and the page remembers the choice in this browser. Pick one mode to edit it alone, or **All modes** to see a list of modes and tick the ones an edit applies to (all are ticked at first). With nothing ticked, the list shows the tools of every editable mode and editing is off. Code mode (PTC) and modes declared by other plugins are listed with the reason and cannot be picked; if the mode picked in the Skills view cannot be used here, the page says so and shows all modes. **Edit tool descriptions** in a mode card's menu opens this view for that mode.
+- **Batch edits**: edit one tool for several modes at once, or edit several tools and save them together with **Save all**. Drafts stay until you save or discard them, also while you visit another view. Under each tool you see its built-in text, its state in every ticked mode, and earlier versions you can load back.
 - **One-click restore**: restore one tool in one mode, one tool in all ticked modes, everything in the ticked modes, or everything in every mode. Each asks first. A restore removes the edit, so the built-in text returns exactly.
 - **Built-in text changed**: after a dsh upgrade, a tool whose built-in description differs from the one your edit was based on shows **Built-in text changed**. Your edit keeps applying. Open **Built-in text** to compare, then restore, or save again to accept the new text as the baseline.
 - **Copies**: duplicating a mode copies its tool description edits.
 - **Limits**: a description has at most 20,000 characters and cannot be empty (use restore instead). Only the description changes, never a tool's name or parameters. The list shows the tools each mode registers, so it works without an open session.
+
+### Skills
+
+Open **Settings → Modes → Skills**. It lists every skill the modes find, with its description and file.
+
+- **View by mode**: the **Mode** menu at the top, shared with the Tool descriptions view, shows all modes or one mode. In one mode, the list holds the skills that mode finds, with how many are on, and each line's switch and version menu act on that mode directly; **Turn all on** and **Turn all off** (which asks first) change every listed skill in it. **Manage skills** in a mode card's menu opens this view for that mode.
+- **On or off**: viewing all modes, the switch on a skill's line turns it off in every mode; viewing one mode, that switch is in the opened part. Opened, the skill shows a switch for each mode that has the skill tool; a mode that does not find the skill, or has no skill tool, is shown as not affected.
+- **Pin a version**: each mode has a version menu: **Current file**, or a saved version. A pinned mode gets that version's description and instructions, and its resources from the saved copy, while other modes keep using the current file.
+- **Versions**: **Save current as a version** copies the skill's files (up to 1,000 files and 25 MB) with an optional note. Editing the file here, or restoring a version, first saves the current file as a version, labelled so you can tell them apart. **View** shows a version's `SKILL.md`; **Restore to file** copies it over the current files and keeps files the version lacks; **Delete** is refused while a mode uses the version.
+- **Edit SKILL.md**: edit the file in the page. A file that changed while you edited is not overwritten unless you choose to.
+- **Read-only skills**: skills inside `node_modules` belong to DSH or a plugin; you can turn them off per mode and save versions, but not edit or restore their files. Skills in `~/.agents/skills` are shared with other agent tools, and the page says so before you edit one.
+- **Copies**: duplicating a mode copies its skill settings. **Restore built-in** and deleting a mode clear them; saved versions are kept.
 
 ### All plugins
 
@@ -131,9 +144,10 @@ The page checks for a newer version of this plugin and can install it.
 ## When changes take effect
 
 - Every change applies to **sessions created afterwards**; running sessions keep what they started with. The one exception is a mode with **Live prompt** on: its saved prompt text reaches running sessions from their next step.
+- **Skills**: the first setting of a mode adds one row of this plugin to it, so it reaches new sessions only; after that, a change reaches the running sessions of that mode on their next step. The `/` menu in the composer keeps its list until the page reloads.
 - **Tool descriptions**: the first edit of a mode adds one row of this plugin to it, so that edit reaches new sessions only. After that, every save or restore reaches the running sessions of that mode on their next step.
 - Changes are written to the current dsh profile's `cordis.patch.yml`, so other windows using the same profile see them too. The Desktop app uses a different profile and is not affected.
-- The result of every action shows in a bar at the bottom of the page. Errors stay until you close them.
+- The result of every action shows in a bar at the bottom of the page. Errors stay until you close them. After a tool description or skill save, the bar also says when it takes effect: running sessions from their next step, or only new sessions for a mode's first setting, with a **New session with it** button when one mode needs a new session. A session that started before a mode's first setting never sees later changes either; start a new one.
 
 ## Compatibility
 
@@ -174,16 +188,21 @@ dsh plugin --profile web remove dsh-modes
 
 Before you uninstall:
 
-1. **Restore tool descriptions first**: in **Tool descriptions**, use **Restore everything in all modes**. A mode with edited tool descriptions contains a row of this plugin (`dsh-modes/tool-descriptions`); once the plugin is uninstalled, such a mode cannot find it and stops working.
-2. **Turn off two switches**: on each mode's **Prompt** tab, turn off **Live prompt** and **Allow prompt changes in chat** in the **In chat** section. These switches add this plugin's own modules to the mode. Once the plugin is uninstalled, such a mode cannot find them and stops working.
-3. **For a full reset**: **Restore built-in** on the built-in modes you changed, and delete the modes you created. Otherwise changed modes keep running with your changes after the uninstall.
-4. **Clean up**: you can also delete the `.dsh-modes/` folder in the profile directory.
+1. **Clear skill settings first**: in **Skills**, turn every skill back on and set every mode to **Current file**. A mode with skill settings contains the row `dsh-modes/skills`.
+2. **Restore tool descriptions**: in **Tool descriptions**, use **Restore everything in all modes**. A mode with edited tool descriptions contains a row of this plugin (`dsh-modes/tool-descriptions`); once the plugin is uninstalled, such a mode cannot find it and stops working.
+3. **Turn off two switches**: on each mode's **Prompt** tab, turn off **Live prompt** and **Allow prompt changes in chat** in the **In chat** section. These switches add this plugin's own modules to the mode. Once the plugin is uninstalled, such a mode cannot find them and stops working.
+4. **For a full reset**: **Restore built-in** on the built-in modes you changed, and delete the modes you created. Otherwise changed modes keep running with your changes after the uninstall.
+5. **Clean up**: you can also delete the `.dsh-modes/` folder in the profile directory.
 
 ## Known limitations
 
 - **Sync needs a baseline**: syncing compares against the built-in plugin list recorded at your last save. Modes changed with a version before 0.5.0 have no such record, so the first sync keeps every difference from the built-in version as your change. Every save after that records a baseline.
 - **Scope of Live prompt**: it applies only to the opening and closing prompt text. The "complete prompt" and "runtime context" settings still apply to new sessions only.
 - **Scope of chat edits**: `mode_prompt` reads and writes only the opening prompt text.
+- **Skills listed**: the page lists the skills the modes find without a workspace: user, custom, and packaged skills. Project skills (`<project>/.dsh/skills`, `<project>/.agents/skills`) depend on a session's workspace and are not listed.
+- **Skills turned off in every mode**: this needs the policy row in every mode, so every built-in mode gets a profile override.
+- **Order against other skill plugins**: the row's entries use rank -1000. A plugin that registers entries in the same scope with a lower rank wins over them.
+- **A hidden skill's details**: once a skill is hidden in every mode, the page shows the description and file it had when last seen.
 - **Update check**: it needs a reachable registry. When the registry cannot be reached the footer says the check failed. A mirror can lag behind npm, so the newest release may show up later.
 - **Version record after an upgrade**: an upgrade from the page records the dependency as the tarball address instead of a version number. That does not affect use or later upgrades.
 - **A new version that cannot start**: DSH does not keep running the old one. Run the rollback command from the banner in a terminal.
@@ -206,8 +225,11 @@ Before you uninstall:
 | `rebase.js` | Three-way merge for syncing built-in updates: takes the built-in plugin list from your last save as the base and merges your changes onto the latest built-in list. On conflict, your value wins |
 | `tool-descriptions.js` | The row that applies tool description edits: mounted inside a mode, listens to `system-prompt/assemble` first in its chain, and replaces the `description` of the edited tools in the tool list of every request |
 | `tool-edit.js` | Pure planning for tool description edits: validation, batch edits with conflict checks, restores, history, and the per-mode tool list |
+| `skill-policy.js` | The skill policy row: mounted inside a mode, it registers a skill provider in the mode's scope that lists an entry nobody may invoke for each hidden skill and the saved version for each pinned one, at rank -1000 |
+| `skill-store.js` | Pure rules for skill settings: merging the all-modes list into a mode, batch changes, version ids, which modes need the row, and reading SKILL.md frontmatter |
+| `skill-files.js` | Copies a skill into a version directory, restores one over the current files, and writes files through links |
 | `update.js` | Version check and upgrade helpers without DSH services: version comparison, how the profile depends on the package, the registries to ask, and validation of the registry's tarball address |
-| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), and `settings.json` (the update check switch). Writes go to a temporary file first and then replace the original |
+| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), `settings.json` (the update check switch), and `skills.json` (skill settings, the details each skill had when last seen, and the version index; the versions' files are in `skill-versions/<skill>/<version>/`). Writes go to a temporary file first and then replace the original |
 | `live-persona.js` | The persona row for Live prompt: replaces the mode's `@deepseek-ai/dsh-persona` row and registers the same two prompt sections, reading the latest saved text every time the prompt is assembled |
 | `prompt-tool.js` | The `mode_prompt` tool: mounted as a row inside a mode, so only that mode's sessions see it; asks the user for approval through `tools/pre-execute` before writing |
 | `client.js` | The Web settings page (Chinese and English) |
@@ -215,7 +237,8 @@ Before you uninstall:
 
 Actions of `/api/dsh-modes`:
 
-- **Reads**: `list`, `read`, `prompt`, `history`, `usage`, `tools`, `updateStatus`, `upgradeStatus`.
+- **Reads**: `list`, `read`, `prompt`, `history`, `usage`, `tools`, `updateStatus`, `upgradeStatus`, `skills`, `readSkillFile`, `readSkillVersion`.
+- **Skills**: `setSkillModes` (a batch of `{ preset, skill, enabled?, pin? }` items), `setSkillGlobal`, `saveSkillVersion`, `restoreSkillVersion`, `deleteSkillVersion`, `writeSkillFile`.
 - **Plugin rows**: `toggle`, `followPlatform`, `applyRows`, `resetRow`.
 - **Whole modes**: `reset`, `sync`, `repair`, `create`, `update`, `remove`, `setDefault`.
 - **Prompts**: `setPrompt`, `setLive`, `setPromptTool`.
@@ -236,6 +259,12 @@ Actions of `/api/dsh-modes`:
 - **The tool list**: `agentPresets.acquireScope(id)` mounts a mode's plugins in a scope the registry releases again, and `tools.schemas(scope)` lists its tools without a session. A scan is reused for five minutes while the mode's rows are unchanged; **Refresh** scans again.
 - **Rows**: the first edit of a mode adds the row `dsh-modes-tool-descriptions` with `config.preset` set to the mode; restoring the last edit removes it. Copying a mode points the copied row at the new mode.
 
+### Skills
+
+- **Mechanism**: the DSH skill registry merges the providers of an agent's scope chain; the nearest scope wins a duplicate name, and within one scope the lower rank wins. Each mode mounts its own `skill-filesystem` row, so the policy row registers in the same scope with rank -1000. A hidden skill gets an entry with `modelInvocable` and `userInvocable` false, which removes it from the model's catalog and from the `/` menu; a pinned skill gets an entry whose body is the saved version and whose `resourceBase` is the saved copy.
+- **Live changes**: after every change the manager calls the providers' `invalidate`, and `tool-skill` appends a replacement catalog on the next model step. Earlier catalogs stay in the history.
+- **The list**: `agentPresets.acquireScope(id)` and `skills.snapshot({ scope })` give each mode's skills and `tools.schemas(scope)` whether the mode has the skill tool, without a session. The web profile turns the host's own `skill-filesystem` row off, so no unhidden copy exists outside the modes; the page therefore remembers each skill's details while it is visible.
+
 ### Updates
 
 - **Check**: the Host fetches `<registry>/dsh-modes/latest` with the process `fetch`, so DSH's outbound proxy applies. The registries come from `pluginManager.registries()` (the configured one, then its fallbacks), and the answer is reused for 12 hours (30 minutes after a failure).
@@ -249,6 +278,7 @@ Actions of `/api/dsh-modes`:
   - the Read-only research mode sends no tool that writes files, edits files, or runs commands;
   - with Live prompt on, the next request of the same session carries the new prompt;
   - when the model calls `mode_prompt`, the interface asks for approval, and after approval the next request carries the changed prompt;
+  - skills: in a new Standard session a skill turned off was missing from the catalog, a pinned skill showed the saved version's description and its loaded instructions were the saved body while the file held an edit, a skill turned off in every mode disappeared from a running session's next request, and restoring a version brought the file back after saving the edited one; checked on `0.2.0-rc.2` and `0.2.1-rc.1`;
   - updates: a build labelled `0.5.0` found the real latest release on npm and upgraded to it through DSH's installer. The dependency became the registry tarball address and the plugin stayed enabled. `0.2.0-rc.2` asked for a restart, and `0.2.1-rc.1` replaced the plugin on the spot. The same kind of install from the Plugins page was also checked across a restart: a custom mode created before the upgrade still worked. A failed install left the manifest, lockfile, and files as they were. The latest-release answers of npm and of the China mirror pass the tarball address check. The switch, the manual check, and the development install were checked in the page;
   - tool descriptions: a new session of an edited mode sends the edited text for exactly the edited tools, a running session sends a later edit with its next request, and after a restore the next request carries the built-in text again; checked on `0.2.0-rc.2` and `0.2.1-rc.1`.
 
@@ -258,7 +288,7 @@ Actions of `/api/dsh-modes`:
 npm test
 ```
 
-Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, and the upgrade flow against a fake plugin manager.
+Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, and the skill settings, version files, and skill policy row.
 
 </details>
 

@@ -9,11 +9,15 @@ window.__ModuleLoader__.load({
     /** Copy keys the official Agent presets page registers for the four shipped presets. */
     const BUILT_IN_COPY = { standard: 'Standard', ptc: 'Ptc', minimal: 'Minimal', cordis: 'Cordis' }
     const NOTICE_MS = 4000
+    /** How long a notice that says when a change takes effect, or offers a button, stays. */
+    const NOTICE_LONG_MS = 8000
     const PROMPT_MAX_CHARS = 20000
     const TOOL_MAX_CHARS = 20000
     /** Where the page points to for what changed in a release. */
     const CHANGES_URL = 'https://github.com/xiaohai-78/dsh-modes/commits/main'
     const DRAFT_PREFIX = 'dsh-modes:draft:'
+    /** The mode the tool and skill views last showed, kept per browser; empty is all modes. */
+    const SCOPE_KEY = 'dsh-modes:scope'
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
     const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
@@ -75,15 +79,15 @@ window.__ModuleLoader__.load({
       'notice.default': '已设为新会话的默认模式',
       'notice.reset': '已恢复内置配置',
       'notice.updated': '已更新',
-      'err.conditional-row': '这一项按运行平台自动开关，请在 YAML 中修改。',
-      'err.is-default': '这是新会话的默认模式，请先把别的模式设为默认。',
-      'err.exists': '这个 ID 已被使用。',
-      'err.invalid-id': 'ID 只能包含小写字母、数字或连字符。',
-      'err.broken': '这个模式当前无法使用，不能设为默认。',
-      'err.network': '无法连接到 DSH 服务，请刷新页面后重试。',
-      'err.prompt-unknown-variable': '提示词里的 {reference} 不是可用变量。可用变量：{variables}。',
-      'err.prompt-malformed': '提示词里的 {reference} 格式不对：变量要写成完整的双花括号形式，名称用小写字母开头，例如 {{model}}。',
-      'err.prompt-too-long': '提示词太长了，上限是 {max} 个字符。',
+      'err.conditional-row': '这一项按运行平台自动开关，请在 YAML 中修改',
+      'err.is-default': '这是新会话的默认模式，请先把别的模式设为默认',
+      'err.exists': '这个 ID 已被使用',
+      'err.invalid-id': 'ID 只能包含小写字母、数字或连字符',
+      'err.broken': '这个模式当前无法使用，不能设为默认',
+      'err.network': '无法连接到 DSH 服务，请刷新页面后重试',
+      'err.prompt-unknown-variable': '提示词里的 {reference} 不是可用变量。可用变量：{variables}',
+      'err.prompt-malformed': '提示词里的 {reference} 格式不对：变量要写成完整的双花括号形式，名称用小写字母开头，例如 {{model}}',
+      'err.prompt-too-long': '提示词太长了，上限是 {max} 个字符',
       'prompt.title': '系统提示词',
       'prompt.partial': '这段文字位于系统提示词的开头，后面还会追加工具说明、工作区规则等内容。',
       'prompt.complete': '这个模式只把这段文字作为完整的系统提示词，不会再追加工具说明等内容。',
@@ -93,7 +97,7 @@ window.__ModuleLoader__.load({
       'prompt.preview': '预览完整系统提示词',
       'prompt.hidePreview': '收起预览',
       'prompt.previewNote': '根据已保存的配置生成，不含每一步注入的运行时上下文；{{变量}} 在会话中会替换成实际值。',
-      'prompt.previewDirty': '预览已包含尚未保存的修改。',
+      'prompt.previewDirty': '预览已包含尚未保存的修改',
       'prompt.restore': '恢复内置提示词',
       'prompt.shortcut': '⌘/Ctrl + Enter 保存 · Esc 收起并保留草稿',
       'notice.promptSaved': '提示词已保存 · 之后新建的会话生效',
@@ -120,7 +124,7 @@ window.__ModuleLoader__.load({
       'row.hideDetails': '收起详情',
       'confirm.personaOff': '关闭「{title}」后，这个模式的提示词不会生效，模型只会看到 DSH 默认的身份说明。',
       'confirm.personaOffOk': '仍然关闭',
-      'warn.personaOff': '身份行已关闭，这个模式的提示词没有生效。',
+      'warn.personaOff': '身份行已关闭，这个模式的提示词没有生效',
       'action.enablePersona': '重新启用',
       'badge.draft': '提示词草稿未保存',
       'detail.id': '行 id',
@@ -141,21 +145,21 @@ window.__ModuleLoader__.load({
       'live.unknown': '未知',
       'change.changed': '已修改（与内置不同）',
       'change.same': '与内置相同',
-      'prompt.draftRestored': '已恢复上次未保存的草稿。',
-      'prompt.draftStale': '这份草稿基于旧版本，保存时会提示冲突。',
+      'prompt.draftRestored': '已恢复上次未保存的草稿',
+      'prompt.draftStale': '这份草稿基于旧版本，保存时会提示冲突',
       'prompt.discardDraft': '放弃草稿',
       'prompt.discard': '放弃修改',
       'prompt.import': '导入',
       'prompt.export': '导出',
-      'prompt.imported': '已导入到编辑器，尚未保存。',
-      'prompt.exported': '已导出为文件。',
-      'prompt.importTooLarge': '文件太大，上限是 {max} 个字符。',
+      'prompt.imported': '已导入到编辑器，尚未保存',
+      'prompt.exported': '已导出为文件',
+      'prompt.importTooLarge': '文件太大，上限是 {max} 个字符',
       'prompt.importFailed': '导入失败：{detail}',
-      'prompt.conflictTitle': '保存被拒绝：这段提示词在你编辑期间被别处修改了。',
+      'prompt.conflictTitle': '保存被拒绝：这段提示词在你编辑期间被别处修改了',
       'prompt.conflictLatest': '最新内容：',
       'prompt.loadLatest': '载入最新内容（放弃我的修改）',
       'prompt.overwrite': '用我的版本覆盖',
-      'prompt.off': '身份行已关闭，这段提示词不会生效。',
+      'prompt.off': '身份行已关闭，这段提示词不会生效',
       'badge.live': '即时生效',
       'action.sync': '同步内置更新',
       'sync.title': '把内置模式的最新变化合并进来，你的修改会保留。',
@@ -168,12 +172,12 @@ window.__ModuleLoader__.load({
       'sync.confirm': '同步',
       'notice.synced': '已同步内置更新',
       'notice.savedSynced': '已保存，并同步了内置模式的更新',
-      'err.up-to-date': '已经包含最新的内置配置。',
+      'err.up-to-date': '已经包含最新的内置配置',
       'repair.title': '有 {n} 个插件无法加载，这个模式现在不能用：',
       'repair.hint': '关闭后这个模式就能正常使用；之后把对应插件装好，可以在插件列表里再打开。原因的完整内容见宿主日志。',
       'action.repair': '关闭这些插件',
       'notice.repaired': '已关闭无法加载的插件',
-      'err.nothing-to-repair': '没有需要关闭的插件。',
+      'err.nothing-to-repair': '没有需要关闭的插件',
       'row.failed': '加载失败',
       'row.platform': '自动',
       'row.platformNow': '自动（当前{state}）',
@@ -181,14 +185,14 @@ window.__ModuleLoader__.load({
       'row.forceOff': '关',
       'row.forced': '已固定，不再自动切换',
       'row.platformHint': '这一项原本按运行环境（例如操作系统）自动开关；固定为开或关后，就不再自动切换。',
-      'err.no-condition': '找不到这个插件原本的自动开关条件。',
+      'err.no-condition': '找不到这个插件原本的自动开关条件',
       'confirm.saved': '另有 {n} 个已保存的会话是用这个模式创建的，删除后再打开这些会话会失败。',
       'confirm.checking': '正在统计使用这个模式的会话…',
       'confirm.savedPartial': '另有至少 {n} 个已保存的会话使用这个模式（会话较多，没有全部统计完），删除后再打开这些会话会失败。',
       'prompt.advanced': '高级设置：结尾提示词、完整提示词、运行时上下文',
       'prompt.suffix': '结尾提示词',
       'prompt.suffixHint': '追加在工具说明、工作区规则等内容之后。留空会去掉这个模式原有的结尾。',
-      'prompt.suffixIgnored': '已选择只用开头这段作为完整提示词，结尾提示词不会生效。',
+      'prompt.suffixIgnored': '已选择只用开头这段作为完整提示词，结尾提示词不会生效',
       'prompt.completeLabel': '只用开头这段作为完整的系统提示词，不追加工具说明等内容',
       'prompt.runtimeLabel': '附带运行时上下文：当前时间、工作目录、权限等',
       'prompt.flagsNote': '这两项只对之后新建的会话生效，预览也不会反映它们的变化。',
@@ -206,7 +210,7 @@ window.__ModuleLoader__.load({
       'prompt.historyEmpty': '还没有历史版本。每次保存提示词都会自动记录，最多保留 30 个。',
       'prompt.historyLoad': '载入到编辑器',
       'prompt.historyCurrent': '与当前版本相同',
-      'prompt.historyLoaded': '已载入历史版本，尚未保存。',
+      'prompt.historyLoaded': '已载入历史版本，尚未保存',
       'source.page': '设置页',
       'source.chat': '对话中',
       'source.restore': '恢复内置',
@@ -274,8 +278,8 @@ window.__ModuleLoader__.load({
       'meta.live': '提示词即时生效',
       'meta.promptTool': '可在对话里改提示词',
       'action.more': '更多操作',
-      'banner.sync': '内置模式有更新，同步后会保留你的修改。',
-      'banner.draft': '这个模式有未保存的提示词草稿。',
+      'banner.sync': '内置模式有更新，同步后会保留你的修改',
+      'banner.draft': '这个模式有未保存的提示词草稿',
       'action.openDraft': '继续编辑',
       'plugins.search': '搜索插件',
       'plugins.onlyChanged': '只看改动',
@@ -289,14 +293,95 @@ window.__ModuleLoader__.load({
       'prompt.restoreDirty': '编辑器里未保存的修改会被丢弃。',
       'view.modes': '模式',
       'view.tools': '工具描述',
+      'view.skills': '技能',
+      'skills.intro': '按模式开关技能（skill），并把技能固定在保存过的版本上。只改模式里的设置，不动技能文件',
+      'skills.loading': '正在读取各模式的技能…',
+      'skills.search': '搜索技能名或描述',
+      'skills.none': '还没有发现任何技能',
+      'skills.empty': '没有匹配的技能',
+      'skills.offAll': '所有模式已关闭',
+      'skills.offIn': '{n} 个模式已关闭',
+      'skills.pinnedIn': '{n} 个模式固定了版本',
+      'skills.missing': '找不到文件',
+      'skills.enabled': '启用「{name}」',
+      'skills.allModes': '总开关',
+      'skills.modeSummary': '这个模式里开着 {on} 个，共 {total} 个',
+      'skills.hiddenOthers': '另有 {n} 个技能「{mode}」里没有，没有列出',
+      'skills.allOn': '全部打开',
+      'skills.allOff': '全部关闭',
+      'skills.confirmAllOff': '在「{mode}」里关闭列出的 {n} 个技能？之后可以逐个或全部打开。',
+      'skills.offHere': '已关闭',
+      'skills.pinnedBadge': '固定在 {version}',
+      'skills.masterLine': '所有模式的总开关',
+      'action.skills': '管理技能',
+      'skills.perMode': '各模式',
+      'skills.offAllHint': '它在所有模式里都关闭了；打开右上角的开关后，下面每个模式的设置才生效。',
+      'skills.inMode': '在「{mode}」里使用',
+      'skills.versionIn': '「{mode}」使用的版本',
+      'skills.notInMode': '这个模式找不到它',
+      'skills.currentFile': '当前文件',
+      'skills.noTool': '这些模式没有技能工具，不受影响：{modes}',
+      'skills.versions': '版本',
+      'skills.notePlaceholder': '备注（可选）',
+      'skills.saveVersion': '保存当前为新版本',
+      'skills.noVersions': '还没有保存过版本',
+      'skills.usedBy': '正在使用：{modes}',
+      'skills.view': '查看',
+      'skills.hide': '收起',
+      'skills.restore': '恢复到文件',
+      'skills.confirmRestore': '用 {version} 覆盖「{name}」的当前文件？当前文件会先保存成一个新版本；版本里没有的文件会保留。',
+      'skills.confirmDelete': '删除「{name}」的 {version}？删除后不能恢复。',
+      'skills.file': '文件',
+      'skills.noFile': '还不知道它的文件位置',
+      'skills.shared': '这个技能在 ~/.agents/skills 里，和其他 Agent 工具共用；改动文件会影响它们。',
+      'skills.bundled': '这个技能属于已安装的包（DSH 或某个插件），不能修改文件，但可以保存版本和按模式关闭。',
+      'skills.edit': '编辑 SKILL.md',
+      'skills.editHint': '保存前会自动把当前文件存成一个版本。',
+      'skills.conflict': '文件在你编辑期间被改动了。最新内容：',
+      'skills.loadLatest': '载入最新内容',
+      'skills.overwrite': '仍然覆盖',
+      'skills.saved': '已保存',
+      'skills.versionSaved': '已保存新版本',
+      'skills.restored': '已恢复到文件，原文件已存为新版本',
+      'skills.deleted': '已删除版本',
+      'skills.rowFailed': '设置已保存，但这些模式没能更新：{modes}',
+      'skills.source.manual': '手动保存',
+      'skills.source.before-edit': '编辑前自动保存',
+      'skills.source.before-restore': '恢复前自动保存',
+      'skills.status.unknown-preset': '没有这个模式',
+      'skills.status.not-editable': '这个模式不能编辑',
+      'skills.status.invalid': '无效',
+      'skills.status.unknown-version': '没有这个版本',
+      'err.skill-name-invalid': '技能名无效',
+      'err.skill-no-file': '还不知道这个技能的文件位置；请在它可见时打开一次「技能」页',
+      'err.skill-read-only': '这个技能属于已安装的包，不能修改文件',
+      'err.unknown-version': '没有这个版本',
+      'err.version-pinned': '这个版本正在被这些模式使用：{modes}',
+      'err.note-too-long': '备注不能超过 {max} 字',
+      'err.skill-text-empty': '技能文件不能为空',
+      'err.skill-text-too-long': '技能文件不能超过 {max} 字',
+      'err.skill-conflict': '文件在你编辑期间被改动了',
+      'err.skill-too-large': '技能超过 {files} 个文件或 {megabytes} MB，不能保存版本',
       'meta.toolEdits': '{n} 项工具说明已改',
+      'meta.skillEdits': '{n} 项技能设置',
+      'confirm.resetSkills': '这个模式的 {n} 项技能设置也会清除（版本会保留）。',
       'confirm.resetTools': '另有 {n} 项工具说明的修改也会恢复为内置原文。',
-      'tools.intro': '改写发给模型的工具说明。工具的内置定义不会被修改，随时可以恢复原文。已改过说明的模式，保存后的修改在下一步对话就会生效；模式第一次被改写时，要新建会话才会生效。代码模式（PTC）暂不支持。',
+      'tools.intro': '改写发给模型的工具说明。内置定义不会被修改，随时可以恢复原文',
+      'scope.label': '模式',
+      'scope.all': '所有模式',
+      'scope.unavailable': '「{mode}」：{reason}，这里显示所有模式',
+      'scope.noSkillTool': '没有技能工具',
+      'effect.live': '进行中的会话从下一步生效',
+      'effect.fresh': '{modes} 第一次设置，新建会话后生效',
+      'effect.mixed': '{live} 进行中的会话从下一步生效；{fresh} 第一次设置，新建会话后生效',
+      'effect.more': '{n} 个模式',
+      'effect.slash': '输入框的 / 菜单刷新页面后更新',
+      'action.tools': '编辑工具描述',
       'tools.modes': '应用到这些模式',
       'tools.selectAll': '全选',
       'tools.selectNone': '全不选',
       'tools.modeEdited': '已改 {n} 项',
-      'tools.modePtc': 'PTC 模式暂不支持',
+      'tools.modePtc': '暂不支持（工具由代码调用）',
       'tools.modeReadOnly': '来自其他插件，不能编辑',
       'tools.modeError': '读取工具失败：{error}',
       'tools.search': '搜索工具名或说明',
@@ -331,11 +416,13 @@ window.__ModuleLoader__.load({
       'tools.confirmModes': '把所选 {modes} 个模式里已改的 {n} 条说明恢复为内置原文？',
       'tools.confirmAll': '把所有模式里已改的 {n} 条说明恢复为内置原文？',
       'tools.nothingToRestore': '没有已改的说明',
-      'tools.summary': '已保存 {saved} 条 · 恢复 {restored} 条 · 无变化 {unchanged} 条',
+      'tools.sumSaved': '已保存 {n} 条',
+      'tools.sumRestored': '已恢复 {n} 条',
+      'tools.sumUnchanged': '无变化 {n} 条',
       'tools.summaryFailed': '有 {n} 条没有完成',
       'tools.failureLine': '{mode} · {tool}：{reason}',
       'tools.status.conflict': '已被别处修改，刷新后再试',
-      'tools.status.ptc': 'PTC 模式暂不支持',
+      'tools.status.ptc': '暂不支持（工具由代码调用）',
       'tools.status.not-editable': '这个模式不能编辑',
       'tools.status.unknown-tool': '这个模式没有这个工具',
       'tools.status.unknown-preset': '没有这个模式',
@@ -375,12 +462,12 @@ window.__ModuleLoader__.load({
       'update.checking': '检查中…',
       'update.upToDate': '已是最新版本',
       'update.checkFailed': '检查失败：{error}',
-      'err.upgrade-running': '已经有一个升级在进行。',
-      'err.not-upgradable': '这种安装方式不能在页面里升级。',
-      'err.update-changed': '最新版本已变成 {latest}，请重新确认。',
-      'err.up-to-date': '已经是最新版本。',
+      'err.upgrade-running': '已经有一个升级在进行',
+      'err.not-upgradable': '这种安装方式不能在页面里升级',
+      'err.update-changed': '最新版本已变成 {latest}，请重新确认',
+      'err.up-to-date': '已经是最新版本',
       'err.check-failed': '无法读取最新版本：{error}',
-      'err.not-running': '没有正在进行的升级。',
+      'err.not-running': '没有正在进行的升级',
     }
     const EN = {
       nav: 'Modes',
@@ -650,14 +737,95 @@ window.__ModuleLoader__.load({
       'prompt.restoreDirty': 'Unsaved edits in the editor are discarded.',
       'view.modes': 'Modes',
       'view.tools': 'Tool descriptions',
+      'view.skills': 'Skills',
+      'skills.intro': 'Switch skills on or off per mode and pin them to saved versions. Only mode settings change; skill files stay as they are',
+      'skills.loading': 'Reading the skills of every mode…',
+      'skills.search': 'Search skill names or descriptions',
+      'skills.none': 'No skills found yet',
+      'skills.empty': 'No matching skills',
+      'skills.offAll': 'Off in all modes',
+      'skills.offIn': 'Off in some modes ({n})',
+      'skills.pinnedIn': 'Pinned in some modes ({n})',
+      'skills.missing': 'File not found',
+      'skills.enabled': 'Enable {name}',
+      'skills.allModes': 'All modes',
+      'skills.modeSummary': 'On in this mode: {on} of {total}',
+      'skills.hiddenOthers': '{n} more skills are not in {mode} and are not listed',
+      'skills.allOn': 'Turn all on',
+      'skills.allOff': 'Turn all off',
+      'skills.confirmAllOff': 'Turn off the {n} listed skills in {mode}? You can turn them back on one by one or all at once.',
+      'skills.offHere': 'Off',
+      'skills.pinnedBadge': 'Pinned to {version}',
+      'skills.masterLine': 'Switch for all modes',
+      'action.skills': 'Manage skills',
+      'skills.perMode': 'Per mode',
+      'skills.offAllHint': 'It is off in every mode; the settings below apply once you turn the switch above back on.',
+      'skills.inMode': 'Use in {mode}',
+      'skills.versionIn': 'Version used in {mode}',
+      'skills.notInMode': 'Not found in this mode',
+      'skills.currentFile': 'Current file',
+      'skills.noTool': 'These modes have no skill tool and are not affected: {modes}',
+      'skills.versions': 'Versions',
+      'skills.notePlaceholder': 'Note (optional)',
+      'skills.saveVersion': 'Save current as a version',
+      'skills.noVersions': 'No saved versions yet',
+      'skills.usedBy': 'Used by: {modes}',
+      'skills.view': 'View',
+      'skills.hide': 'Hide',
+      'skills.restore': 'Restore to file',
+      'skills.confirmRestore': 'Replace the current files of "{name}" with {version}? The current files are saved as a new version first; files the version does not contain are kept.',
+      'skills.confirmDelete': 'Delete {version} of "{name}"? This cannot be undone.',
+      'skills.file': 'File',
+      'skills.noFile': 'Its file location is not known yet',
+      'skills.shared': 'This skill is in ~/.agents/skills, which other agent tools share; changing its files affects them too.',
+      'skills.bundled': 'This skill belongs to an installed package (DSH or a plugin): its files cannot be changed, but you can save versions and turn it off per mode.',
+      'skills.edit': 'Edit SKILL.md',
+      'skills.editHint': 'The current file is saved as a version before your edit is written.',
+      'skills.conflict': 'The file changed while you were editing. Its current content:',
+      'skills.loadLatest': 'Load the current content',
+      'skills.overwrite': 'Overwrite anyway',
+      'skills.saved': 'Saved',
+      'skills.versionSaved': 'Version saved',
+      'skills.restored': 'Restored to the file; the previous file was saved as a version',
+      'skills.deleted': 'Version deleted',
+      'skills.rowFailed': 'The settings were saved, but these modes could not be updated: {modes}',
+      'skills.source.manual': 'Saved by hand',
+      'skills.source.before-edit': 'Saved before an edit',
+      'skills.source.before-restore': 'Saved before a restore',
+      'skills.status.unknown-preset': 'No such mode',
+      'skills.status.not-editable': 'This mode cannot be edited',
+      'skills.status.invalid': 'Invalid',
+      'skills.status.unknown-version': 'No such version',
+      'err.skill-name-invalid': 'Invalid skill name',
+      'err.skill-no-file': 'The location of this skill is not known yet; open the Skills view once while the skill is visible',
+      'err.skill-read-only': 'This skill belongs to an installed package; its files cannot be changed',
+      'err.unknown-version': 'No such version',
+      'err.version-pinned': 'This version is used by: {modes}',
+      'err.note-too-long': 'The note cannot exceed {max} characters',
+      'err.skill-text-empty': 'The skill file cannot be empty',
+      'err.skill-text-too-long': 'The skill file cannot exceed {max} characters',
+      'err.skill-conflict': 'The file changed while you were editing',
+      'err.skill-too-large': 'The skill has more than {files} files or {megabytes} MB, so it cannot be saved as a version',
       'meta.toolEdits': 'Tool descriptions edited: {n}',
+      'meta.skillEdits': 'Skill settings: {n}',
+      'confirm.resetSkills': 'Its skill settings ({n}) are cleared as well; saved versions are kept.',
       'confirm.resetTools': 'Edited tool descriptions ({n}) are restored to their built-in text as well.',
-      'tools.intro': 'Rewrite the tool descriptions sent to the model. The built-in tool definitions are never changed, so you can always restore the original text. In a mode that already has edits, a save reaches running sessions on their next step; the first edit of a mode reaches new sessions only. Code mode (PTC) is not supported yet.',
+      'tools.intro': 'Rewrite the tool descriptions sent to the model. Built-in definitions are never changed, and the original text can always be restored',
+      'scope.label': 'Mode',
+      'scope.all': 'All modes',
+      'scope.unavailable': '"{mode}": {reason}; showing all modes here',
+      'scope.noSkillTool': 'No skill tool',
+      'effect.live': 'Running sessions pick it up on their next step',
+      'effect.fresh': '{modes}: first setting, takes effect in new sessions',
+      'effect.mixed': '{live}: running sessions pick it up on their next step; {fresh}: first setting, takes effect in new sessions',
+      'effect.more': '{n} modes',
+      'effect.slash': 'The / menu updates after a page reload',
+      'action.tools': 'Edit tool descriptions',
       'tools.modes': 'Apply to these modes',
       'tools.selectAll': 'Select all',
       'tools.selectNone': 'Select none',
       'tools.modeEdited': '{n} edited',
-      'tools.modePtc': 'PTC mode is not supported yet',
+      'tools.modePtc': 'Not supported yet (tools are called through code)',
       'tools.modeReadOnly': 'Declared by another plugin; cannot be edited',
       'tools.modeError': 'Could not read its tools: {error}',
       'tools.search': 'Search tool names or descriptions',
@@ -692,11 +860,13 @@ window.__ModuleLoader__.load({
       'tools.confirmModes': 'Restore the built-in text of {n} edited descriptions in the ticked modes ({modes})?',
       'tools.confirmAll': 'Restore the built-in text of all edited descriptions ({n}) in every mode?',
       'tools.nothingToRestore': 'No edited descriptions',
-      'tools.summary': 'Saved {saved} · restored {restored} · unchanged {unchanged}',
+      'tools.sumSaved': 'Saved {n}',
+      'tools.sumRestored': 'Restored {n}',
+      'tools.sumUnchanged': 'Unchanged {n}',
       'tools.summaryFailed': '{n} did not complete',
       'tools.failureLine': '{mode} · {tool}: {reason}',
       'tools.status.conflict': 'Changed elsewhere; refresh and try again',
-      'tools.status.ptc': 'PTC mode is not supported yet',
+      'tools.status.ptc': 'Not supported yet (tools are called through code)',
       'tools.status.not-editable': 'This mode cannot be edited',
       'tools.status.unknown-tool': 'This mode has no such tool',
       'tools.status.unknown-preset': 'No such mode',
@@ -745,41 +915,42 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-.pm { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; max-width: 760px; color: var(--dsw-alias-label-primary); font-size: 13px; }
-.pm h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.pm { --pm-r-sm: var(--dsw-radius-sm, 8px); --pm-r-md: var(--dsw-radius-md, 12px); --pm-r-xl: var(--dsw-radius-xl, 20px); container-type: inline-size; display: flex; flex-direction: column; gap: 14px; max-width: 760px; color: var(--dsw-alias-label-primary); font-size: 13px; }
+.pm h3 { margin: 0; font-size: 18px; font-weight: 500; }
+.pm strong { font-weight: 500; }
 .pm-intro { margin: 0; color: var(--dsw-alias-label-tertiary); }
 .pm-muted { color: var(--dsw-alias-label-tertiary); }
 .pm-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pm-grow { flex: 1 1 auto; }
 .pm-end { justify-content: flex-end; }
-.pm-toast { position: sticky; bottom: 12px; z-index: 30; align-self: center; box-sizing: border-box; max-width: 100%; display: flex; gap: 10px; align-items: center; padding: 8px 8px 8px 14px; border-radius: 10px; border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); color: var(--dsw-alias-state-success-primary); font-size: 12px; line-height: 1.5; }
+.pm-toast { position: sticky; bottom: 12px; z-index: 30; align-self: center; box-sizing: border-box; max-width: 100%; display: flex; gap: 10px; align-items: center; padding: 8px 8px 8px 14px; border-radius: var(--pm-r-md); border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); color: var(--dsw-alias-state-success-primary); font-size: 12px; line-height: 1.5; }
 .pm-toast.is-error { color: var(--dsw-alias-state-error-primary); border-color: var(--dsw-alias-state-error-primary); }
-.pm-toast-close { flex: none; width: 24px; height: 24px; border: 0; border-radius: 6px; background: none; color: var(--dsw-alias-label-tertiary); font-size: 16px; line-height: 1; cursor: pointer; }
-.pm-toast-close:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
-.pm-input { box-sizing: border-box; min-width: 0; font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); color: inherit; }
+.pm-toast-close { flex: none; width: 24px; height: 24px; border: 0; border-radius: var(--pm-r-sm); background: none; color: var(--dsw-alias-label-tertiary); font-size: 16px; line-height: 1; cursor: pointer; }
+@media (hover: hover) { .pm-toast-close:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); } }
+.pm-input { box-sizing: border-box; min-width: 0; font: inherit; padding: 6px 10px; border-radius: var(--pm-r-sm); border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); color: inherit; }
 .pm-input:focus { outline: none; border-color: var(--dsw-alias-state-business-primary); }
 .pm-search { flex: 1 1 220px; }
-.pm-btn { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
-.pm-btn:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-btn { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: var(--pm-r-sm); border: .5px solid var(--dsw-alias-border-l3); background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
+@media (hover: hover) { .pm-btn:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-btn:disabled { opacity: .5; cursor: default; }
 .pm-btn:focus-visible, .pm-switch:focus-visible, .pm-head:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
 .pm-primary { background: var(--dsw-alias-button-primary-fill); border-color: transparent; color: var(--dsw-alias-label-primary-foreground); }
-.pm-primary:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }
+@media (hover: hover) { .pm-primary:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); } }
 .pm-danger { color: var(--dsw-alias-state-error-primary); }
 .pm-link { font: inherit; font-size: 12px; padding: 0; border: 0; background: none; color: var(--dsw-alias-state-business-primary); cursor: pointer; }
 .pm-check { display: inline-flex; gap: 6px; align-items: center; color: var(--dsw-alias-label-secondary); cursor: pointer; user-select: none; }
-.pm-card { border: .5px solid var(--dsw-alias-settings-card-stroke); border-radius: 12px; background: var(--dsw-alias-settings-card-fill); transition: border-color .16s; }
+.pm-card { border: .5px solid var(--dsw-alias-settings-card-stroke); border-radius: var(--pm-r-xl); background: var(--dsw-alias-settings-card-fill); transition: border-color .16s; }
 .pm-card.is-default { border-color: var(--dsw-static-neutral-bluish-400); }
 .pm-card.is-broken { border-color: var(--dsw-alias-state-error-primary); }
 .pm-card.is-flash { border-color: var(--dsw-alias-state-success-primary); }
-.pm-head { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; cursor: pointer; border-radius: 12px; }
+.pm-head { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; cursor: pointer; border-radius: var(--pm-r-xl); }
 .pm-chevron { flex: none; width: 16px; margin-top: 2px; color: var(--dsw-alias-label-tertiary); transition: transform .15s; }
 .pm-chevron.is-open { transform: rotate(90deg); }
 .pm-headmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .pm-name { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .pm-name strong { font-size: 14px; }
 .pm-code { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; color: var(--dsw-alias-label-tertiary); }
-.pm-badge { font-size: 11px; line-height: 17px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--dsw-alias-border-l3); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.pm-badge { font-size: 11px; line-height: 17px; padding: 0 8px; border-radius: 999px; border: .5px solid var(--dsw-alias-border-l3); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
 .pm-badge.is-accent { border-color: var(--dsw-static-neutral-bluish-400); color: var(--dsw-alias-state-business-primary); }
 .pm-badge.is-warn { border-color: var(--dsw-alias-state-warn-primary); color: var(--dsw-alias-state-warn-primary); }
 .pm-badge.is-error { border-color: var(--dsw-alias-state-error-primary); color: var(--dsw-alias-state-error-primary); }
@@ -787,11 +958,11 @@ window.__ModuleLoader__.load({
 .pm-notice { font-size: 12px; color: var(--dsw-alias-state-success-primary); }
 .pm-error { color: var(--dsw-alias-state-error-primary); white-space: pre-wrap; line-height: 1.5; }
 .pm-body { border-top: .5px solid var(--dsw-alias-border-l3); padding: 6px 14px 12px 40px; display: flex; flex-direction: column; }
-.pm-group { margin: 12px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
+.pm-group { margin: 12px 0 4px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .pm-rowwrap { border-top: .5px solid var(--dsw-alias-border-l4); }
 .pm-group + .pm-rowwrap { border-top: 0; }
 .pm-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
-.pm-icon { flex: none; width: 28px; height: 28px; border-radius: 7px; object-fit: contain; background: var(--dsw-alias-bg-layer-3); display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary); }
+.pm-icon { flex: none; width: 28px; height: 28px; border-radius: var(--pm-r-sm); object-fit: contain; background: var(--dsw-alias-bg-layer-3); display: grid; place-items: center; font-size: 12px; font-weight: 500; color: var(--dsw-alias-label-secondary); }
 .pm-rowmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pm-rowtitle { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .pm-rowdesc { color: var(--dsw-alias-label-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -808,62 +979,62 @@ window.__ModuleLoader__.load({
 .pm-form .pm-bar { grid-column: 1 / -1; justify-content: flex-end; }
 .pm-hint { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
 .pm-hint.is-error { color: var(--dsw-alias-state-error-primary); }
-.pm-confirm { margin: 0 14px 12px 40px; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); display: flex; flex-direction: column; gap: 8px; }
+.pm-confirm { margin: 0 14px 12px 40px; padding: 10px 12px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); display: flex; flex-direction: column; gap: 8px; }
 .pm-yaml { position: relative; margin: 0 14px 12px 40px; }
-.pm-yaml pre { margin: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); font-size: 12px; line-height: 1.5; }
+.pm-yaml pre { margin: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); font-size: 12px; line-height: 1.5; }
 .pm-yaml .pm-btn { position: absolute; top: 8px; right: 8px; background: var(--dsw-alias-bg-layer-2); }
 .pm-prompt { margin: 0 14px 12px 40px; display: flex; flex-direction: column; gap: 8px; }
 .pm-textarea { width: 100%; min-height: 140px; resize: vertical; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; line-height: 1.6; }
 .pm-textarea[aria-invalid='true'] { border-color: var(--dsw-alias-state-error-primary); }
-.pm-chip { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: var(--dsw-alias-state-business-primary); cursor: pointer; }
-.pm-chip:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-chip { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; padding: 1px 6px; border-radius: var(--pm-r-sm); border: .5px solid var(--dsw-alias-border-l3); background: transparent; color: var(--dsw-alias-state-business-primary); cursor: pointer; }
+@media (hover: hover) { .pm-chip:hover { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-prompt .pm-yaml { margin: 0; }
 .pm-body .pm-prompt { margin: 4px 0 0; padding-left: 0; }
 .pm-prompt pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .pm-tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.pm-tpl { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-border-l3); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.pm-tpl:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-tpl { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--pm-r-md); border: .5px solid var(--dsw-alias-border-l3); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+@media (hover: hover) { .pm-tpl:hover { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-tpl[aria-checked='true'] { border-color: var(--dsw-static-neutral-bluish-400); background: var(--dsw-alias-bg-module-platform); }
 .pm-tpl:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
 .pm-tpl strong { font-size: 13px; }
 .pm-tpl span { font-size: 12px; line-height: 1.45; color: var(--dsw-alias-label-secondary); }
 .pm-tpl .pm-hint { color: var(--dsw-alias-label-tertiary); }
-.pm-warn { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-state-warn-primary); font-size: 12px; line-height: 1.5; }
+.pm-warn { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-state-warn-primary); font-size: 12px; line-height: 1.5; }
 .pm-warn .pm-btn { color: var(--dsw-alias-label-primary); }
 .pm-inline { margin: 0 0 8px 38px; }
 .pm-cardwarn { margin: 0 14px 10px 40px; }
-.pm-details { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); font-size: 12px; }
+.pm-details { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; padding: 8px 10px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); font-size: 12px; }
 .pm-details dt { color: var(--dsw-alias-label-tertiary); }
 .pm-details dd { margin: 0; overflow-wrap: anywhere; }
 .pm-details pre { margin: 0; max-height: 200px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
-.pm-conflict { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--dsw-alias-state-warn-primary); }
+.pm-conflict { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--pm-r-sm); border: 1px solid var(--dsw-alias-state-warn-primary); }
 .pm-conflict pre { margin: 0; max-height: 140px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: var(--dsw-alias-label-secondary); }
 .pm-file { display: none; }
-.pm-seg { flex: none; display: inline-flex; margin-top: 2px; border: 1px solid var(--dsw-alias-border-l3); border-radius: 8px; overflow: hidden; }
+.pm-seg { flex: none; display: inline-flex; margin-top: 2px; border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--pm-r-sm); overflow: hidden; }
 .pm-seg button { font: inherit; font-size: 11px; padding: 3px 8px; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; white-space: nowrap; }
-.pm-seg button + button { border-left: 1px solid var(--dsw-alias-border-l3); }
-.pm-seg button[aria-checked='true'] { background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-primary); font-weight: 600; }
+.pm-seg button + button { border-left: .5px solid var(--dsw-alias-border-l3); }
+.pm-seg button[aria-checked='true'] { background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-primary); font-weight: 500; }
 .pm-seg button:disabled { cursor: default; opacity: .5; }
 .pm-seg button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
-.pm-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); }
+.pm-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); }
 .pm-panel ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
 .pm-option { display: flex; gap: 8px; align-items: flex-start; color: var(--dsw-alias-label-primary); cursor: pointer; line-height: 1.5; }
 .pm-option input { margin-top: 3px; }
 .pm-history { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow: auto; }
-.pm-history-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l4); }
+.pm-history-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: var(--pm-r-sm); border: .5px solid var(--dsw-alias-border-l4); }
 .pm-history-item pre { margin: 0; max-height: 72px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; color: var(--dsw-alias-label-secondary); }
-.pm-top { display: flex; align-items: flex-start; border-radius: 12px; }
-.pm-top:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-top { display: flex; align-items: flex-start; border-radius: var(--pm-r-xl); }
+@media (hover: hover) { .pm-top:hover { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-top .pm-head { flex: 1 1 auto; min-width: 0; }
 .pm-topactions { flex: none; display: flex; gap: 6px; align-items: center; padding: 12px 14px 0 0; }
 .pm-chips { display: flex; gap: 4px; flex-wrap: wrap; }
-.pm-cchip { font-size: 11px; line-height: 18px; padding: 0 7px; border-radius: 6px; background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.pm-cchip { font-size: 11px; line-height: 18px; padding: 0 7px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
 .pm-meta { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
 .pm-info { color: var(--dsw-alias-label-secondary); }
 .pm-tabs { display: flex; gap: 2px; margin: 4px 0 6px; border-bottom: .5px solid var(--dsw-alias-border-l3); }
 .pm-tab { position: relative; font: inherit; font-size: 13px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -.5px; background: none; color: var(--dsw-alias-label-secondary); cursor: pointer; }
-.pm-tab:hover { color: var(--dsw-alias-label-primary); }
-.pm-tab[aria-selected='true'] { color: var(--dsw-alias-label-primary); font-weight: 600; border-bottom-color: var(--dsw-alias-brand-primary); }
+@media (hover: hover) { .pm-tab:hover { color: var(--dsw-alias-label-primary); } }
+.pm-tab[aria-selected='true'] { color: var(--dsw-alias-label-primary); font-weight: 500; border-bottom-color: var(--dsw-alias-brand-primary); }
 .pm-tab:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
 .pm-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--dsw-alias-state-warn-primary); vertical-align: middle; }
 .pm-caps { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
@@ -874,32 +1045,35 @@ window.__ModuleLoader__.load({
 .pm-capsub { margin-left: 18px; padding-top: 0; }
 .pm-capline .pm-rowdesc { -webkit-line-clamp: 3; }
 .pm-menu { position: relative; }
-.pm-menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 168px; display: flex; flex-direction: column; padding: 4px; border-radius: 10px; border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
+.pm-menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 168px; display: flex; flex-direction: column; padding: 4px; border-radius: var(--pm-r-md); border: .5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); }
 .pm-menu-list.is-up { top: auto; bottom: calc(100% + 4px); }
-.pm-menu-list button { font: inherit; font-size: 13px; text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none; color: inherit; cursor: pointer; white-space: nowrap; }
-.pm-menu-list button:hover:not(:disabled), .pm-menu-list button:focus-visible { background: var(--dsw-alias-interactive-bg-hover); outline: none; }
+.pm-menu-list button { font: inherit; font-size: 13px; text-align: left; padding: 7px 10px; border: 0; border-radius: var(--pm-r-sm); background: none; color: inherit; cursor: pointer; white-space: nowrap; }
+.pm-menu-list button:focus-visible { background: var(--dsw-alias-interactive-bg-hover); outline: none; }
+@media (hover: hover) { .pm-menu-list button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-menu-list button:disabled { opacity: .5; cursor: default; }
 .pm-menu-list .pm-danger { color: var(--dsw-alias-state-error-primary); }
 .pm-behavior { display: flex; flex-direction: column; margin-top: 6px; padding-top: 4px; border-top: .5px solid var(--dsw-alias-border-l3); }
 .pm-behavior .pm-capline + .pm-capline { border-top: .5px solid var(--dsw-alias-border-l4); }
 .pm-views { margin: 0; }
 .pm-tools { display: flex; flex-direction: column; gap: 10px; }
-.pm-toolrow { border: .5px solid var(--dsw-alias-settings-card-stroke); border-radius: 10px; background: var(--dsw-alias-settings-card-fill); }
+.pm-toolrow { border: .5px solid var(--dsw-alias-settings-card-stroke); border-radius: var(--pm-r-md); background: var(--dsw-alias-settings-card-fill); }
 .pm-toolrow.is-dirty { border-color: var(--dsw-alias-state-warn-primary); }
-.pm-toolhead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; box-sizing: border-box; padding: 9px 12px; font: inherit; text-align: left; border: 0; border-radius: 10px; background: none; color: inherit; cursor: pointer; }
-.pm-toolhead:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.pm-toolhead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; box-sizing: border-box; padding: 9px 12px; font: inherit; text-align: left; border: 0; border-radius: var(--pm-r-md); background: none; color: inherit; cursor: pointer; }
+@media (hover: hover) { .pm-toolhead:hover { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-toolhead:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
-.pm-toolname { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; font-weight: 600; }
+.pm-toolname { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; font-weight: 500; }
 .pm-toolbody { display: flex; flex-direction: column; gap: 10px; padding: 4px 12px 12px; }
 .pm-modelist { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .pm-modelist .pm-option { align-items: center; }
 .pm-modelist .pm-option.is-off { color: var(--dsw-alias-label-tertiary); cursor: default; }
 .pm-statelist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .pm-statelist li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.pm-pre { margin: 0; max-height: 160px; overflow: auto; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
-.pm-dirtybar { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-state-warn-primary); background: var(--dsw-alias-bg-layer-2); }
+.pm-pre { margin: 0; max-height: 160px; overflow: auto; padding: 8px 10px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+.pm-dirtybar { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: var(--pm-r-md); border: 1px solid var(--dsw-alias-state-warn-primary); background: var(--dsw-alias-bg-layer-2); }
+.pm-toolrow.is-off .pm-toolname { color: var(--dsw-alias-label-tertiary); }
+.pm-statelist select { max-width: 50%; }
 .pm-cmd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.pm-cmd code { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; padding: 4px 8px; border-radius: 6px; background: var(--dsw-alias-bg-layer-3); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; }
+.pm-cmd code { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; padding: 4px 8px; border-radius: var(--pm-r-sm); background: var(--dsw-alias-bg-layer-3); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; }
 .pm-footer { display: flex; gap: 6px 14px; align-items: center; flex-wrap: wrap; }
 .pm-footer .pm-check { font-size: 11px; }
 @container (max-width: 520px) {
@@ -1915,6 +2089,7 @@ window.__ModuleLoader__.load({
         preset.live ? t('meta.live') : undefined,
         preset.promptTool ? t('meta.promptTool') : undefined,
         preset.toolEdits > 0 ? t('meta.toolEdits', { n: preset.toolEdits }) : undefined,
+        preset.skillEdits > 0 ? t('meta.skillEdits', { n: preset.skillEdits }) : undefined,
       ].filter(Boolean)
       const failureTitle = (failure) => {
         const row = preset.rows.find(candidate => candidate.id === failure.rowId)
@@ -1946,6 +2121,8 @@ window.__ModuleLoader__.load({
       const menu = [
         canSetDefault && !preset.isDefault && !preset.broken ? { label: t('action.setDefault'), disabled: busy, onSelect: () => act('setDefault', {}, 'notice.default') } : undefined,
         preset.rows.length > 0 ? { label: t('action.duplicate'), onSelect: () => onDuplicate({ kind: 'copy', from: preset.id }) } : undefined,
+        preset.rows.length > 0 ? { label: t('action.tools'), onSelect: () => ui.openView('tools', preset.id) } : undefined,
+        preset.rows.some(row => row.id === 'tool-skill') ? { label: t('action.skills'), onSelect: () => ui.openView('skills', preset.id) } : undefined,
         { label: t('action.yaml'), onSelect: () => setPanel('yaml') },
         preset.source === 'custom' ? { label: t('action.rename'), onSelect: () => setPanel('details') } : undefined,
         preset.source === 'overridden' ? { label: t('action.reset'), disabled: busy, onSelect: () => setPanel('reset') } : undefined,
@@ -1986,7 +2163,7 @@ window.__ModuleLoader__.load({
               onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); closePanel() } },
             },
               panel === 'sync' ? h(SyncSummary, { ui, preset, presets })
-                : h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : `${t('confirm.reset', { name, n: changed })}${preset.toolEdits > 0 ? ` ${t('confirm.resetTools', { n: preset.toolEdits })}` : ''}`),
+                : h('div', null, panel === 'remove' ? t('confirm.remove', { name }) : `${t('confirm.reset', { name, n: changed })}${preset.toolEdits > 0 ? ` ${t('confirm.resetTools', { n: preset.toolEdits })}` : ''}${preset.skillEdits > 0 ? ` ${t('confirm.resetSkills', { n: preset.skillEdits })}` : ''}`),
               panel === 'remove' ? h(RemoveUsage, { ui, preset }) : null,
               h('div', { className: 'pm-bar pm-end' },
                 h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': panel === 'sync' ? undefined : true, onClick: closePanel }, t('action.cancel')),
@@ -2044,6 +2221,63 @@ window.__ModuleLoader__.load({
     /** A mode the tool view can edit: declared in an editable row, not code mode, and readable. */
     function usableMode(mode) {
       return mode.editable === true && mode.ptc !== true && mode.error === undefined
+    }
+
+    /** Why the tool view cannot edit a mode, or undefined when it can. */
+    function toolReason(t, mode) {
+      return mode.error !== undefined ? t('tools.modeError', { error: mode.error }) : mode.ptc ? t('tools.modePtc') : !mode.editable ? t('tools.modeReadOnly') : undefined
+    }
+
+    /** Why the skills view cannot switch skills in a mode, or undefined when it can. */
+    function skillReason(t, mode) {
+      return mode.error !== undefined ? t('tools.modeError', { error: mode.error }) : !mode.editable ? t('tools.modeReadOnly') : !mode.hasSkillTool ? t('scope.noSkillTool') : undefined
+    }
+
+    /**
+     * The mode picker the tool and skill views share, so a mode picked in one stays picked in the other. A mode the view
+     * cannot use stays listed with the reason and cannot be picked.
+     */
+    function ScopeSelect({ ui, modes, usable, reasonOf }) {
+      const { t } = ui
+      const value = usable.some(mode => mode.id === ui.scope) ? ui.scope : ''
+      return h(React.Fragment, null,
+        h('label', { className: 'pm-hint', htmlFor: 'pm-scope' }, t('scope.label')),
+        h('select', { id: 'pm-scope', className: 'pm-input', value, onChange: event => ui.setScope(event.target.value) },
+          h('option', { value: '' }, t('scope.all')),
+          modes.map((mode) => {
+            const reason = usable.includes(mode) ? undefined : reasonOf(t, mode)
+            return h('option', { key: mode.id, value: mode.id, disabled: reason !== undefined }, reason === undefined ? ui.nameOf(mode.id) : `${ui.nameOf(mode.id)} · ${reason}`)
+          })))
+    }
+
+    /** The line under the picker when the mode picked in another view cannot be used in this one. */
+    function scopeNote(ui, modes, usable, reasonOf) {
+      const mode = modes.find(candidate => candidate.id === ui.scope)
+      if (mode === undefined || usable.includes(mode)) return null
+      return h('div', { className: 'pm-hint' }, ui.t('scope.unavailable', { mode: ui.nameOf(mode.id), reason: reasonOf(ui.t, mode) ?? '' }))
+    }
+
+    /** Up to three mode names, then a count. */
+    function modeList(ui, ids) {
+      return ids.length > 3 ? ui.t('effect.more', { n: ids.length }) : ids.map(id => ui.nameOf(id)).join(ui.lang === 'zh' ? '、' : ', ')
+    }
+
+    /**
+     * When a save reaches sessions. A mode that already had the row passes the change to running sessions on their next
+     * step; a mode that received the row with this save passes it to new sessions only.
+     * @param {string[]} touched - modes the save changed.
+     * @param {string[]} mounted - modes that received the row with it.
+     * @returns {{ text: string, action?: object } | undefined} undefined when no mode changed; `action` starts a session in
+     *   the one mode that needs a new one.
+     */
+    function effectOf(ui, touched, mounted) {
+      if (touched.length === 0) return undefined
+      const fresh = touched.filter(id => mounted.includes(id))
+      const live = touched.filter(id => !mounted.includes(id))
+      const text = fresh.length === 0 ? ui.t('effect.live')
+        : live.length === 0 ? ui.t('effect.fresh', { modes: modeList(ui, fresh) })
+          : ui.t('effect.mixed', { live: modeList(ui, live), fresh: modeList(ui, fresh) })
+      return { text, ...fresh.length === 1 && ui.canTry ? { action: { label: ui.t('action.try'), onClick: () => ui.tryPreset(fresh[0]) } } : {} }
     }
 
     /**
@@ -2116,7 +2350,8 @@ window.__ModuleLoader__.load({
       const [loadError, setLoadError] = React.useState(null)
       const [selected, setSelected] = React.useState(null)
       const [query, setQuery] = React.useState('')
-      const [drafts, setDrafts] = React.useState(() => new Map())
+      // Kept by the page, so a draft survives a visit to another view.
+      const { toolDrafts: drafts, setToolDrafts: setDrafts } = ui
       const [expanded, setExpanded] = React.useState(null)
       const [busy, setBusy] = React.useState(false)
       const [failures, setFailures] = React.useState([])
@@ -2127,19 +2362,16 @@ window.__ModuleLoader__.load({
         call('tools', { refresh: reloadKey > 0 }).then((value) => {
           if (!alive) return
           setCatalog(value.presets)
-          setSelected((previous) => {
-            if (previous !== null) return previous
-            const usable = value.presets.filter(usableMode)
-            const first = usable.find(mode => mode.id === ui.defaultId) ?? usable[0]
-            return new Set(first === undefined ? [] : [first.id])
-          })
+          setSelected(previous => previous ?? new Set(value.presets.filter(usableMode).map(mode => mode.id)))
         }, (error) => { if (alive) setLoadError(ui.describe(error)) })
         return () => { alive = false }
       }, [reloadKey])
 
       const modes = catalog ?? []
       const usable = modes.filter(usableMode)
-      const chosen = usable.filter(mode => selected?.has(mode.id))
+      // One mode picked in the shared picker is the only target; all modes leave the choice to the list below.
+      const focus = usable.some(mode => mode.id === ui.scope) ? ui.scope : ''
+      const chosen = usable.filter(mode => (focus === '' ? selected?.has(mode.id) : mode.id === focus))
       const scope = chosen.length > 0 ? chosen : usable
       const maps = React.useMemo(() => new Map(modes.map(mode => [mode.id, new Map(mode.tools.map(tool => [tool.name, tool]))])), [catalog])
       const needle = query.trim().toLowerCase()
@@ -2160,8 +2392,14 @@ window.__ModuleLoader__.load({
         const bad = results.filter(result => !['saved', 'restored', 'unchanged'].includes(result.status))
         setFailures(bad)
         const count = status => results.filter(result => result.status === status).length
-        const summary = t('tools.summary', { saved: count('saved'), restored: count('restored'), unchanged: count('unchanged') })
-        ui.announce(bad.length > 0 ? 'error' : 'notice', bad.length > 0 ? `${summary} · ${t('tools.summaryFailed', { n: bad.length })}` : summary)
+        const summary = [['saved', 'tools.sumSaved'], ['restored', 'tools.sumRestored'], ['unchanged', 'tools.sumUnchanged']]
+          .filter(([status]) => count(status) > 0).map(([status, key]) => t(key, { n: count(status) })).join(' · ')
+        if (bad.length > 0) ui.announce('error', `${summary} · ${t('tools.summaryFailed', { n: bad.length })}`)
+        else {
+          const touched = [...new Set(results.filter(result => result.status === 'saved' || result.status === 'restored').map(result => result.preset))]
+          const effect = effectOf(ui, touched, value.effect.mounted ?? [])
+          ui.announce('notice', effect === undefined ? summary : `${summary} · ${effect.text}`, effect === undefined ? undefined : { long: true, action: effect.action })
+        }
         if (tools !== undefined) {
           setDrafts((previous) => {
             const next = new Map(previous)
@@ -2207,7 +2445,11 @@ window.__ModuleLoader__.load({
         h('p', { className: 'pm-intro' }, t('tools.intro')),
         ui.toolsError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError.tools', { detail: ui.toolsError })),
         usable.length === 0 ? h('div', { className: 'pm-muted' }, t('tools.noModes')) : null,
-        h('div', { className: 'pm-panel', role: 'group', 'aria-label': t('tools.modes') },
+        h('div', { className: 'pm-bar' },
+          h(ScopeSelect, { ui, modes, usable, reasonOf: toolReason }),
+          focus === '' ? null : h('span', { className: 'pm-hint' }, t('tools.modeEdited', { n: chosen[0].tools.filter(tool => tool.text !== undefined).length }))),
+        scopeNote(ui, modes, usable, toolReason),
+        focus !== '' ? null : h('div', { className: 'pm-panel', role: 'group', 'aria-label': t('tools.modes') },
           h('div', { className: 'pm-bar' },
             h('strong', { className: 'pm-grow' }, t('tools.modes')),
             h('button', { type: 'button', className: 'pm-link', onClick: () => setSelected(new Set(usable.map(mode => mode.id))) }, t('tools.selectAll')),
@@ -2215,7 +2457,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'pm-modelist' }, modes.map((mode) => {
             const ok = usableMode(mode)
             const edits = mode.tools.filter(tool => tool.text !== undefined).length
-            const why = mode.error !== undefined ? t('tools.modeError', { error: mode.error }) : mode.ptc ? t('tools.modePtc') : !mode.editable ? t('tools.modeReadOnly') : undefined
+            const why = toolReason(t, mode)
             return h('label', { key: mode.id, className: `pm-option${ok ? '' : ' is-off'}`, title: why },
               h('input', { type: 'checkbox', checked: ok && selected?.has(mode.id) === true, disabled: !ok, onChange: event => toggleMode(mode.id, event.target.checked) }),
               h('span', null, ui.nameOf(mode.id)),
@@ -2394,6 +2636,220 @@ window.__ModuleLoader__.load({
         ])
     }
 
+    /** A saved version as one line: `v3 · <date> · <note>`. */
+    function versionLabel(ui, version) {
+      const when = new Date(version.at).toLocaleString(ui.lang === 'zh' ? 'zh-CN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })
+      return [version.id, when, version.note].filter(Boolean).join(' · ')
+    }
+
+    /**
+     * One skill. Viewed for all modes, its switch is the switch for all modes; viewed for one mode (`focus`), its switch and
+     * version menu act on that mode and the switch for all modes moves into the opened part.
+     */
+    function SkillRow({ ui, skill, modes, focus, open, busy, onToggle, send }) {
+      const { t } = ui
+      const [note, setNote] = React.useState('')
+      const [confirm, setConfirm] = React.useState(null)
+      const [preview, setPreview] = React.useState(null)
+      const [editor, setEditor] = React.useState(null)
+      const usable = modes.filter(mode => mode.editable && mode.hasSkillTool)
+      const without = modes.filter(mode => !mode.hasSkillTool && mode.error === undefined).map(mode => ui.nameOf(mode.id))
+      const offCount = usable.filter(mode => skill.modes[mode.id]?.off).length
+      const pinCount = usable.filter(mode => skill.modes[mode.id]?.pin !== undefined).length
+      const pinnedBy = id => usable.filter(mode => skill.modes[mode.id]?.pin === id).map(mode => ui.nameOf(mode.id))
+      const change = (preset, fields) => send('setSkillModes', { changes: [{ preset, skill: skill.name, ...fields }] })
+      const here = focus === '' ? undefined : skill.modes[focus] ?? {}
+      const master = h(Switch, { checked: !skill.off, pending: busy, label: t('skills.enabled', { name: skill.name }), onChange: on => send('setSkillGlobal', { skill: skill.name, enabled: on }) })
+      const versionMenu = (preset, state) => h('select', {
+        className: 'pm-input', value: state.pin ?? '', disabled: busy || skill.off || state.off, 'aria-label': t('skills.versionIn', { mode: ui.nameOf(preset) }),
+        onChange: event => change(preset, { pin: event.target.value === '' ? null : event.target.value }),
+      },
+      h('option', { value: '' }, t('skills.currentFile')),
+      skill.versions.map(version => h('option', { key: version.id, value: version.id }, versionLabel(ui, version))))
+      const showVersion = (version) => {
+        if (preview?.id === version.id) { setPreview(null); return }
+        call('readSkillVersion', { skill: skill.name, version: version.id }).then(value => setPreview({ id: version.id, text: value.text }), error => ui.announce('error', ui.describe(error)))
+      }
+      // A text area reports LF line endings; the Host keeps the file's own endings when it writes.
+      const openEditor = () => call('readSkillFile', { skill: skill.name }).then((value) => {
+        const text = value.text.replace(/\r\n?/g, '\n')
+        setEditor({ text, base: text })
+      }, error => ui.announce('error', ui.describe(error)))
+      const saveEditor = (overwrite) => send('writeSkillFile', { skill: skill.name, text: editor.text, ...overwrite ? {} : { base: editor.base } }, 'skills.saved')
+        .then((ok) => { if (ok) setEditor(null) }, (failure) => {
+          if (failure?.code === 'skill-conflict') setEditor(previous => ({ ...previous, conflict: failure.details?.current ?? '' }))
+        })
+      return h('div', { className: `pm-toolrow${skill.off ? ' is-off' : ''}`, role: 'listitem' },
+        h('div', { className: 'pm-bar', style: { paddingRight: 12 } },
+          h('button', { type: 'button', className: 'pm-toolhead pm-grow', 'aria-expanded': open, onClick: onToggle, style: { width: 'auto' } },
+            h(Chevron, { open }),
+            h('span', { className: 'pm-toolname' }, skill.name),
+            skill.off ? h('span', { className: 'pm-badge is-warn' }, t('skills.offAll')) : null,
+            here === undefined && !skill.off && offCount > 0 ? h('span', { className: 'pm-badge' }, t('skills.offIn', { n: offCount })) : null,
+            here === undefined && pinCount > 0 ? h('span', { className: 'pm-badge is-accent' }, t('skills.pinnedIn', { n: pinCount })) : null,
+            here !== undefined && !skill.off && here.off ? h('span', { className: 'pm-badge' }, t('skills.offHere')) : null,
+            here?.pin !== undefined ? h('span', { className: 'pm-badge is-accent' }, t('skills.pinnedBadge', { version: here.pin })) : null,
+            skill.exists === false ? h('span', { className: 'pm-badge is-error' }, t('skills.missing')) : null),
+          ...here === undefined
+            ? [h('span', { key: 'label', className: 'pm-hint' }, t('skills.allModes')), h(React.Fragment, { key: 'switch' }, master)]
+            : [
+              skill.versions.length > 0 ? h(React.Fragment, { key: 'versions' }, versionMenu(focus, here)) : null,
+              h(Switch, { key: 'switch', checked: !here.off && !skill.off, disabled: skill.off, pending: busy, label: t('skills.inMode', { mode: ui.nameOf(focus) }), onChange: on => change(focus, { enabled: on }) }),
+            ]),
+        skill.description ? h('div', { className: 'pm-rowdesc', style: { padding: '0 12px 0 36px', marginBottom: 8 } }, skill.description) : null,
+        open ? h('div', { className: 'pm-toolbody' },
+          here === undefined ? null : h('div', { className: 'pm-bar' }, h('span', { className: 'pm-grow' }, t('skills.masterLine')), master),
+          h('div', { className: 'pm-hint' }, t('skills.perMode')),
+          skill.off ? h('div', { className: 'pm-hint' }, t('skills.offAllHint')) : null,
+          h('ul', { className: 'pm-statelist' }, usable.map((mode) => {
+            const state = skill.modes[mode.id] ?? {}
+            // A mode that does not find the skill has nothing to switch, unless an earlier setting remains to clear.
+            const absent = !state.present && !state.off && state.pin === undefined
+            return h('li', { key: mode.id },
+              h(Switch, { checked: !state.off && !skill.off && !absent, disabled: skill.off || absent, pending: busy, label: t('skills.inMode', { mode: ui.nameOf(mode.id) }), onChange: on => change(mode.id, { enabled: on }) }),
+              h('span', { className: 'pm-grow' }, ui.nameOf(mode.id)),
+              !state.present && state.pin === undefined ? h('span', { className: 'pm-hint' }, t('skills.notInMode')) : null,
+              versionMenu(mode.id, absent ? { ...state, off: true } : state))
+          })),
+          without.length > 0 ? h('div', { className: 'pm-hint' }, t('skills.noTool', { modes: without.join(', ') })) : null,
+          h('div', { className: 'pm-hint' }, t('skills.versions')),
+          h('div', { className: 'pm-bar' },
+            h('input', { className: 'pm-input pm-grow', value: note, maxLength: 200, placeholder: t('skills.notePlaceholder'), 'aria-label': t('skills.notePlaceholder'), onChange: event => setNote(event.target.value) }),
+            h('button', {
+              type: 'button', className: 'pm-btn', disabled: busy || skill.exists === false,
+              onClick: () => send('saveSkillVersion', { skill: skill.name, note }, 'skills.versionSaved').then((ok) => { if (ok) setNote('') }),
+            }, t('skills.saveVersion'))),
+          skill.versions.length === 0 ? h('div', { className: 'pm-hint' }, t('skills.noVersions')) : h('div', { className: 'pm-history' }, skill.versions.map((version) => {
+            const users = pinnedBy(version.id)
+            return h('div', { key: version.id, className: 'pm-history-item' },
+              h('div', { className: 'pm-bar' },
+                h('strong', { className: 'pm-grow' }, versionLabel(ui, version)),
+                h('span', { className: 'pm-hint' }, t(`skills.source.${version.source}`))),
+              version.description ? h('div', { className: 'pm-hint' }, version.description) : null,
+              users.length > 0 ? h('div', { className: 'pm-hint' }, t('skills.usedBy', { modes: users.join(', ') })) : null,
+              preview?.id === version.id ? h('pre', { className: 'pm-pre' }, preview.text) : null,
+              confirm?.id === version.id ? h('div', {
+                className: 'pm-confirm', style: { margin: 0 }, role: 'alertdialog', 'aria-label': version.id,
+                onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setConfirm(null) } },
+              },
+              h('div', null, t(confirm.kind === 'restore' ? 'skills.confirmRestore' : 'skills.confirmDelete', { version: version.id, name: skill.name })),
+              h('div', { className: 'pm-bar pm-end' },
+                h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': true, onClick: () => setConfirm(null) }, t('action.cancel')),
+                h('button', {
+                  type: 'button', className: `pm-btn ${confirm.kind === 'restore' ? 'pm-primary' : 'pm-danger'}`, disabled: busy,
+                  onClick: () => send(confirm.kind === 'restore' ? 'restoreSkillVersion' : 'deleteSkillVersion', { skill: skill.name, version: version.id }, confirm.kind === 'restore' ? 'skills.restored' : 'skills.deleted').then(() => setConfirm(null)),
+                }, t(confirm.kind === 'restore' ? 'skills.restore' : 'action.remove')))) : null,
+              h('div', { className: 'pm-bar' },
+                h('button', { type: 'button', className: 'pm-btn', onClick: () => showVersion(version) }, t(preview?.id === version.id ? 'skills.hide' : 'skills.view')),
+                skill.editable ? h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setConfirm({ kind: 'restore', id: version.id }) }, t('skills.restore')) : null,
+                h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy || users.length > 0, title: users.length > 0 ? t('skills.usedBy', { modes: users.join(', ') }) : undefined, onClick: () => setConfirm({ kind: 'delete', id: version.id }) }, t('action.remove'))))
+          })),
+          h('div', { className: 'pm-hint' }, t('skills.file')),
+          skill.path ? h('div', { className: 'pm-cmd' }, h('code', null, skill.path)) : h('div', { className: 'pm-hint' }, t('skills.noFile')),
+          skill.source === 'user-agents' ? h('div', { className: 'pm-hint' }, t('skills.shared')) : null,
+          !skill.editable && skill.path ? h('div', { className: 'pm-hint' }, t('skills.bundled')) : null,
+          skill.editable && editor === null ? h('div', { className: 'pm-bar' }, h('button', { type: 'button', className: 'pm-btn', disabled: busy || skill.exists === false, onClick: openEditor }, t('skills.edit'))) : null,
+          editor === null ? null : h('div', { className: 'pm-prompt', style: { margin: 0 } },
+            h('textarea', { className: 'pm-input pm-textarea', rows: 14, value: editor.text, spellCheck: false, 'aria-label': t('skills.edit'), onChange: event => setEditor(previous => ({ ...previous, text: event.target.value })) }),
+            editor.conflict === undefined ? null : h('div', { className: 'pm-conflict', role: 'alert' },
+              h('div', null, t('skills.conflict')),
+              h('pre', null, editor.conflict),
+              h('div', { className: 'pm-bar' },
+                h('button', { type: 'button', className: 'pm-btn', onClick: () => setEditor({ text: editor.conflict, base: editor.conflict }) }, t('skills.loadLatest')),
+                h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy, onClick: () => saveEditor(true) }, t('skills.overwrite')))),
+            h('div', { className: 'pm-hint' }, t('skills.editHint')),
+            h('div', { className: 'pm-bar pm-end' },
+              h('button', { type: 'button', className: 'pm-btn', onClick: () => setEditor(null) }, t('action.cancel')),
+              h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: busy || editor.text === editor.base || editor.text.trim() === '', onClick: () => saveEditor(false) }, t('action.save'))))) : null)
+    }
+
+    /** The skills view: every skill the modes see, switched on or off for all modes or per mode, pinned to saved versions. */
+    function SkillsView({ ui, reloadKey }) {
+      const { t } = ui
+      const [view, setView] = React.useState(null)
+      const [bulk, setBulk] = React.useState(null)
+      const [loadError, setLoadError] = React.useState(null)
+      const [query, setQuery] = React.useState('')
+      const [expanded, setExpanded] = React.useState(null)
+      const [busy, setBusy] = React.useState(false)
+      React.useEffect(() => { setBulk(null) }, [ui.scope])
+      React.useEffect(() => {
+        let alive = true
+        setLoadError(null)
+        call('skills', { refresh: reloadKey > 0 }).then((value) => { if (alive) setView(value) }, (error) => { if (alive) setLoadError(ui.describe(error)) })
+        return () => { alive = false }
+      }, [reloadKey])
+      /** Run one change; resolves true on success and rejects with the failure for callers that handle it. */
+      const send = (action, payload, success = 'skills.saved') => {
+        setBusy(true)
+        return call(action, payload).then((value) => {
+          ui.setList(value)
+          setView(value.effect.skills)
+          const bad = [...value.effect.results ?? []].filter(result => !['saved', 'unchanged'].includes(result.status))
+          const rows = value.effect.rows ?? []
+          if (bad.length > 0) ui.announce('error', bad.map(result => `${ui.nameOf(result.preset)} · ${result.skill}: ${t(`skills.status.${result.status}`)}`).join('; '))
+          else if (rows.length > 0) ui.announce('error', t('skills.rowFailed', { modes: rows.map(row => ui.nameOf(row.id)).join(', ') }))
+          else {
+            const effect = effectOf(ui, touchedBy(action, value.effect), value.effect.mounted ?? [])
+            ui.announce('notice', effect === undefined ? t(success) : [t(success), effect.text, t('effect.slash')].join(' · '), effect === undefined ? undefined : { long: true, action: effect.action })
+          }
+          return true
+        }, (error) => {
+          ui.announce('error', ui.describe(error))
+          throw error
+        }).finally(() => setBusy(false))
+      }
+      const quiet = (action, payload, success) => send(action, payload, success).catch(() => false)
+      /** The modes a skill action changed: those with a `saved` result, or every mode with a skill tool for the master switch. */
+      const touchedBy = (action, effect) => {
+        if (action === 'setSkillModes') return [...new Set((effect.results ?? []).filter(result => result.status === 'saved').map(result => result.preset))]
+        if (action === 'setSkillGlobal') return effect.skills.modes.filter(mode => mode.editable && mode.hasSkillTool).map(mode => mode.id)
+        return []
+      }
+      if (loadError !== null) return h('div', { className: 'pm-error', role: 'alert' }, loadError)
+      if (view === null) return h('div', { className: 'pm-muted' }, t('skills.loading'))
+      const usable = view.modes.filter(mode => mode.editable && mode.hasSkillTool)
+      const focus = usable.some(mode => mode.id === ui.scope) ? ui.scope : ''
+      const needle = query.trim().toLowerCase()
+      // Viewed for one mode, the list holds the skills that mode finds, and those it has a setting for.
+      const inFocus = skill => focus === '' || skill.modes[focus]?.present || skill.modes[focus]?.off || skill.modes[focus]?.pin !== undefined
+      const matching = view.skills.filter(skill => needle === '' || skill.name.includes(needle) || (skill.description ?? '').toLowerCase().includes(needle))
+      const shown = matching.filter(inFocus)
+      const onHere = shown.filter(skill => !skill.off && !skill.modes[focus]?.off).length
+      const bulkChanges = enabled => shown
+        .filter(skill => !skill.off && Boolean(skill.modes[focus]?.off) === enabled)
+        .map(skill => ({ preset: focus, skill: skill.name, enabled }))
+      const runBulk = (enabled) => {
+        const changes = bulkChanges(enabled)
+        setBulk(null)
+        if (changes.length > 0) void quiet('setSkillModes', { changes })
+      }
+      return h('div', { className: 'pm-tools' },
+        h('p', { className: 'pm-intro' }, t('skills.intro')),
+        view.modes.some(mode => mode.error !== undefined) ? h('div', { className: 'pm-warn' }, view.modes.filter(mode => mode.error !== undefined).map(mode => `${ui.nameOf(mode.id)}: ${mode.error}`).join('; ')) : null,
+        h('div', { className: 'pm-bar' },
+          h(ScopeSelect, { ui, modes: view.modes, usable, reasonOf: skillReason }),
+          focus === '' ? null : h('span', { className: 'pm-hint pm-grow' }, t('skills.modeSummary', { on: onHere, total: shown.length })),
+          focus === '' ? null : h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(true).length === 0, onClick: () => runBulk(true) }, t('skills.allOn')),
+          focus === '' ? null : h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(false).length === 0, onClick: () => setBulk('off') }, t('skills.allOff'))),
+        scopeNote(ui, view.modes, usable, skillReason),
+        bulk === 'off' ? h('div', {
+          className: 'pm-confirm', style: { margin: 0 }, role: 'alertdialog', 'aria-label': t('skills.allOff'),
+          onKeyDown: (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setBulk(null) } },
+        },
+        h('div', null, t('skills.confirmAllOff', { n: bulkChanges(false).length, mode: ui.nameOf(focus) })),
+        h('div', { className: 'pm-bar pm-end' },
+          h('button', { type: 'button', className: 'pm-btn', 'data-autofocus': true, onClick: () => setBulk(null) }, t('action.cancel')),
+          h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy, onClick: () => runBulk(false) }, t('skills.allOff')))) : null,
+        h('input', { className: 'pm-input', style: { width: '100%' }, type: 'search', value: query, placeholder: t('skills.search'), 'aria-label': t('skills.search'), onChange: event => setQuery(event.target.value) }),
+        focus !== '' && matching.length > shown.length ? h('div', { className: 'pm-hint' }, t('skills.hiddenOthers', { n: matching.length - shown.length, mode: ui.nameOf(focus) })) : null,
+        shown.length === 0 ? h('div', { className: 'pm-muted' }, t(view.skills.length === 0 ? 'skills.none' : 'skills.empty')) : h('div', { role: 'list', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, shown.map(skill => h(SkillRow, {
+          key: skill.name, ui, skill, modes: view.modes, focus, open: expanded === skill.name, busy,
+          onToggle: () => setExpanded(expanded === skill.name ? null : skill.name),
+          send: (action, payload, success) => (action === 'writeSkillFile' ? send(action, payload, success) : quiet(action, payload, success)),
+        }))))
+    }
+
     function Page({ ctx, t, close }) {
       const [data, setData] = React.useState(null)
       const [pageError, setPageError] = React.useState(null)
@@ -2406,6 +2862,23 @@ window.__ModuleLoader__.load({
       const [drafts, setDrafts] = React.useState(() => new Map())
       const [feedback, setFeedback] = React.useState(null)
       const [view, setView] = React.useState('modes')
+      const [scope, setScopeState] = React.useState(() => {
+        try {
+          return localStorage.getItem(SCOPE_KEY) ?? ''
+        } catch {
+          return ''
+        }
+      })
+      const [toolDrafts, setToolDrafts] = React.useState(() => new Map())
+      /** Remember the mode the tool and skill views show; without storage the choice lasts until the page closes. */
+      const setScope = (id) => {
+        setScopeState(id)
+        try {
+          localStorage.setItem(SCOPE_KEY, id)
+        } catch {
+          // Storage disabled: the choice still holds in this page.
+        }
+      }
       const [reloadKey, setReloadKey] = React.useState(0)
       const feedbackTimer = React.useRef(undefined)
       const dataRef = React.useRef(null)
@@ -2449,12 +2922,13 @@ window.__ModuleLoader__.load({
       }
       /**
        * Show one line in the feedback bar pinned to the bottom of the page, so the result of a switch far down a
-       * card is visible. Notices clear themselves; errors stay until dismissed or replaced.
+       * card is visible. Notices clear themselves, after a longer time when `extra.long` is set; errors stay until
+       * dismissed or replaced. `extra.action` adds one button, `{ label, onClick }`.
        */
-      const announce = (kind, presetId, text, presets) => {
+      const announce = (kind, presetId, text, presets, extra = {}) => {
         clearTimeout(feedbackTimer.current)
-        setFeedback({ kind, text: presetId === undefined ? text : t('toast.line', { name: presetNameOf(presetId, presets), text }) })
-        if (kind === 'notice') feedbackTimer.current = setTimeout(() => setFeedback(null), NOTICE_MS)
+        setFeedback({ kind, text: presetId === undefined ? text : t('toast.line', { name: presetNameOf(presetId, presets), text }), action: extra.action })
+        if (kind === 'notice') feedbackTimer.current = setTimeout(() => setFeedback(null), extra.long === true ? NOTICE_LONG_MS : NOTICE_MS)
       }
       /** Outline the card an action just changed. */
       const highlight = (presetId) => {
@@ -2504,6 +2978,9 @@ window.__ModuleLoader__.load({
         })
       }
       React.useEffect(load, [])
+      React.useEffect(() => {
+        if (data !== null && scope !== '' && !data.presets.some(preset => preset.id === scope)) setScope('')
+      }, [data, scope])
 
       const workspace = ctx.get('uiWorkspace')
       const ui = {
@@ -2514,7 +2991,15 @@ window.__ModuleLoader__.load({
         canSetDefault: data?.canSetDefault === true,
         presetName: preset => builtInCopy(preset, 'Name') ?? preset.name ?? preset.id,
         nameOf: id => presetNameOf(id),
-        announce: (kind, text) => announce(kind, undefined, text),
+        scope,
+        setScope,
+        toolDrafts,
+        setToolDrafts,
+        openView: (name, id) => {
+          setScope(id)
+          setView(name)
+        },
+        announce: (kind, text, extra) => announce(kind, undefined, text, undefined, extra),
         setList: value => setData(value),
         defaultId: data?.defaultId,
         toolsError: data?.toolsError,
@@ -2556,11 +3041,12 @@ window.__ModuleLoader__.load({
           onKeyDown: (event) => {
             if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
             event.preventDefault()
-            const next = view === 'modes' ? 'tools' : 'modes'
+            const order = ['modes', 'tools', 'skills']
+            const next = order[(order.indexOf(view) + (event.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length]
             setView(next)
             event.currentTarget.querySelector(`#pm-view-${next}`)?.focus()
           },
-        }, ['modes', 'tools'].map(name => h('button', {
+        }, ['modes', 'tools', 'skills'].map(name => h('button', {
           key: name, type: 'button', role: 'tab', id: `pm-view-${name}`, 'aria-selected': view === name, tabIndex: view === name ? 0 : -1,
           className: 'pm-tab', onClick: () => setView(name),
         }, t(`view.${name}`)))),
@@ -2569,14 +3055,15 @@ window.__ModuleLoader__.load({
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
         view === 'tools' ? h(ToolDescriptions, { ui, reloadKey }) : null,
-        view === 'tools' || creating === null ? null : h('div', { className: 'pm-card' },
+        view === 'skills' ? h(SkillsView, { ui, reloadKey }) : null,
+        view !== 'modes' || creating === null ? null : h('div', { className: 'pm-card' },
           h(CreateForm, {
             key: `${creating.kind}:${creating.from ?? ''}`, ui, presets, templates: data?.templates ?? [], initial: creating,
             onSubmit: create, onCancel: () => { setCreating(null); setErrors((previous) => { const next = new Map(previous); next.delete(CREATE_ERROR); return next }) },
           }),
           errors.get(CREATE_ERROR) ? h('div', { className: 'pm-error', role: 'alert', style: { padding: '0 14px 12px' } }, errors.get(CREATE_ERROR)) : null),
         data === null && pageError === null && view === 'modes' ? h('div', { className: 'pm-muted' }, t('loading')) : null,
-        view === 'tools' ? null : presets.map(preset => h(PresetCard, {
+        view !== 'modes' ? null : presets.map(preset => h(PresetCard, {
           key: preset.id, ui, preset, presets,
           open: open.has(preset.id),
           onOpen: value => setCardOpen(preset.id, value),
@@ -2585,6 +3072,7 @@ window.__ModuleLoader__.load({
         h(UpdateFooter, { ui, update }),
         feedback === null ? null : h('div', { className: `pm-toast${feedback.kind === 'error' ? ' is-error' : ''}`, role: feedback.kind === 'error' ? 'alert' : 'status' },
           h('span', { className: 'pm-grow' }, `${feedback.kind === 'error' ? '⚠' : '✓'} ${feedback.text}`),
+          feedback.action === undefined ? null : h('button', { type: 'button', className: 'pm-btn', onClick: () => { setFeedback(null); feedback.action.onClick() } }, feedback.action.label),
           h('button', { type: 'button', className: 'pm-toast-close', 'aria-label': t('action.dismiss'), onClick: () => setFeedback(null) }, '×')))
     }
 

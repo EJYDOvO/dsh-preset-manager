@@ -13,12 +13,14 @@
  * DSH update reaches an edited preset without discarding the user's changes.
  */
 import { readFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readFile, rm, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { allRowsById, rebase, same, stable } from './rebase.js'
 import { HISTORY_LIMIT, StateStore } from './state.js'
 import { applyWrites, catalogEntries, overridesOf, planEdits, planRestore } from './tool-edit.js'
 import { CHECK_ERROR_TTL_MS, CHECK_TTL_MS, PACKAGE_NAME, commands, fetchLatest, isNewer, registryBases, sourceKind } from './update.js'
+import { NOTE_MAX_CHARS, SKILL_NAME, VERSION_ID, isEditableSkill, needsRow, nextVersionId, parseSkillFile, planSkillChanges, plainLines, policyFor, withGlobal, withLineEndingsOf, withoutVersion } from './skill-store.js'
+import { SkillFileError, readVersionMeta, restoreVersion, writeText, writeVersion } from './skill-files.js'
 
 const ROUTE = '/api/dsh-modes'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
@@ -32,6 +34,13 @@ const TOOL_MODULE = 'dsh-modes/prompt-tool'
 const TOOL_ROW_ID = 'dsh-modes-prompt-tool'
 const DESCRIPTIONS_MODULE = 'dsh-modes/tool-descriptions'
 const DESCRIPTIONS_ROW_ID = 'dsh-modes-tool-descriptions'
+const SKILLS_MODULE = 'dsh-modes/skills'
+const SKILLS_ROW_ID = 'dsh-modes-skills'
+/** The provider name the skill policy row registers; its entries are the manager's own, not a skill's. */
+const SKILLS_PROVIDER = 'dsh-modes'
+const VERSIONS_DIR = 'skill-versions'
+/** Longest SKILL.md the page edits, in characters. */
+const SKILL_FILE_MAX_CHARS = 200000
 /** The version this plugin runs, read once from its own package.json. */
 const PACKAGE_VERSION = (() => {
   try {
@@ -108,7 +117,7 @@ class ActionError extends Error {
 }
 
 export function apply(ctx) {
-  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), toolsFile: undefined, scans: new Map(), seen: new Map(), check: undefined, upgrade: undefined }
+  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), toolsFile: undefined, scans: new Map(), seen: new Map(), check: undefined, upgrade: undefined, skillsFile: undefined, skillScans: new Map(), skillWatchers: new Set(), versions: new Map() }
   ctx.provide('dshModes', {
     /** Latest saved persona config of a preset, from the loaded configuration; undefined when unknown. */
     persona: id => findPersona(savedRows(ctx, id))?.config,
@@ -123,6 +132,15 @@ export function apply(ctx) {
     toolDescriptions: async id => new Map([...overridesOf(await readTools(m)).get(id) ?? []].map(([tool, override]) => [tool, override.text])),
     /** Remember the tool descriptions a preset's request carried, so the page can list tools a registry scan cannot see. */
     observeTools: (id, tools) => observeTools(m, id, tools),
+    /** The skills a mode hides and the saved versions it serves: `{ off: Set, pins: Map(skill → version id) }`. */
+    skillPolicy: async id => policyFor(await readSkills(m), id),
+    /** One saved skill version: its metadata and the directory holding its files; undefined when it is gone. */
+    skillVersion: (skill, version) => skillVersion(m, skill, version),
+    /** Call `listener` after every change to skill settings; returns the function that stops it. */
+    watchSkills: (listener) => {
+      m.skillWatchers.add(listener)
+      return () => m.skillWatchers.delete(listener)
+    },
   })
   ctx.inject(['connection'], (c) => {
     c.effect(() => c.connection.fetch.register({
@@ -169,9 +187,18 @@ const ACTIONS = {
   },
   upgrade: (m, body) => startUpgrade(m, body),
   cancelUpgrade: m => cancelUpgrade(m),
+  skills: async (m, body) => skillsView(m, body.refresh === true),
+  setSkillModes: (m, body) => setSkillModes(m, body),
+  setSkillGlobal: (m, body) => setSkillGlobal(m, body),
+  saveSkillVersion: (m, body) => saveSkillVersion(m, body),
+  restoreSkillVersion: (m, body) => restoreSkillVersion(m, body),
+  deleteSkillVersion: (m, body) => deleteSkillVersion(m, body),
+  readSkillFile: (m, body) => readSkillFile(m, body),
+  writeSkillFile: (m, body) => writeSkillFile(m, body),
+  readSkillVersion: (m, body) => readSkillVersion(m, body),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
-const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'upgrade', 'cancelUpgrade'])
+const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion'])
 
 async function handle(m, request) {
   let body
@@ -189,9 +216,9 @@ async function handle(m, request) {
   } catch (error) {
     return reply({
       ok: false,
-      code: error instanceof ActionError ? error.code : 'failed',
+      code: error instanceof ActionError || error instanceof SkillFileError ? error.code : 'failed',
       error: error instanceof Error ? error.message : String(error),
-      ...error instanceof ActionError && error.details !== undefined ? { details: error.details } : {},
+      ...(error instanceof ActionError || error instanceof SkillFileError) && error.details !== undefined ? { details: error.details } : {},
     })
   }
 }
@@ -299,7 +326,7 @@ function parseFailures(broken, plugins) {
   const found = new Map()
   if (typeof broken !== 'string' || plugins === undefined) return found
   const rows = rowsById(plugins)
-  for (const line of broken.split('\n')) {
+  for (const line of broken.split(/\r?\n/)) {
     const match = FAILURE_LINE.exec(line)
     if (match === null) continue
     const id = [...rows.keys()].find(rowId => match[1] === rowId || match[1].endsWith(`:${rowId}`))
@@ -419,6 +446,13 @@ async function list(m) {
   } catch (error) {
     toolsError = error instanceof Error ? error.message : String(error)
   }
+  let skillSettings = {}
+  try {
+    skillSettings = (await readSkills(m)).presets ?? {}
+  } catch (error) {
+    m.ctx.logger.warn(`skill settings cannot be read: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  const skillEdits = id => (skillSettings[id]?.off ?? []).length + Object.keys(skillSettings[id]?.pins ?? {}).length
   const rows = roster.map((row) => {
     const declaration = declared.get(row.id)
     const own = custom.get(row.id)
@@ -444,6 +478,7 @@ async function list(m) {
       ...persona?.name === LIVE_MODULE ? { live: true } : {},
       ...rowsById(plugins).get(TOOL_ROW_ID)?.disabled === undefined && rowsById(plugins).has(TOOL_ROW_ID) ? { promptTool: true } : {},
       ...toolEdits.has(row.id) ? { toolEdits: toolEdits.get(row.id).size } : {},
+      ...skillEdits(row.id) > 0 ? { skillEdits: skillEdits(row.id) } : {},
       ...failures.size === 0 ? {} : { failures: [...failures].map(([rowId, detail]) => ({ rowId, detail })) },
       ...sync === undefined ? {} : { sync },
       rows: flat,
@@ -687,6 +722,8 @@ async function reset(m, id) {
   await m.ctx.configEditor.edit(declaration.entry, (_current, inherited) => inherited)
   await recordState(m, (next) => { delete next.presets[id] })
   await dropTools(m, id)
+  await dropSkillSettings(m, id)
+  await keepGlobalSkills(m, id)
   await recordHistory(m, id, before, promptFields(findPersona(declaration.builtIn)), 'restore')
 }
 
@@ -709,11 +746,11 @@ function text(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
 
-/** Point copied live persona and tool description rows at the preset that now owns them. */
+/** Point copied live persona, tool description, and skill policy rows at the preset that now owns them. */
 function retarget(rows, id) {
   const visit = list => list.map((row) => {
     if (row.group === true && Array.isArray(row.config)) return { ...row, config: visit(row.config) }
-    return row.name === LIVE_MODULE || row.name === DESCRIPTIONS_MODULE ? { ...row, config: { ...row.config, preset: id } } : row
+    return row.name === LIVE_MODULE || row.name === DESCRIPTIONS_MODULE || row.name === SKILLS_MODULE ? { ...row, config: { ...row.config, preset: id } } : row
   })
   return visit(rows)
 }
@@ -763,7 +800,11 @@ async function create(m, { id, name, description, template, from, locale }) {
   }
   await ctx.configEditor.edit(containerEntry(ctx), current => ({ ...current, presets: [...(current.presets ?? []), preset] }))
   if (origin !== undefined && origin.base !== undefined) await recordState(m, (next) => { next.presets[id] = origin })
-  if (template === undefined) await copyTools(m, String(from ?? 'standard'), id)
+  if (template === undefined) {
+    await copyTools(m, String(from ?? 'standard'), id)
+    await copySkillSettings(m, String(from ?? 'standard'), id)
+  }
+  await keepGlobalSkills(m, id)
 }
 
 async function update(m, { id, name, description }) {
@@ -792,6 +833,7 @@ async function remove(m, id) {
     ctx.logger.warn(`could not drop prompt history of ${id}: ${error instanceof Error ? error.message : String(error)}`)
   }
   await dropTools(m, id)
+  await dropSkillSettings(m, id)
 }
 
 /** How long a usage count may read session logs before it reports a partial count. */
@@ -1157,28 +1199,34 @@ async function toolCatalog(m, refresh = false) {
   return { catalog, planning }
 }
 
-/** Mount the description row in a preset that has overrides, and take it out of one that has none. */
+/**
+ * Mount the description row in a preset that has overrides, and take it out of one that has none.
+ * @returns {Promise<boolean>} true when the row joined the preset now: only sessions started later have its listener.
+ */
 async function syncDescriptionsRow(m, id) {
   const wanted = overridesOf(await readTools(m)).has(id)
   const present = rowsById(savedRows(m.ctx, id) ?? []).has(DESCRIPTIONS_ROW_ID)
-  if (wanted === present) return
+  if (wanted === present) return false
   await editPlugins(m, id, rows => (wanted
     ? [...rows, { id: DESCRIPTIONS_ROW_ID, name: DESCRIPTIONS_MODULE, config: { preset: id } }]
     : removeRow(rows, DESCRIPTIONS_ROW_ID)))
+  return wanted
 }
 
 /**
  * Store planned overrides one preset at a time, then bring the preset's row in line; a preset whose row cannot be
  * changed gets its stored overrides back.
- * @returns {Promise<Map<string, string>>} the presets that failed, with the reason.
+ * @returns {Promise<{ failed: Map<string, string>, mounted: string[] }>} the presets that failed, with the reason, and
+ *   the presets that received the row now.
  */
 async function commitTools(m, writes, source) {
   const failed = new Map()
+  const mounted = []
   for (const [id, changes] of writes) {
     const previous = structuredClone((await readTools(m)).presets[id])
     try {
       await updateTools(m, content => applyWrites(content, new Map([[id, changes]]), source, Date.now()))
-      await syncDescriptionsRow(m, id)
+      if (await syncDescriptionsRow(m, id)) mounted.push(id)
     } catch (error) {
       failed.set(id, error instanceof Error ? error.message : String(error))
       try {
@@ -1191,7 +1239,7 @@ async function commitTools(m, writes, source) {
       }
     }
   }
-  return failed
+  return { failed, mounted }
 }
 
 /** Report a stored change that did not complete as an error for every item of its preset. */
@@ -1205,27 +1253,29 @@ function withFailures(results, failed) {
  * Save tool descriptions for several modes and tools in one call.
  * @param {object} m - manager context and caches.
  * @param {{ edits?: unknown }} body - `{ preset, tool, text, expected? }` items, see {@link planEdits}.
- * @returns {Promise<{ results: object[], tools: object[] }>} one result per item, and the refreshed catalog.
+ * @returns {Promise<{ results: object[], mounted: string[], tools: object[] }>} one result per item, the presets that
+ *   received the description row now, and the refreshed catalog.
  */
 async function setToolDescriptions(m, body) {
   if (!Array.isArray(body.edits) || body.edits.length === 0) throw new ActionError('bad-request', 'edits must be a non-empty list')
   const { planning } = await toolCatalog(m)
   const plan = planEdits({ edits: body.edits, presets: planning, overrides: overridesOf(await readTools(m)) })
-  const failed = await commitTools(m, plan.writes, 'page')
-  return { results: withFailures(plan.results, failed), tools: (await toolCatalog(m)).catalog }
+  const { failed, mounted } = await commitTools(m, plan.writes, 'page')
+  return { results: withFailures(plan.results, failed), mounted, tools: (await toolCatalog(m)).catalog }
 }
 
 /**
  * Remove tool description overrides.
  * @param {object} m - manager context and caches.
  * @param {{ items?: unknown, presets?: unknown, all?: unknown }} body - what to restore, see {@link planRestore}.
- * @returns {Promise<{ results: object[], tools: object[] }>} one result per override, and the refreshed catalog.
+ * @returns {Promise<{ results: object[], mounted: string[], tools: object[] }>} one result per override, the presets that
+ *   received the description row now (none: a restore never adds it), and the refreshed catalog.
  */
 async function restoreToolDescriptions(m, body) {
   if (!Array.isArray(body.items) && !Array.isArray(body.presets) && body.all !== true) throw new ActionError('bad-request', 'Name items, presets, or all')
   const plan = planRestore({ selector: body, overrides: overridesOf(await readTools(m)) })
-  const failed = await commitTools(m, plan.writes, 'restore')
-  return { results: withFailures(plan.results, failed), tools: (await toolCatalog(m)).catalog }
+  const { failed, mounted } = await commitTools(m, plan.writes, 'restore')
+  return { results: withFailures(plan.results, failed), mounted, tools: (await toolCatalog(m)).catalog }
 }
 
 /** Forget a preset's tool description overrides and history. */
@@ -1326,7 +1376,7 @@ function publicUpgrade(upgrade) {
 /** The failure an installation reports, reduced to what the page words. */
 function upgradeFailure(result) {
   const output = typeof result.packageResult?.output === 'string'
-    ? result.packageResult.output.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '').trim().split('\n').slice(-UPGRADE_LOG_LINES).join('\n')
+    ? result.packageResult.output.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '').trim().split(/\r?\n/).slice(-UPGRADE_LOG_LINES).join('\n')
     : undefined
   return {
     ...result.error?.code === undefined ? {} : { code: result.error.code },
@@ -1379,4 +1429,386 @@ async function cancelUpgrade(m) {
   if (manager === undefined || m.upgrade?.state !== 'installing') throw new ActionError('not-running', 'No upgrade is running')
   const outcome = await manager.cancelInstall(m.upgrade.requestId)
   return { status: outcome.status }
+}
+
+/** The skill settings file; read once, and again after each write this manager makes. */
+async function readSkills(m) {
+  m.skillsFile ??= await m.store.read('skills')
+  return m.skillsFile
+}
+
+/** Change the skill settings file, then tell every mounted policy row to refresh its catalog. */
+async function updateSkills(m, change) {
+  try {
+    await m.store.update('skills', change)
+  } finally {
+    m.skillsFile = undefined
+  }
+  for (const listener of m.skillWatchers) {
+    try {
+      listener()
+    } catch (error) {
+      m.ctx.logger.warn(`a skill policy row failed to refresh: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+}
+
+function versionDir(m, skill, version) {
+  return join(m.store.dir, VERSIONS_DIR, skill, version)
+}
+
+function checkSkill(skill) {
+  if (typeof skill !== 'string' || !SKILL_NAME.test(skill)) throw new ActionError('skill-name-invalid', `Invalid skill name: ${String(skill)}`)
+  return skill
+}
+
+function checkVersion(version) {
+  if (typeof version !== 'string' || !VERSION_ID.test(version)) throw new ActionError('unknown-version', `Unknown version: ${String(version)}`)
+  return version
+}
+
+/** One saved version with the paths the registry serves it from; undefined when it cannot be read. */
+async function skillVersion(m, skill, version) {
+  if (!SKILL_NAME.test(skill) || !VERSION_ID.test(version)) return undefined
+  const key = `${skill}/${version}`
+  if (!m.versions.has(key)) {
+    const dir = versionDir(m, skill, version)
+    try {
+      m.versions.set(key, { meta: await readVersionMeta(dir), files: join(dir, 'files'), file: join(dir, 'files', 'SKILL.md') })
+    } catch (error) {
+      m.ctx.logger.warn(`skill version ${key} cannot be read: ${error instanceof Error ? error.message : String(error)}`)
+      return undefined
+    }
+  }
+  return m.versions.get(key)
+}
+
+/**
+ * The skills one preset sees and whether it has the skill tool, from a scope the registry mounts for the preset and
+ * releases again. Reused while the preset's rows are unchanged.
+ */
+async function scanSkills(m, id, fingerprint, refresh) {
+  const cached = m.skillScans.get(id)
+  if (!refresh && cached !== undefined && cached.fingerprint === fingerprint && Date.now() - cached.at < SCAN_TTL_MS) return cached.value
+  const tools = m.ctx.get('tools')
+  const skills = m.ctx.get('skills')
+  const lease = await m.ctx.agentPresets.acquireScope(id)
+  let value
+  try {
+    const snapshot = skills === undefined ? { skills: [] } : await skills.snapshot({ scope: lease.key })
+    value = {
+      hasSkillTool: tools?.schemas(lease.key).some(schema => schema.name === 'skill') === true,
+      skills: snapshot.skills.map(skill => ({
+        name: skill.name,
+        description: skill.description,
+        ...skill.path === undefined ? {} : { path: skill.path },
+        source: skill.source,
+        provider: skill.provider,
+        invocation: skill.invocation,
+      })),
+    }
+  } finally {
+    await lease[Symbol.asyncDispose]()
+  }
+  m.skillScans.set(id, { fingerprint, at: Date.now(), value })
+  return value
+}
+
+
+/** The presets of the roster with whether this manager can edit their rows. */
+async function skillModes(m) {
+  const declared = declarations(m.ctx)
+  const custom = new Map(customPresets(m.ctx).map(preset => [preset.id, preset]))
+  return (await m.ctx.agentPresets.list()).map((row) => {
+    const plugins = custom.get(row.id)?.plugins ?? declared.get(row.id)?.plugins
+    return { id: row.id, plugins, editable: plugins !== undefined }
+  })
+}
+
+/**
+ * Every skill any preset sees, with its state in each preset, its saved versions, and the presets themselves.
+ * A skill a preset hides is listed with the information last seen while it was visible.
+ * @param {object} m - manager context and caches.
+ * @param {boolean} refresh - scan every preset again.
+ */
+async function skillsView(m, refresh = false) {
+  const roster = await skillModes(m)
+  let content = await readSkills(m)
+  const modes = []
+  const live = new Map()
+  const presence = new Map()
+  for (const mode of roster) {
+    let scan
+    try {
+      scan = await scanSkills(m, mode.id, stable(mode.plugins ?? null), refresh)
+    } catch (error) {
+      modes.push({ id: mode.id, editable: mode.editable, hasSkillTool: false, error: error instanceof Error ? error.message : String(error) })
+      continue
+    }
+    modes.push({ id: mode.id, editable: mode.editable, hasSkillTool: scan.hasSkillTool })
+    for (const skill of scan.skills) {
+      // The manager's own entries say nothing about whether the mode finds the skill itself.
+      if (skill.provider === SKILLS_PROVIDER) continue
+      if (!presence.has(skill.name)) presence.set(skill.name, new Set())
+      presence.get(skill.name).add(mode.id)
+      if (!live.has(skill.name)) {
+        const { name: _name, provider: _provider, ...info } = skill
+        live.set(skill.name, info)
+      }
+    }
+  }
+  const stale = [...live].filter(([name, info]) => stable(content.skills?.[name]?.info ?? null) !== stable(info))
+  if (stale.length > 0) {
+    await m.store.update('skills', (next) => {
+      next.skills ??= {}
+      for (const [name, info] of stale) (next.skills[name] ??= {}).info = info
+    })
+    m.skillsFile = undefined
+    content = await readSkills(m)
+  }
+  const named = [
+    ...presence.keys(),
+    ...Object.keys(content.skills ?? {}),
+    ...content.global?.off ?? [],
+    ...Object.values(content.presets ?? {}).flatMap(record => [...record?.off ?? [], ...Object.keys(record?.pins ?? {})]),
+  ]
+  const sorted = [...new Set(named)].sort()
+  // A skill hidden in every mode has no unhidden entry to see, so whether its file exists is asked of the disk.
+  const exists = new Map(await Promise.all(sorted.map(async (name) => {
+    const path = live.get(name)?.path ?? content.skills?.[name]?.info?.path
+    return [name, typeof path === 'string' ? await stat(path).then(() => true, () => false) : undefined]
+  })))
+  const skills = sorted.map((name) => {
+    const record = content.skills?.[name]
+    const info = live.get(name) ?? record?.info
+    return {
+      name,
+      ...info ?? {},
+      ...exists.get(name) === undefined ? {} : { exists: exists.get(name) },
+      editable: isEditableSkill(info),
+      off: (content.global?.off ?? []).includes(name),
+      modes: Object.fromEntries(modes.map(mode => [mode.id, {
+        present: presence.get(name)?.has(mode.id) === true,
+        off: (content.presets?.[mode.id]?.off ?? []).includes(name),
+        ...content.presets?.[mode.id]?.pins?.[name] === undefined ? {} : { pin: content.presets[mode.id].pins[name] },
+      }])),
+      versions: [...record?.versions ?? []].reverse(),
+    }
+  })
+  return { modes, skills }
+}
+
+/**
+ * Mount the skill policy row in the presets whose settings need it, and take it out of the others.
+ * @returns {Promise<{ failed: { id: string, error: string }[], mounted: string[] }>} the presets whose row could not be
+ *   changed, and those that received it now: their running sessions keep the settings they started with.
+ */
+async function syncSkillRows(m, ids) {
+  const content = await readSkills(m)
+  const failed = []
+  const mounted = []
+  for (const id of ids) {
+    const wanted = needsRow(content, id)
+    const present = rowsById(savedRows(m.ctx, id) ?? []).has(SKILLS_ROW_ID)
+    if (wanted === present) continue
+    try {
+      await editPlugins(m, id, rows => (wanted
+        ? [...rows, { id: SKILLS_ROW_ID, name: SKILLS_MODULE, config: { preset: id } }]
+        : removeRow(rows, SKILLS_ROW_ID)))
+      if (wanted) mounted.push(id)
+    } catch (error) {
+      failed.push({ id, error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+  m.skillScans.clear()
+  return { failed, mounted }
+}
+
+/**
+ * Show, hide, or pin skills in several presets in one call.
+ * @param {{ changes?: unknown }} body - `{ preset, skill, enabled?, pin? }` items, see {@link planSkillChanges}.
+ * @returns {Promise<{ results: object[], rows: object[], mounted: string[], skills: object }>} one result per item, the
+ *   presets whose row could not be changed, the presets that received the row now, and the refreshed view.
+ */
+async function setSkillModes(m, body) {
+  if (!Array.isArray(body.changes) || body.changes.length === 0) throw new ActionError('bad-request', 'changes must be a non-empty list')
+  const modes = new Map((await skillModes(m)).map(mode => [mode.id, mode]))
+  let plan
+  await updateSkills(m, (current) => {
+    plan = planSkillChanges({ changes: body.changes, modes, content: current })
+    for (const key of Object.keys(current)) delete current[key]
+    Object.assign(current, plan.next)
+  })
+  const { failed, mounted } = await syncSkillRows(m, plan.presets)
+  return { results: plan.results, rows: failed, mounted, skills: await skillsView(m) }
+}
+
+/** Hide a skill in every editable preset, or stop hiding it everywhere. */
+async function setSkillGlobal(m, body) {
+  const skill = checkSkill(body.skill)
+  if (typeof body.enabled !== 'boolean') throw new ActionError('bad-request', 'enabled must be true or false')
+  await updateSkills(m, (current) => {
+    const next = withGlobal(current, skill, body.enabled)
+    for (const key of Object.keys(current)) delete current[key]
+    Object.assign(current, next)
+  })
+  const ids = (await skillModes(m)).filter(mode => mode.editable).map(mode => mode.id)
+  const { failed, mounted } = await syncSkillRows(m, ids)
+  return { rows: failed, mounted, skills: await skillsView(m) }
+}
+
+/** Read a skill's frontmatter switches the way the filesystem provider does. */
+function invocationOf(fields) {
+  const flag = (value) => {
+    const text = String(value ?? '').trim().toLowerCase()
+    return ['true', 'yes', 'on', '1'].includes(text) ? true : ['false', 'no', 'off', '0'].includes(text) ? false : undefined
+  }
+  return { modelInvocable: flag(fields['disable-model-invocation']) !== true, userInvocable: flag(fields['user-invocable']) !== false }
+}
+
+/** The file a skill's information points at, for the actions that read or change it. */
+async function skillFile(m, skill) {
+  const info = (await readSkills(m)).skills?.[skill]?.info
+  if (typeof info?.path !== 'string') throw new ActionError('skill-no-file', `Skill ${skill} has no known file; open the Skills view once while it is visible`, { skill })
+  return info
+}
+
+/**
+ * Save the skill's current files as a new version.
+ * @param {string} source - why: `manual`, `before-edit`, or `before-restore`.
+ * @returns {Promise<string>} the new version id.
+ */
+async function saveVersion(m, skill, source, note) {
+  const info = await skillFile(m, skill)
+  const { fields, body } = parseSkillFile(await readFile(info.path, 'utf8'))
+  const content = await readSkills(m)
+  const id = nextVersionId(content.skills?.[skill]?.versions, content.skills?.[skill]?.lastVersion)
+  const description = (fields.description ?? info.description ?? '').trim() || `Saved version of ${skill}`
+  const meta = {
+    name: skill,
+    description,
+    ...typeof fields.whenToUse === 'string' && fields.whenToUse.trim() !== '' ? { whenToUse: fields.whenToUse } : {},
+    invocation: invocationOf(fields),
+    content: body,
+    at: Date.now(),
+    source,
+    ...note === undefined ? {} : { note },
+    from: info.path,
+  }
+  await writeVersion({ path: info.path, dir: versionDir(m, skill, id), meta })
+  await m.store.update('skills', (next) => {
+    next.skills ??= {}
+    const record = next.skills[skill] ??= {}
+    record.versions = [...record.versions ?? [], { id, at: meta.at, source, ...note === undefined ? {} : { note }, description }]
+    record.lastVersion = Number(id.slice(1))
+  })
+  m.skillsFile = undefined
+  return id
+}
+
+async function saveSkillVersion(m, body) {
+  const skill = checkSkill(body.skill)
+  const note = typeof body.note === 'string' && body.note.trim() !== '' ? body.note.trim() : undefined
+  if (note !== undefined && note.length > NOTE_MAX_CHARS) throw new ActionError('note-too-long', `The note exceeds ${NOTE_MAX_CHARS} characters`, { max: NOTE_MAX_CHARS })
+  const version = await saveVersion(m, skill, 'manual', note)
+  return { version, skills: await skillsView(m) }
+}
+
+/** Copy a saved version over the skill's files, after saving the current files as a version of their own. */
+async function restoreSkillVersion(m, body) {
+  const skill = checkSkill(body.skill)
+  const version = checkVersion(body.version)
+  const info = await skillFile(m, skill)
+  if (!isEditableSkill(info)) throw new ActionError('skill-read-only', `Skill ${skill} belongs to an installed package and cannot be changed`, { skill })
+  if (!((await readSkills(m)).skills?.[skill]?.versions ?? []).some(entry => entry.id === version)) throw new ActionError('unknown-version', `Unknown version: ${version}`)
+  const backup = await saveVersion(m, skill, 'before-restore')
+  await restoreVersion({ dir: versionDir(m, skill, version), path: info.path })
+  m.skillScans.clear()
+  return { backup, skills: await skillsView(m) }
+}
+
+/** Delete a saved version that no preset serves. */
+async function deleteSkillVersion(m, body) {
+  const skill = checkSkill(body.skill)
+  const version = checkVersion(body.version)
+  let refused
+  await m.store.update('skills', (current) => {
+    const outcome = withoutVersion(current, skill, version)
+    if (!outcome.ok) {
+      refused = outcome.pinnedBy
+      return
+    }
+    for (const key of Object.keys(current)) delete current[key]
+    Object.assign(current, outcome.next)
+  })
+  m.skillsFile = undefined
+  if (refused !== undefined) throw new ActionError('version-pinned', `Version ${version} of ${skill} is used by ${refused.join(', ')}`, { modes: refused.join(', ') })
+  await rm(versionDir(m, skill, version), { recursive: true, force: true })
+  m.versions.delete(`${skill}/${version}`)
+  return { skills: await skillsView(m) }
+}
+
+/** A skill's instruction file as it is on disk now. */
+async function readSkillFile(m, body) {
+  const skill = checkSkill(body.skill)
+  const info = await skillFile(m, skill)
+  return { skill, path: info.path, text: await readFile(info.path, 'utf8'), editable: isEditableSkill(info) }
+}
+
+/**
+ * Replace a skill's instruction file, after saving the current one as a version.
+ * @param {{ skill?: unknown, text?: unknown, base?: unknown }} body - the new text, and the text the editor started from;
+ *   a file that changed since is refused with `skill-conflict`.
+ */
+async function writeSkillFile(m, body) {
+  const skill = checkSkill(body.skill)
+  if (typeof body.text !== 'string' || body.text.trim() === '') throw new ActionError('skill-text-empty', 'The skill file cannot be empty')
+  if (body.text.length > SKILL_FILE_MAX_CHARS) throw new ActionError('skill-text-too-long', `The skill file exceeds ${SKILL_FILE_MAX_CHARS} characters`, { max: SKILL_FILE_MAX_CHARS })
+  const info = await skillFile(m, skill)
+  if (!isEditableSkill(info)) throw new ActionError('skill-read-only', `Skill ${skill} belongs to an installed package and cannot be changed`, { skill })
+  const current = await readFile(info.path, 'utf8')
+  // A browser text area returns LF line endings, so the comparisons ignore them and the file keeps its own.
+  if (typeof body.base === 'string' && plainLines(body.base) !== plainLines(current) && plainLines(body.text) !== plainLines(current)) {
+    throw new ActionError('skill-conflict', 'The skill file changed after you started editing; reload it or overwrite it', { current: plainLines(current) })
+  }
+  if (plainLines(body.text) === plainLines(current)) return { changed: false, skills: await skillsView(m) }
+  const backup = await saveVersion(m, skill, 'before-edit')
+  await writeText(info.path, withLineEndingsOf(body.text, current))
+  m.skillScans.clear()
+  return { changed: true, backup, skills: await skillsView(m) }
+}
+
+/** A saved version's metadata and instruction file, for a preview. */
+async function readSkillVersion(m, body) {
+  const skill = checkSkill(body.skill)
+  const version = checkVersion(body.version)
+  const found = await skillVersion(m, skill, version)
+  if (found === undefined) throw new ActionError('unknown-version', `Unknown version: ${version}`)
+  return { skill, version, meta: found.meta, text: await readFile(found.file, 'utf8') }
+}
+
+/** Give a new preset the skill settings of the preset it was copied from. */
+async function copySkillSettings(m, from, id) {
+  try {
+    await updateSkills(m, (content) => {
+      const source = content.presets?.[from]
+      if (source !== undefined) content.presets[id] = structuredClone(source)
+    })
+  } catch (error) {
+    m.ctx.logger.warn(`could not copy skill settings of ${from}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+/** Forget a preset's skill settings. */
+async function dropSkillSettings(m, id) {
+  try {
+    await updateSkills(m, (content) => { delete content.presets?.[id] })
+  } catch (error) {
+    m.ctx.logger.warn(`could not drop skill settings of ${id}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+/** Mount the skill policy row in a preset that needs it for skills hidden in every mode, after a reset or a create. */
+async function keepGlobalSkills(m, id) {
+  for (const failure of (await syncSkillRows(m, [id])).failed) m.ctx.logger.warn(`could not apply hidden skills to ${failure.id}: ${failure.error}`)
 }

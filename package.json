@@ -1,6 +1,6 @@
 {
   "name": "dsh-modes",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Mode manager for DeepSeek Harness (dsh): switch what each agent mode can do, edit its system prompt with history and live updates, create modes from templates, and merge built-in updates after a dsh upgrade.",
   "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "cordis", "agent-preset", "system-prompt"],
   "author": "xiaohai-78",
@@ -21,12 +21,13 @@
     "./live-persona": "./live-persona.js",
     "./prompt-tool": "./prompt-tool.js",
     "./tool-descriptions": "./tool-descriptions.js",
+    "./skills": "./skill-policy.js",
     "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "files": ["index.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "skill-policy.js", "skill-store.js", "skill-files.js", "fs-retry.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
   "scripts": {
     "test": "node --test test/"
   },

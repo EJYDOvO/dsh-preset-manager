@@ -8,13 +8,16 @@
  * - `tool-descriptions.json` — per preset, the tool description overrides (`tools`: name → `{ text, base }`) and
  *   the most recent changes to them (`history`, oldest first); read on every model step by the row in tool-descriptions.js.
  * - `settings.json` — the plugin's own switches: `checkUpdates` (default true) allows the automatic version check.
+ * - `skills.json` — per-mode skill settings, skills hidden in every mode, and the saved versions of each skill; the
+ *   versions' files live in `skill-versions/<skill>/<version>/`. See skill-store.js.
  *
  * Writes replace the file atomically (temporary file, then rename) and run one
  * at a time within this process. A file that exists but cannot be parsed is
  * reported and never overwritten, so a damaged file is not silently replaced.
  */
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { renameWithRetry } from './fs-retry.js'
 
 /** Prompt versions kept per preset. */
 export const HISTORY_LIMIT = 30
@@ -24,6 +27,7 @@ const FILES = {
   history: { name: 'history.json', empty: () => ({ version: 1, presets: {} }) },
   tools: { name: 'tool-descriptions.json', empty: () => ({ version: 1, presets: {} }) },
   settings: { name: 'settings.json', empty: () => ({ version: 1, checkUpdates: true }), plain: true },
+  skills: { name: 'skills.json', empty: () => ({ version: 1, presets: {}, global: { off: [] }, skills: {} }) },
 }
 
 /** A state file that exists but is not a JSON object with a `presets` map. */
@@ -45,7 +49,7 @@ export class StateStore {
 
   /**
    * Read one state file.
-   * @param {'state' | 'history' | 'tools' | 'settings'} kind - which file.
+   * @param {'state' | 'history' | 'tools' | 'settings' | 'skills'} kind - which file.
    * @returns {Promise<{version: number, presets: Record<string, any>}>} its content, or the empty form when absent.
    * @throws {StateFileError} when the file exists but is not valid.
    */
@@ -75,7 +79,7 @@ export class StateStore {
 
   /**
    * Read, change, and atomically replace one state file, after every earlier update.
-   * @param {'state' | 'history' | 'tools' | 'settings'} kind - which file.
+   * @param {'state' | 'history' | 'tools' | 'settings' | 'skills'} kind - which file.
    * @param {(current: {version: number, presets: Record<string, any>}) => void} change - mutates the parsed content in place.
    * @returns {Promise<void>} settles once the new content is on disk.
    */
@@ -87,7 +91,7 @@ export class StateStore {
       const path = join(this.dir, FILES[kind].name)
       const temporary = `${path}.${process.pid}.${Date.now()}.tmp`
       await writeFile(temporary, `${JSON.stringify(current, null, 2)}\n`)
-      await rename(temporary, path)
+      await renameWithRetry(temporary, path)
     })
     this.queue = run.catch(() => undefined)
     return run
