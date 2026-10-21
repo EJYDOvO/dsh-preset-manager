@@ -194,13 +194,15 @@ Open its card. If it reports plugins that cannot load, click **Turn these plugin
 dsh plugin --profile web remove dsh-modes
 ```
 
-Before you uninstall:
+Modes this plugin changed keep working after the uninstall. Every row it adds to a built-in mode is saved with a condition that switches the row off once the package is gone, and a mode with **Live prompt** also gets an official persona row with the same prompt that runs only then. After the uninstall:
 
-1. **Clear skill settings first**: in **Skills**, turn every skill back on and set every mode to **Current file**. A mode with skill settings contains the row `dsh-modes/skills`.
-2. **Restore tool descriptions**: in **Tool descriptions**, use **Restore everything in all modes**. A mode with edited tool descriptions contains a row of this plugin (`dsh-modes/tool-descriptions`); once the plugin is uninstalled, such a mode cannot find it and stops working.
-3. **Turn off two switches**: on each mode's **Prompt** tab, turn off **Live prompt** and **Allow prompt changes in chat** in the **In chat** section. These switches add this plugin's own modules to the mode. Once the plugin is uninstalled, such a mode cannot find them and stops working.
-4. **For a full reset**: **Restore built-in** on the built-in modes you changed, and delete the modes you created. Otherwise changed modes keep running with your changes after the uninstall.
-5. **Clean up**: you can also delete the `.dsh-modes/` folder in the profile directory.
+- Skill settings, tool description edits, and **Allow prompt changes in chat** no longer apply: skills and tools are back to their originals.
+- A mode with **Live prompt** keeps the prompt you last saved, as an ordinary prompt.
+- Other changes to built-in modes, such as switched-off plugins and edited prompts, stay. For a full reset, use **Restore built-in** on those modes before you uninstall.
+- The modes you created are removed with the plugin.
+- The `.dsh-modes/` folder in the profile directory stays, so installing again brings every setting back. Delete it to clean up.
+
+Rows saved by version 0.8.0 or earlier have no such condition. Upgrade and start dsh once before you uninstall: on start, the plugin adds the condition to every built-in mode it changed. If a mode already stopped working after an uninstall (it is missing from the mode list, or a new session reports `agent-preset/invalid: ... never started`), install the plugin again, or switch to another mode.
 
 ## Known limitations
 
@@ -243,6 +245,7 @@ Before you uninstall:
 | `skill-import.js` | Finds skill folders in Codex, Claude Code, and a named folder; reads a candidate's frontmatter; fingerprints, copies, and replaces skill folders; writes a new skill's `SKILL.md` |
 | `update.js` | Version check and upgrade helpers without DSH services: version comparison, how the profile depends on the package, the registries to ask, and validation of the registry's tarball address |
 | `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), `settings.json` (the update check switch), and `skills.json` (skill settings, the details each skill had when last seen, and the version index; the versions' files are in `skill-versions/<skill>/<version>/`). Writes go to a temporary file first and then replace the original |
+| `install-guard.js` | Keeps a changed built-in mode loading after an uninstall: saves each row of this plugin's modules with a `!!js` `disabled` condition that is true once `dsh-modes` no longer resolves, and puts an official persona row with the same prompt after a live persona, with the opposite condition. Custom modes get no conditions, since they go away with the plugin |
 | `live-persona.js` | The persona row for Live prompt: replaces the mode's `@deepseek-ai/dsh-persona` row and registers the same two prompt sections, reading the latest saved text every time the prompt is assembled |
 | `prompt-tool.js` | The `mode_prompt` tool: mounted as a row inside a mode, so only that mode's sessions see it; asks the user for approval through `tools/pre-execute` before writing |
 | `client.js` | The Web settings page (Chinese and English) |
@@ -295,7 +298,8 @@ Actions of `/api/dsh-modes`:
   - skills: in a new Standard session a skill turned off was missing from the catalog, a pinned skill showed the saved version's description and its loaded instructions were the saved body while the file held an edit, a skill turned off in every mode disappeared from a running session's next request, and restoring a version brought the file back after saving the edited one; checked on `0.2.0-rc.2` and `0.2.1-rc.1`;
   - updates: a build labelled `0.5.0` found the real latest release on npm and upgraded to it through DSH's installer. The dependency became the registry tarball address and the plugin stayed enabled. `0.2.0-rc.2` asked for a restart, and `0.2.1-rc.1` replaced the plugin on the spot. The same kind of install from the Plugins page was also checked across a restart: a custom mode created before the upgrade still worked. A failed install left the manifest, lockfile, and files as they were. The latest-release answers of npm and of the China mirror pass the tarball address check. The switch, the manual check, and the development install were checked in the page;
   - creating and importing skills: on `0.2.1-rc.2` (npm) and `0.2.1-rc.1` (source), with sample skills in Codex, Claude Code, a Claude Code plugin, and a folder, the import list showed each status, copies were written under new names where needed with the copied `name` rewritten, every mode's skill catalog (`skills.snapshot`) listed the new skills, a new skill left out of one mode was off there, and a changed source was flagged and imported again after a version was saved. Not checked through model requests: a running session picking up a new skill;
-  - tool descriptions: a new session of an edited mode sends the edited text for exactly the edited tools, a running session sends a later edit with its next request, and after a restore the next request carries the built-in text again; checked on `0.2.0-rc.2` and `0.2.1-rc.1`.
+  - tool descriptions: a new session of an edited mode sends the edited text for exactly the edited tools, a running session sends a later edit with its next request, and after a restore the next request carries the built-in text again; checked on `0.2.0-rc.2` and `0.2.1-rc.1`;
+  - uninstall: on `0.2.1-rc.2`, Standard was given skill settings, Live prompt with an edited prompt, `mode_prompt`, and a tool description edit. After `dsh plugin remove` and with the package files gone, Standard was still in the mode list, a new session started, the plugin's rows were off, and the assembled prompt carried the edited text once. Installing again brought every setting back. A Standard override saved by 0.8.0 got its conditions on the first start. Without the conditions, the same uninstall leaves Standard out of the mode list and a new session fails with `agent-preset/invalid`.
 
 ### Tests
 
@@ -303,7 +307,7 @@ Actions of `/api/dsh-modes`:
 npm test
 ```
 
-Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, and the skill settings, version files, skill policy row, and skill import (folder listing, fingerprints, copies that leave out outside links, renames, and replacements).
+Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, the skill settings, version files, skill policy row, and skill import (folder listing, fingerprints, copies that leave out outside links, renames, and replacements), and the uninstall conditions (the rows they are added to, and how they evaluate with and without the package).
 
 </details>
 

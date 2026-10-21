@@ -46,7 +46,7 @@ async function mount({ dependency = '0.6.0', pluginManager } = {}) {
   const listeners = new Map()
   const warnings = []
   apply({
-    configEditor: { documentPath: join(dir, 'cordis.patch.yml') },
+    configEditor: { documentPath: join(dir, 'cordis.patch.yml'), configuration: () => [] },
     provide() {},
     get: name => (name === 'pluginManager' ? pluginManager : undefined),
     inject: (_names, callback) => callback({ effect: effect => effect(), connection: { fetch: { register: route => routes.push(route) } } }),

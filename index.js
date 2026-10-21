@@ -11,6 +11,8 @@
  * Every edit first merges the preset onto the latest built-in rows (rebase.js)
  * with the base recorded in `<profile>/.dsh-modes/state.json` (state.js), so a
  * DSH update reaches an edited preset without discarding the user's changes.
+ * Rows of this package's modules in a shipped preset carry a condition that
+ * switches them off once the package is uninstalled (install-guard.js).
  */
 import { readFileSync } from 'node:fs'
 import { mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
@@ -21,6 +23,7 @@ import { applyWrites, catalogEntries, overridesOf, planEdits, planRestore } from
 import { CHECK_ERROR_TTL_MS, CHECK_TTL_MS, PACKAGE_NAME, commands, fetchLatest, isNewer, registryBases, sourceKind } from './update.js'
 import { NOTE_MAX_CHARS, SKILL_NAME, VERSION_ID, isEditableSkill, needsRow, nextVersionId, parseSkillFile, planSkillChanges, plainLines, policyFor, withGlobal, withLineEndingsOf, withoutVersion } from './skill-store.js'
 import { SkillFileError, readVersionMeta, restoreVersion, skillLocation, writeText, writeVersion } from './skill-files.js'
+import { FALLBACK_ROW_ID, LIVE_MODULE, PERSONA_MODULE, guardRows, isGuard, isOwnModule, unguardRows } from './install-guard.js'
 import { DESCRIPTION_MAX_CHARS, copySkill, displayPath, expandHome, findPluginSkills, fingerprint, hasSkillFile, importRoots, listSkillDirs, newSkillText, readCandidate, replaceSkill, skillRoots, sourceState } from './skill-import.js'
 
 const ROUTE = '/api/dsh-modes'
@@ -29,8 +32,6 @@ const CONTAINER_ID = 'dsh-modes-custom'
 const REGISTRY_SETTINGS = 'agent-preset-registry'
 const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
 const CUSTOM_ORDER_BASE = 100
-const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
-const LIVE_MODULE = 'dsh-modes/live-persona'
 const TOOL_MODULE = 'dsh-modes/prompt-tool'
 const TOOL_ROW_ID = 'dsh-modes-prompt-tool'
 const DESCRIPTIONS_MODULE = 'dsh-modes/tool-descriptions'
@@ -143,6 +144,7 @@ export function apply(ctx) {
       return () => m.skillWatchers.delete(listener)
     },
   })
+  guardSavedRows(m)
   ctx.inject(['connection'], (c) => {
     c.effect(() => c.connection.fetch.register({
       path: ROUTE,
@@ -151,6 +153,27 @@ export function apply(ctx) {
       fetch: request => handle(m, request),
     }), 'dsh-modes: route')
   })
+}
+
+/**
+ * Give the rows an earlier version added to shipped presets their uninstall conditions, so removing the package
+ * later leaves those presets loadable. Only an override that changes is written, and its merge base is kept; a
+ * failure is logged and leaves that preset as it was.
+ */
+async function guardSavedRows(m) {
+  const { ctx } = m
+  try {
+    for (const [id, declaration] of declarations(ctx)) {
+      if (!declaration.overridden || same(guardRows(declaration.plugins), declaration.plugins)) continue
+      try {
+        await ctx.configEditor.edit(declaration.entry, current => (Array.isArray(current.plugins) ? { ...current, plugins: guardRows(current.plugins) } : current))
+      } catch (error) {
+        ctx.logger.warn(`dsh-modes could not add the uninstall condition to mode ${id}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  } catch (error) {
+    ctx.logger.warn(`dsh-modes could not check the modes it changed: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 function reply(body) {
@@ -231,8 +254,14 @@ function isExpr(value) {
   return value !== null && typeof value === 'object' && typeof value.__jsExpr === 'string'
 }
 
-function isOwnModule(name) {
-  return typeof name === 'string' && name.startsWith('dsh-modes/')
+function withoutDisabled(row) {
+  const { disabled: _disabled, ...rest } = row
+  return rest
+}
+
+/** Whether a row is present and switched on; the uninstall condition counts as on. */
+function isOn(row) {
+  return row !== undefined && (row.disabled === undefined || isGuard(row.disabled))
 }
 
 /** Every non-group row with an id, keyed by id; nested group rows included. */
@@ -378,13 +407,15 @@ function syncPreview(own, declaration, record, declared) {
     removed: result.summary.removed.map(describe(user)),
     updated: result.summary.updated,
     conflicts: result.summary.conflicts.length,
-    kept: [...rowsById(result.rows)].filter(([id, row]) => !latestById.has(id) || !same(row, latestById.get(id))).length,
+    kept: [...rowsById(result.rows)].filter(([id, row]) => id !== FALLBACK_ROW_ID && (!latestById.has(id) || !same(row, latestById.get(id)))).length,
   }
 }
 
 /** Declared rows with their declared and live enablement; nested group rows are flattened. */
 function flatten(rows, context, outer = false, group = null, out = []) {
-  for (const row of rows) {
+  for (const stored of rows) {
+    if (stored.id === FALLBACK_ROW_ID) continue
+    const row = isGuard(stored.disabled) ? withoutDisabled(stored) : stored
     const own = isExpr(row.disabled) ? 'conditional' : Boolean(row.disabled)
     const disabled = outer === true || own === true ? true
       : outer === 'conditional' || own === 'conditional' ? 'conditional' : false
@@ -480,7 +511,7 @@ async function list(m) {
       usage: usage.get(row.id) ?? 0,
       ...typeof prefix === 'string' ? { promptExcerpt: prefix.slice(0, PROMPT_EXCERPT_CHARS) } : {},
       ...persona?.name === LIVE_MODULE ? { live: true } : {},
-      ...rowsById(plugins).get(TOOL_ROW_ID)?.disabled === undefined && rowsById(plugins).has(TOOL_ROW_ID) ? { promptTool: true } : {},
+      ...isOn(rowsById(plugins).get(TOOL_ROW_ID)) ? { promptTool: true } : {},
       ...toolEdits.has(row.id) ? { toolEdits: toolEdits.get(row.id).size } : {},
       ...skillEdits(row.id) > 0 ? { skillEdits: skillEdits(row.id) } : {},
       ...failures.size === 0 ? {} : { failures: [...failures].map(([rowId, detail]) => ({ rowId, detail })) },
@@ -560,7 +591,7 @@ function removeRow(rows, rowId) {
  */
 function withDisabled(rows, rowId, disabled, force) {
   return replaceRow(rows, rowId, (row) => {
-    if (isExpr(row.disabled) && !force) {
+    if (isExpr(row.disabled) && !isGuard(row.disabled) && !force) {
       throw new ActionError('conditional-row', `Row ${rowId} is enabled by a condition (${row.disabled.__jsExpr}); pass force to replace it`, { rowId, condition: row.disabled.__jsExpr })
     }
     const next = { ...row }
@@ -580,7 +611,8 @@ async function recordState(m, change) {
 
 /**
  * Apply `change` to one preset's row list, in the container for custom presets or the profile override otherwise.
- * The rows are first merged onto the latest built-in rows, and the base of that merge is recorded.
+ * The rows are first merged onto the latest built-in rows, and the base of that merge is recorded. A shipped preset's
+ * rows are saved with the uninstall conditions of {@link guardRows}; a custom preset's without them.
  * @returns {Promise<{synced?: object}>} the merge summary when the merge changed the rows.
  */
 async function editPlugins(m, id, change) {
@@ -601,7 +633,7 @@ async function editPlugins(m, id, change) {
           if (merged.changed) synced = merged.summary
           rows = merged.rows
         }
-        return { ...preset, plugins: change(rows, undefined) }
+        return { ...preset, plugins: unguardRows(change(rows, undefined)) }
       }),
     }))
     if (latest !== undefined && !same(latest, record.base)) await recordState(m, (next) => { next.presets[id] = { ...next.presets[id], base: latest } })
@@ -619,7 +651,7 @@ async function editPlugins(m, id, change) {
       if (merged.changed) synced = merged.summary
       base = merged.rows
     }
-    rows = change(base, builtIn)
+    rows = guardRows(change(base, builtIn))
     return { ...current, plugins: rows }
   })
   await recordState(m, (next) => {
@@ -800,7 +832,7 @@ async function create(m, { id, name, description, template, from, locale }) {
     ...text(name) === undefined ? {} : { name: text(name) },
     ...text(description) === undefined ? {} : { description: text(description) },
     order: CUSTOM_ORDER_BASE + custom.length,
-    plugins: retarget(plugins, id),
+    plugins: unguardRows(retarget(plugins, id)),
   }
   await ctx.configEditor.edit(containerEntry(ctx), current => ({ ...current, presets: [...(current.presets ?? []), preset] }))
   if (origin !== undefined && origin.base !== undefined) await recordState(m, (next) => { next.presets[id] = origin })
@@ -904,7 +936,7 @@ function findPersona(rows) {
     if (row.group === true) {
       const nested = findPersona(row.config)
       if (nested !== undefined) return nested
-    } else if (PERSONA_MODULES.has(row.name)) return row
+    } else if (PERSONA_MODULES.has(row.name) && row.id !== FALLBACK_ROW_ID) return row
   }
   return undefined
 }
@@ -993,7 +1025,7 @@ async function readPrompt(m, id) {
       off: persona.disabled === true,
       live: persona.name === LIVE_MODULE,
     },
-    promptTool: tool !== undefined && tool.disabled === undefined,
+    promptTool: isOn(tool),
     ...original === undefined ? {} : {
       builtIn: promptFields(original),
       builtInPrefix: promptFields(original).prefix,
