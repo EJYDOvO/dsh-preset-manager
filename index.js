@@ -209,6 +209,10 @@ const ACTIONS = {
     await m.store.update('settings', (current) => { current.checkUpdates = body.enabled === true })
     return updateStatus(m, false)
   },
+  dismissUpgraded: async (m) => {
+    await m.store.update('settings', (current) => { delete current.upgraded })
+    return updateStatus(m, false)
+  },
   upgrade: (m, body) => startUpgrade(m, body),
   cancelUpgrade: m => cancelUpgrade(m),
   skills: async (m, body) => skillsView(m, body.refresh === true),
@@ -225,7 +229,7 @@ const ACTIONS = {
   importSkills: (m, body) => importSkills(m, body),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
-const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion', 'skillSources'])
+const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'dismissUpgraded', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion', 'skillSources'])
 
 async function handle(m, request) {
   let body
@@ -1388,6 +1392,7 @@ async function updateStatus(m, refresh) {
   const stale = check === undefined || Date.now() - check.at > lifetime
   if (source !== 'link' && (refresh || (settings.checkUpdates !== false && stale))) check = await checkLatest(m, manager)
   const newer = check?.latest !== undefined && isNewer(check.latest.version, PACKAGE_VERSION)
+  const upgraded = settings.upgraded
   return {
     version: PACKAGE_VERSION,
     profile,
@@ -1396,6 +1401,7 @@ async function updateStatus(m, refresh) {
     ...check === undefined ? {} : { checkedAt: check.at },
     ...check?.error === undefined ? {} : { error: check.error },
     ...check?.latest === undefined ? {} : { latest: check.latest.version, newer, host: new URL(check.latest.registry).host },
+    ...typeof upgraded?.from === 'string' && upgraded.to === PACKAGE_VERSION ? { upgraded: { from: upgraded.from, to: upgraded.to } } : {},
     canUpgrade: newer && manager !== undefined && (source === 'registry' || source === 'tarball'),
     commands: commands(profile, PACKAGE_VERSION),
     upgrade: publicUpgrade(m.upgrade),
@@ -1442,21 +1448,34 @@ async function startUpgrade(m, body) {
   const requestId = `${PACKAGE_NAME}-upgrade-${Date.now()}`
   const upgrade = { state: 'installing', from: PACKAGE_VERSION, to: check.latest.version, phase: 'installing', startedAt: Date.now(), requestId }
   m.upgrade = upgrade
+  // Written before the install: DSH may replace this plugin while it runs, and the new version reads the note.
+  await m.store.update('settings', (current) => { current.upgraded = { from: upgrade.from, to: upgrade.to, at: upgrade.startedAt } })
   const stop = m.ctx.on('plugin-manager/install-state', (progress) => {
     if (progress.requestId === requestId) upgrade.phase = progress.phase
   })
   manager.installBundle(check.latest.tarball, { requestId }).then((result) => {
-    const applied = result.application === 'applied' || result.application === 'restart-required' || result.application === 'overridden'
+    // The profile already depends on this very release (installed earlier, not loaded yet): a restart loads it.
+    const waiting = result.application === 'failed' && result.error?.code === 'already-installed'
+    const applied = waiting || result.application === 'applied' || result.application === 'restart-required' || result.application === 'overridden'
+    const reason = waiting ? 'already-installed' : result.restartReason
     Object.assign(upgrade, {
       state: applied ? 'done' : result.application === 'cancelled' ? 'cancelled' : 'failed',
       endedAt: Date.now(),
-      ...applied ? { restartRequired: result.application !== 'applied', ...result.restartReason === undefined ? {} : { reason: result.restartReason } } : {},
+      ...applied ? { restartRequired: result.application !== 'applied', ...reason === undefined ? {} : { reason } } : {},
       ...applied || result.application === 'cancelled' ? {} : { failure: upgradeFailure(result) },
     })
+    if (!applied) return forgetUpgrade(m, upgrade.to)
   }, (error) => {
     Object.assign(upgrade, { state: 'failed', endedAt: Date.now(), failure: { message: error instanceof Error ? error.message : String(error) } })
+    return forgetUpgrade(m, upgrade.to)
   }).finally(stop)
   return publicUpgrade(upgrade)
+}
+
+/** Forget the upgrade note when it is about the release `to`; a failed write is logged, since the upgrade itself is unaffected. */
+function forgetUpgrade(m, to) {
+  return m.store.update('settings', (current) => { if (current.upgraded?.to === to) delete current.upgraded })
+    .catch(error => m.ctx.logger.warn(`could not update the upgrade note: ${error instanceof Error ? error.message : String(error)}`))
 }
 
 /** Stop the running installation; the manager restores the profile files before it answers `cancelled`. */
@@ -1638,7 +1657,8 @@ async function skillsView(m, refresh = false) {
       ...sources.has(name) ? { imported: sources.get(name) } : {},
     }
   })
-  return { modes, skills, roots: displayRoots() }
+  // dsh-mode-skills (Skill Manager) saves through this plugin, so its sidebar page shows these same settings.
+  return { modes, skills, roots: displayRoots(), ...m.ctx.get('dshModeSkills') === undefined ? {} : { companion: 'dsh-mode-skills' } }
 }
 
 /**

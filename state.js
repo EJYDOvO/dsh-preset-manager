@@ -7,7 +7,8 @@
  * - `history.json` — per preset, the most recent prompt versions, oldest first.
  * - `tool-descriptions.json` — per preset, the tool description overrides (`tools`: name → `{ text, base }`) and
  *   the most recent changes to them (`history`, oldest first); read on every model step by the row in tool-descriptions.js.
- * - `settings.json` — the plugin's own switches: `checkUpdates` (default true) allows the automatic version check.
+ * - `settings.json` — the plugin's own switches: `checkUpdates` (default true) allows the automatic version check;
+ *   `upgraded` (`{ from, to, at }`) is the upgrade last started from the page, which the new version reports once.
  * - `skills.json` — per-mode skill settings, skills hidden in every mode, and the saved versions of each skill; the
  *   versions' files live in `skill-versions/<skill>/<version>/`. See skill-store.js.
  *

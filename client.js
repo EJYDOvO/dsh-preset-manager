@@ -297,6 +297,7 @@ window.__ModuleLoader__.load({
       'view.tools': '工具描述',
       'view.skills': '技能',
       'skills.intro': '按模式开关技能（skill），并把技能固定在保存过的版本上。只改模式里的设置，不动技能文件',
+      'skills.companion': '已安装 Skill 管理（dsh-mode-skills）：侧栏的「Skill 管理」页和这里是同一份设置，那里还能把各模式并排对照、搜索正文、看使用统计，并从 Skill 商城安装',
       'skills.loading': '正在读取各模式的技能…',
       'skills.search': '搜索技能名或描述',
       'skills.none': '还没有发现任何技能',
@@ -525,6 +526,7 @@ window.__ModuleLoader__.load({
       'update.failedHint': '可以重试，或在终端手动升级：',
       'update.retry': '重试',
       'update.cancelled': '已取消，已安装的版本没有变化。',
+      'update.upgraded': '已升级到 {to}（之前是 {from}）。',
       'update.dismiss': '知道了',
       'update.version': 'dsh-modes {version}',
       'update.dev': '本地开发安装，不检查更新',
@@ -810,6 +812,7 @@ window.__ModuleLoader__.load({
       'view.tools': 'Tool descriptions',
       'view.skills': 'Skills',
       'skills.intro': 'Switch skills on or off per mode and pin them to saved versions. Only mode settings change; skill files stay as they are',
+      'skills.companion': 'Skill Manager (dsh-mode-skills) is installed: its Skills page in the sidebar shows these same settings, with every mode side by side, full-text search, usage counts, and the skill store',
       'skills.loading': 'Reading the skills of every mode…',
       'skills.search': 'Search skill names or descriptions',
       'skills.none': 'No skills found yet',
@@ -1038,6 +1041,7 @@ window.__ModuleLoader__.load({
       'update.failedHint': 'You can try again, or upgrade by hand in a terminal:',
       'update.retry': 'Try again',
       'update.cancelled': 'Cancelled; the installed version is unchanged.',
+      'update.upgraded': 'Upgraded to {to} (was {from}).',
       'update.dismiss': 'Dismiss',
       'update.version': 'dsh-modes {version}',
       'update.dev': 'Development install; updates are not checked',
@@ -1203,6 +1207,7 @@ window.__ModuleLoader__.load({
 @media (hover: hover) { .pm-toolhead:hover { background: var(--dsw-alias-interactive-bg-hover); } }
 .pm-toolhead:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
 .pm-toolname { font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; font-weight: 500; }
+.pm-tooldesc { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--dsw-alias-label-tertiary); }
 .pm-toolbody { display: flex; flex-direction: column; gap: 10px; padding: 4px 12px 12px; }
 .pm-modelist { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .pm-modelist .pm-option { align-items: center; }
@@ -2456,7 +2461,8 @@ window.__ModuleLoader__.load({
           h('span', { className: 'pm-toolname' }, name),
           edited.length > 0 ? h('span', { className: 'pm-badge is-accent' }, t('tools.edited', { n: edited.length, total: rows.length })) : null,
           outdated ? h('span', { className: 'pm-badge is-warn' }, t('tools.outdated')) : null,
-          dirty ? h('span', { className: 'pm-badge is-warn' }, t('tools.draft')) : null),
+          dirty ? h('span', { className: 'pm-badge is-warn' }, t('tools.draft')) : null,
+          open ? null : h('span', { className: 'pm-tooldesc' }, base.trim().split('\n')[0])),
         open ? h('div', { className: 'pm-toolbody' },
           differ ? h('div', { className: 'pm-hint' }, t('tools.differ', { name: ui.nameOf(rows[0].mode.id) })) : null,
           h('label', { className: 'pm-hint', htmlFor: `pm-tool-${name}` }, t('tools.text')),
@@ -2691,11 +2697,19 @@ window.__ModuleLoader__.load({
         info, checking, progress, problem,
         check: () => load(true),
         dismiss: () => { setProgress(null); setProblem(null) },
-        setCheck: enabled => call('setUpdateCheck', { enabled }).then(setInfo, error => setProblem(ui.describe(error))),
+        setCheck: (enabled) => {
+          // The box follows the click at once; a failed save puts it back.
+          setInfo(previous => (previous === null ? previous : { ...previous, checkUpdates: enabled }))
+          return call('setUpdateCheck', { enabled }).then(setInfo, (error) => {
+            setInfo(previous => (previous === null ? previous : { ...previous, checkUpdates: !enabled }))
+            setProblem(ui.describe(error))
+          })
+        },
         start: (version) => {
           setProblem(null)
           return call('upgrade', { version }).then(setProgress, error => setProblem(ui.describe(error)))
         },
+        dismissUpgraded: () => call('dismissUpgraded').then(setInfo, error => setProblem(ui.describe(error))),
         cancel: () => call('cancelUpgrade').then(undefined, error => setProblem(ui.describe(error))),
       }
     }
@@ -2751,6 +2765,14 @@ window.__ModuleLoader__.load({
         return h('div', { className: 'pm-warn pm-info', role: 'status' },
           h('span', { className: 'pm-grow' }, t('update.cancelled')),
           h('button', { type: 'button', className: 'pm-btn', onClick: update.dismiss }, t('update.dismiss')))
+      }
+      if (progress === null && info.upgraded !== undefined) {
+        return h('div', { className: 'pm-panel', role: 'status' },
+          h('div', { className: 'pm-bar' },
+            h('span', { className: 'pm-grow' }, `✓ ${t('update.upgraded', { to: info.upgraded.to, from: info.upgraded.from })}`),
+            h('a', { className: 'pm-link', href: CHANGES_URL, target: '_blank', rel: 'noreferrer' }, t('update.changes')),
+            h('button', { type: 'button', className: 'pm-btn', onClick: update.dismissUpgraded }, t('update.dismiss'))),
+          problem === null ? null : h('div', { className: 'pm-error', role: 'alert' }, problem))
       }
       if (!info.newer) return problem === null ? null : h('div', { className: 'pm-error', role: 'alert' }, problem)
       return h('div', { className: 'pm-panel', role: 'region', 'aria-label': t('update.available', { latest: info.latest, version: info.version }) },
@@ -3266,6 +3288,7 @@ window.__ModuleLoader__.load({
       }
       return h('div', { className: 'pm-tools' },
         h('p', { className: 'pm-intro' }, t('skills.intro')),
+        view.companion === 'dsh-mode-skills' ? h('div', { className: 'pm-warn pm-info', role: 'note' }, t('skills.companion')) : null,
         view.modes.some(mode => mode.error !== undefined) ? h('div', { className: 'pm-warn' }, view.modes.filter(mode => mode.error !== undefined).map(mode => `${ui.nameOf(mode.id)}: ${mode.error}`).join('; ')) : null,
         h('div', { className: 'pm-bar' },
           h(ScopeSelect, { ui, modes: view.modes, usable, reasonOf: skillReason }),

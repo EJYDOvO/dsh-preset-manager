@@ -196,6 +196,69 @@ test('reports a cancelled install and a manager that throws, and allows another 
   assert.equal(crashed.failure.message, 'manager crashed')
 })
 
+const VERSION = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
+const readSettings = async dir => JSON.parse(await readFile(join(dir, '.dsh-modes', 'settings.json'), 'utf8'))
+
+/** Wait until the settings file satisfies `check`; the note is removed after the install settles. */
+async function settingsWhere(dir, check) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const value = await readSettings(dir)
+    if (check(value)) return value
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  assert.fail('the settings file never reached the expected state')
+}
+
+test('leaves a note before installing, which the new version reports until it is dismissed', async () => {
+  registry()
+  const stub = manager()
+  const { call, dir } = await mount({ pluginManager: stub.value })
+  await call({ action: 'upgrade', version: '0.99.0' })
+  const note = (await readSettings(dir)).upgraded
+  assert.equal(note.from, VERSION)
+  assert.equal(note.to, '0.99.0')
+  assert.equal(typeof note.at, 'number')
+  assert.equal((await call({ action: 'updateStatus' })).value.upgraded, undefined)
+  stub.resolve({ application: 'restart-required', changed: true, stage: 'install', target: TARBALL })
+  await settled()
+  assert.equal((await readSettings(dir)).upgraded.to, '0.99.0')
+  // The new version starts and reads the note the old one left.
+  await writeFile(join(dir, '.dsh-modes', 'settings.json'), JSON.stringify({ version: 1, checkUpdates: true, upgraded: { from: '0.5.0', to: VERSION, at: 1 } }))
+  const status = (await call({ action: 'updateStatus' })).value
+  assert.deepEqual(status.upgraded, { from: '0.5.0', to: VERSION })
+  const dismissed = await call({ action: 'dismissUpgraded' })
+  assert.equal(dismissed.ok, true)
+  assert.equal(dismissed.value.upgraded, undefined)
+  assert.deepEqual(await readSettings(dir), { version: 1, checkUpdates: true })
+})
+
+test('forgets the note when the install fails or is cancelled', async () => {
+  registry()
+  const stub = manager()
+  const { call, dir } = await mount({ pluginManager: stub.value })
+  await call({ action: 'upgrade', version: '0.99.0' })
+  stub.resolve({ application: 'failed', changed: false, stage: 'install', target: TARBALL, error: { code: 'install-failed', diagnostic: 'boom' } })
+  await settingsWhere(dir, value => value.upgraded === undefined)
+  await call({ action: 'upgrade', version: '0.99.0' })
+  stub.resolve({ application: 'cancelled', changed: false, stage: 'install', target: TARBALL })
+  await settingsWhere(dir, value => value.upgraded === undefined)
+})
+
+test('reports a release the profile already holds as installed and waiting for a restart', async () => {
+  registry()
+  const stub = manager()
+  const { call, dir } = await mount({ pluginManager: stub.value })
+  await call({ action: 'upgrade', version: '0.99.0' })
+  stub.resolve({ application: 'failed', changed: false, stage: 'install', target: TARBALL, error: { code: 'already-installed', diagnostic: 'already installed' } })
+  await settled()
+  const done = (await call({ action: 'upgradeStatus' })).value
+  assert.equal(done.state, 'done')
+  assert.equal(done.restartRequired, true)
+  assert.equal(done.reason, 'already-installed')
+  assert.equal(done.failure, undefined)
+  assert.equal((await readSettings(dir)).upgraded.to, '0.99.0')
+})
+
 test('refuses an upgrade that is not allowed: a second one, a stale confirmation, an install that is not from a registry, or no manager', async () => {
   registry()
   const stub = manager()

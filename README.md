@@ -89,11 +89,11 @@ Open **Settings → Modes → Tool descriptions**. It rewrites the description o
 - **One-click restore**: restore one tool in one mode, one tool in all ticked modes, everything in the ticked modes, or everything in every mode. Each asks first. A restore removes the edit, so the built-in text returns exactly.
 - **Built-in text changed**: after a dsh upgrade, a tool whose built-in description differs from the one your edit was based on shows **Built-in text changed**. Your edit keeps applying. Open **Built-in text** to compare, then restore, or save again to accept the new text as the baseline.
 - **Copies**: duplicating a mode copies its tool description edits.
-- **Limits**: a description has at most 20,000 characters and cannot be empty (use restore instead). Only the description changes, never a tool's name or parameters. The list shows the tools each mode registers, so it works without an open session.
+- **Limits**: a description has at most 20,000 characters and cannot be empty (use restore instead). Only the description changes, never a tool's name or parameters. The list shows the tools each mode registers, each with the first line of its current description, so it works without an open session.
 
 ### Skills
 
-Open **Settings → Modes → Skills**. It lists every skill the modes find, with its description and file.
+Open **Settings → Modes → Skills**. It lists every skill the modes find, with its description and file. When [Skill Manager](https://github.com/xiaohai-78/dsh-mode-skills) (dsh-mode-skills) is installed, a note says that its sidebar page shows these same settings; it saves through this plugin.
 
 - **New skill**: **New skill** asks for a name (lowercase letters, digits, and hyphens), a one-line description, the folder (`~/.dsh/skills`, read by DSH only, or `~/.agents/skills`, shared with other agent tools), and the modes it starts on in. It writes `<folder>/<name>/SKILL.md` and opens it in the editor.
 - **Import**: **Import skills** lists the skills in `~/.codex/skills`, `~/.claude/skills`, and Claude Code plugins under `~/.claude/plugins`, or, under **Folder**, the skills in a folder you name (a skill folder, or a folder of skill folders; a path in quotes, as Windows' **Copy as path** gives it, works too). Each line says whether it is ready, already imported, changed at its source, named like an existing skill (import it under another name, or replace that skill after a version of it is saved), or named in a way DSH would ignore (it is imported under the suggested name, and the copy's `name` is rewritten). Skills shipped with Codex are listed folded and unticked, because they use Codex's own tools.
@@ -143,7 +143,7 @@ The page checks for a newer version of this plugin and can install it.
 
 - **Check**: when you open the page, the plugin asks the npm registry DSH is configured with (a mirror works) for the latest version of `dsh-modes`, at most once every 12 hours. The request names only the package. Turn it off with **Check for updates automatically** at the bottom of the page; **Check now** still works. Development installs (`link:`) are never checked.
 - **Upgrade**: a banner shows a newer release with **Upgrade…**. After you confirm, DSH's own installer downloads that release's tarball from the registry and installs it, with progress and a **Cancel install** button. The installer restores the profile's files when an install fails or is cancelled. Only the `latest` release is offered, never a prerelease, and the tarball address must be this package's file on the registry that answered.
-- **After the upgrade**: usually the new version loads when you restart dsh (web: run `dsh web` again; desktop app: quit and reopen). Running sessions are not affected, and your modes and edits stay. In some DSH versions the plugin is replaced on the spot, and the page asks you to reload. The banner shows the command that goes back to the old version.
+- **After the upgrade**: usually the new version loads when you restart dsh (web: run `dsh web` again; desktop app: quit and reopen). Running sessions are not affected, and your modes and edits stay. In some DSH versions the plugin is replaced on the spot, and the page asks you to reload. The banner shows the command that goes back to the old version. The next time you open the page it says **Upgraded to** the new version until you dismiss it. If the profile already holds that release (installed earlier and not loaded yet), the banner says it is installed and loads when you restart dsh.
 - **Installed from GitHub**: the banner shows `dsh plugin --profile web add github:xiaohai-78/dsh-modes` instead of a button.
 - **By hand**: Plugins page → **Add plugin** → paste `https://registry.npmjs.org/dsh-modes/-/dsh-modes-<version>.tgz`, or run `dsh plugin --profile web add dsh-modes@latest` in a terminal. Without `@latest` the command does nothing, because DSH keeps the version it installed.
 - **From an older version**: versions released before the update check have no banner. Upgrade them by hand once.
@@ -244,7 +244,7 @@ Rows saved by version 0.8.0 or earlier have no such condition. Upgrade and start
 | `skill-files.js` | Copies a skill into a version directory, restores one over the current files, and writes files through links |
 | `skill-import.js` | Finds skill folders in Codex, Claude Code, and a named folder; reads a candidate's frontmatter; fingerprints, copies, and replaces skill folders; writes a new skill's `SKILL.md` |
 | `update.js` | Version check and upgrade helpers without DSH services: version comparison, how the profile depends on the package, the registries to ask, and validation of the registry's tarball address |
-| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), `settings.json` (the update check switch), and `skills.json` (skill settings, the details each skill had when last seen, and the version index; the versions' files are in `skill-versions/<skill>/<version>/`). Writes go to a temporary file first and then replace the original |
+| `state.js` | Files in the profile's `.dsh-modes/` folder: `state.json` (sync baselines, plus which built-in mode and template each custom mode came from), `history.json` (prompt history), `tool-descriptions.json` (tool description edits and their history), `settings.json` (the update check switch, and the note an upgrade leaves for the new version), and `skills.json` (skill settings, the details each skill had when last seen, and the version index; the versions' files are in `skill-versions/<skill>/<version>/`). Writes go to a temporary file first and then replace the original |
 | `install-guard.js` | Keeps a changed built-in mode loading after an uninstall: saves each row of this plugin's modules with a `!!js` `disabled` condition that is true once `dsh-modes` no longer resolves, and puts an official persona row with the same prompt after a live persona, with the opposite condition. Custom modes get no conditions, since they go away with the plugin |
 | `live-persona.js` | The persona row for Live prompt: replaces the mode's `@deepseek-ai/dsh-persona` row and registers the same two prompt sections, reading the latest saved text every time the prompt is assembled |
 | `prompt-tool.js` | The `mode_prompt` tool: mounted as a row inside a mode, so only that mode's sessions see it; asks the user for approval through `tools/pre-execute` before writing |
@@ -258,7 +258,7 @@ Actions of `/api/dsh-modes`:
 - **Plugin rows**: `toggle`, `followPlatform`, `applyRows`, `resetRow`.
 - **Whole modes**: `reset`, `sync`, `repair`, `create`, `update`, `remove`, `setDefault`.
 - **Prompts**: `setPrompt`, `setLive`, `setPromptTool`.
-- **Updates**: `setUpdateCheck`, `upgrade` (starts the install and answers at once), `cancelUpgrade`.
+- **Updates**: `setUpdateCheck`, `dismissUpgraded`, `upgrade` (starts the install and answers at once), `cancelUpgrade`.
 - **Tool descriptions**: `setToolDescriptions` (a batch of `{ preset, tool, text, expected? }` items, answered with one result per item), `restoreToolDescriptions` (`items`, `presets`, or `all`).
 
 ### System prompt
@@ -307,7 +307,7 @@ Actions of `/api/dsh-modes`:
 npm test
 ```
 
-Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, the skill settings, version files, skill policy row, and skill import (folder listing, fingerprints, copies that leave out outside links, renames, and replacements), and the uninstall conditions (the rows they are added to, and how they evaluate with and without the package).
+Runs the unit tests of the three-way merge, the tool description planner, the description row, the version check helpers, the upgrade flow against a fake plugin manager, the skill settings, version files, skill policy row, and skill import (folder listing, fingerprints, copies that leave out outside links, renames, and replacements), the uninstall conditions (the rows they are added to, and how they evaluate with and without the package), and that both languages of the page have the same text.
 
 </details>
 
