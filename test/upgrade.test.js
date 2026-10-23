@@ -259,6 +259,36 @@ test('reports a release the profile already holds as installed and waiting for a
   assert.equal((await readSettings(dir)).upgraded.to, '0.99.0')
 })
 
+test('an upgrade note that cannot be written is logged and does not stop the upgrade', async () => {
+  registry()
+  const stub = manager()
+  const { call, dir, warnings } = await mount({ pluginManager: stub.value })
+  // A file where the state folder should be: the note cannot be written.
+  await writeFile(join(dir, '.dsh-modes'), 'not a folder')
+  const started = await call({ action: 'upgrade', version: '0.99.0' })
+  assert.equal(started.ok, true)
+  assert.equal(started.value.state, 'installing')
+  assert.equal(stub.calls.install.length, 1)
+  assert.ok(warnings.some(text => /upgrade note/.test(text)), JSON.stringify(warnings))
+  stub.resolve({ application: 'restart-required', changed: true, stage: 'install', target: TARBALL })
+  await settled()
+  assert.equal((await call({ action: 'upgradeStatus' })).value.state, 'done')
+})
+
+test('a plugin manager that throws at once is reported as a failed upgrade, and another try is allowed', async () => {
+  registry()
+  let attempts = 0
+  const stub = manager({ installBundle: () => { attempts += 1; throw new Error('installer unavailable') } })
+  const { call } = await mount({ pluginManager: stub.value })
+  await call({ action: 'upgrade', version: '0.99.0' })
+  await settled()
+  const failed = (await call({ action: 'upgradeStatus' })).value
+  assert.equal(failed.state, 'failed')
+  assert.equal(failed.failure.message, 'installer unavailable')
+  assert.equal((await call({ action: 'upgrade', version: '0.99.0' })).ok, true)
+  assert.equal(attempts, 2)
+})
+
 test('refuses an upgrade that is not allowed: a second one, a stale confirmation, an install that is not from a registry, or no manager', async () => {
   registry()
   const stub = manager()
