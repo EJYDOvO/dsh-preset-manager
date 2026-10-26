@@ -19,6 +19,7 @@ Mode manager for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 - **Create and import skills**: write a new skill in the page, or copy skills in from Codex, Claude Code, or any folder, several at once. When an imported skill's source changes, the page says so and imports it again in one click.
 - **Update the plugin itself**: the page tells you when a newer version of this plugin exists and can install it with DSH's own installer, after you confirm.
 - **Keep up with dsh upgrades**: when dsh updates its built-in modes, merge the changes in one click and keep yours. When a plugin fails to load, turn off just the failing plugins in one click.
+- **When the page fails**: if the page itself fails to draw, it shows the error and **Reload** instead of an empty section.
 
 ## Install
 
