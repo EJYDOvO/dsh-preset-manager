@@ -7,9 +7,9 @@
  * installer elsewhere.
  */
 
-export const PACKAGE_NAME = 'dsh-modes'
+export const PACKAGE_NAME = 'dsh-preset-manager'
 /** Where the page links to for what changed. */
-export const CHANGES_URL = 'https://github.com/xiaohai-78/dsh-modes/commits/main'
+export const CHANGES_URL = 'https://github.com/EJYDOvO/dsh-preset-manager/commits/main'
 /** How long a successful check is reused, and a failed one. */
 export const CHECK_TTL_MS = 12 * 60 * 60 * 1000
 export const CHECK_ERROR_TTL_MS = 30 * 60 * 1000

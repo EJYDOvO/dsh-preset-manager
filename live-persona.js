@@ -17,7 +17,7 @@
 const PREFIX_SECTION = 'deployment:persona-prefix'
 const SUFFIX_SECTION = 'deployment:persona-suffix'
 
-export const name = 'dsh-modes-live-persona'
+export const name = 'dsh-preset-manager-live-persona'
 export const inject = ['systemPrompt']
 
 export function apply(ctx, config) {
@@ -40,11 +40,11 @@ export function apply(ctx, config) {
     order: ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX'),
     text: text('prefix'),
     ...config.complete === true ? { complete: true } : {},
-  }), 'dsh-modes: live persona prefix')
+  }), 'dsh-preset-manager: live persona prefix')
   ctx.effect(() => ctx.systemPrompt.section({
     name: SUFFIX_SECTION,
     order: ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_SUFFIX'),
     text: text('suffix'),
-  }), 'dsh-modes: live persona suffix')
+  }), 'dsh-preset-manager: live persona suffix')
   if (config.includeRuntimeContext === false) ctx.systemPrompt.suppressRuntimeContext()
 }

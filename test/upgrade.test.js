@@ -8,8 +8,8 @@ import { apply } from '../index.js'
 const realFetch = globalThis.fetch
 afterEach(() => { globalThis.fetch = realFetch })
 
-const TARBALL = 'https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.99.0.tgz'
-const latest = (version = '0.99.0', tarball = TARBALL) => ({ name: 'dsh-modes', version, dist: { tarball } })
+const TARBALL = 'https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.99.0.tgz'
+const latest = (version = '0.99.0', tarball = TARBALL) => ({ name: 'dsh-preset-manager', version, dist: { tarball } })
 
 /** Serve `document` as the registry's `latest` answer and count the requests. */
 function registry(document = latest()) {
@@ -40,8 +40,12 @@ function manager(overrides = {}) {
 
 /** Mount the host plugin on a fake context whose profile depends on this package as `dependency`. */
 async function mount({ dependency = '0.6.0', pluginManager } = {}) {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-modes-test-'))
-  await writeFile(join(dir, 'package.json'), JSON.stringify({ dependencies: dependency === undefined ? {} : { 'dsh-modes': dependency } }))
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-test-'))
+  await writeFile(join(dir, 'package.json'), JSON.stringify({ dependencies: dependency === undefined ? {} : { 'dsh-preset-manager': dependency } }))
+  // Fork defaults to no network checks. These upstream updater tests explicitly opt in.
+  const { mkdir } = await import('node:fs/promises')
+  await mkdir(join(dir, '.dsh-preset-manager'))
+  await writeFile(join(dir, '.dsh-preset-manager', 'settings.json'), JSON.stringify({ version: 1, checkUpdates: true }))
   const routes = []
   const listeners = new Map()
   const warnings = []
@@ -72,7 +76,7 @@ test('reports a newer release for a registry install, checks once, and checks ag
   assert.equal(first.value.canUpgrade, true)
   assert.equal(first.value.source, 'registry')
   assert.equal(first.value.host, 'registry.npmjs.org')
-  assert.equal(first.value.commands.rollback, `dsh plugin --profile ${first.value.profile} add dsh-modes@${first.value.version}`)
+  assert.equal(first.value.commands.rollback, `dsh plugin --profile ${first.value.profile} add dsh-preset-manager@${first.value.version}`)
   await call({ action: 'updateStatus' })
   assert.equal(requests.length, 1)
   await call({ action: 'updateStatus', refresh: true })
@@ -81,13 +85,13 @@ test('reports a newer release for a registry install, checks once, and checks ag
 
 test('offers a command, not an upgrade button, for GitHub installs, and does not check development installs', async () => {
   const requests = registry()
-  const git = await mount({ dependency: 'github:xiaohai-78/dsh-modes', pluginManager: manager().value })
+  const git = await mount({ dependency: 'github:xiaohai-78/dsh-preset-manager', pluginManager: manager().value })
   const gitStatus = (await git.call({ action: 'updateStatus' })).value
   assert.equal(gitStatus.source, 'git')
   assert.equal(gitStatus.newer, true)
   assert.equal(gitStatus.canUpgrade, false)
   const before = requests.length
-  const link = await mount({ dependency: 'link:/work/dsh-modes', pluginManager: manager().value })
+  const link = await mount({ dependency: 'link:/work/dsh-preset-manager', pluginManager: manager().value })
   const linkStatus = (await link.call({ action: 'updateStatus', refresh: true })).value
   assert.equal(linkStatus.source, 'link')
   assert.equal(linkStatus.latest, undefined)
@@ -105,7 +109,7 @@ test('does not check on its own once the switch is off, but still checks when as
   assert.equal(requests.length, 0)
   assert.equal((await call({ action: 'updateStatus', refresh: true })).value.latest, '0.99.0')
   assert.equal(requests.length, 1)
-  assert.deepEqual(JSON.parse(await readFile(join(dir, '.dsh-modes', 'settings.json'), 'utf8')), { version: 1, checkUpdates: false })
+  assert.deepEqual(JSON.parse(await readFile(join(dir, '.dsh-preset-manager', 'settings.json'), 'utf8')), { version: 1, checkUpdates: false })
 })
 
 test('reports a failed check without offering an upgrade, and refuses a tarball that is not this package\'s file', async () => {
@@ -114,7 +118,7 @@ test('reports a failed check without offering an upgrade, and refuses a tarball 
   const status = (await down.call({ action: 'updateStatus' })).value
   assert.match(status.error, /ECONNREFUSED/)
   assert.equal(status.canUpgrade, false)
-  registry(latest('0.99.0', 'https://evil.example/dsh-modes/-/dsh-modes-0.99.0.tgz'))
+  registry(latest('0.99.0', 'https://evil.example/dsh-preset-manager/-/dsh-preset-manager-0.99.0.tgz'))
   const wrong = await mount({ pluginManager: manager().value })
   const refused = (await wrong.call({ action: 'updateStatus' })).value
   assert.match(refused.error, /does not point at this package/)
@@ -131,7 +135,7 @@ test('installs the confirmed release through the manager from the registry tarba
   assert.equal(stub.calls.install.length, 1)
   assert.equal(stub.calls.install[0].spec, TARBALL)
   const requestId = stub.calls.install[0].options.requestId
-  assert.match(requestId, /^dsh-modes-upgrade-/)
+  assert.match(requestId, /^dsh-preset-manager-upgrade-/)
   assert.equal('requestId' in started.value, false)
   listeners.get('plugin-manager/install-state')({ requestId: 'someone-else', phase: 'cancelling' })
   listeners.get('plugin-manager/install-state')({ requestId, phase: 'applying' })
@@ -197,7 +201,7 @@ test('reports a cancelled install and a manager that throws, and allows another 
 })
 
 const VERSION = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
-const readSettings = async dir => JSON.parse(await readFile(join(dir, '.dsh-modes', 'settings.json'), 'utf8'))
+const readSettings = async dir => JSON.parse(await readFile(join(dir, '.dsh-preset-manager', 'settings.json'), 'utf8'))
 
 /** Wait until the settings file satisfies `check`; the note is removed after the install settles. */
 async function settingsWhere(dir, check) {
@@ -223,7 +227,7 @@ test('leaves a note before installing, which the new version reports until it is
   await settled()
   assert.equal((await readSettings(dir)).upgraded.to, '0.99.0')
   // The new version starts and reads the note the old one left.
-  await writeFile(join(dir, '.dsh-modes', 'settings.json'), JSON.stringify({ version: 1, checkUpdates: true, upgraded: { from: '0.5.0', to: VERSION, at: 1 } }))
+  await writeFile(join(dir, '.dsh-preset-manager', 'settings.json'), JSON.stringify({ version: 1, checkUpdates: true, upgraded: { from: '0.5.0', to: VERSION, at: 1 } }))
   const status = (await call({ action: 'updateStatus' })).value
   assert.deepEqual(status.upgraded, { from: '0.5.0', to: VERSION })
   const dismissed = await call({ action: 'dismissUpgraded' })
@@ -264,7 +268,9 @@ test('an upgrade note that cannot be written is logged and does not stop the upg
   const stub = manager()
   const { call, dir, warnings } = await mount({ pluginManager: stub.value })
   // A file where the state folder should be: the note cannot be written.
-  await writeFile(join(dir, '.dsh-modes'), 'not a folder')
+  const { rm } = await import('node:fs/promises')
+  await rm(join(dir, '.dsh-preset-manager'), { recursive: true })
+  await writeFile(join(dir, '.dsh-preset-manager'), 'not a folder')
   const started = await call({ action: 'upgrade', version: '0.99.0' })
   assert.equal(started.ok, true)
   assert.equal(started.value.state, 'installing')
@@ -302,13 +308,14 @@ test('refuses an upgrade that is not allowed: a second one, a stale confirmation
   assert.equal(stale.code, 'update-changed')
   assert.equal(stale.details.latest, '0.99.0')
   assert.equal(stub.calls.install.length, 1)
-  const git = await mount({ dependency: 'github:xiaohai-78/dsh-modes', pluginManager: manager().value })
+  const git = await mount({ dependency: 'github:xiaohai-78/dsh-preset-manager', pluginManager: manager().value })
   assert.equal((await git.call({ action: 'upgrade', version: '0.99.0' })).code, 'not-upgradable')
   const bare = await mount({ pluginManager: undefined })
   assert.equal((await bare.call({ action: 'upgrade', version: '0.99.0' })).code, 'unavailable')
-  registry(latest('0.6.1', 'https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.6.1.tgz'))
-  const current = await mount({ dependency: '0.6.1', pluginManager: manager().value })
-  assert.equal((await current.call({ action: 'upgrade', version: '0.6.1' })).code, 'up-to-date')
+  const version = '0.0.0' // An older stable release also must never be offered as an upgrade.
+  registry(latest(version, `https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-${version}.tgz`))
+  const current = await mount({ dependency: version, pluginManager: manager().value })
+  assert.equal((await current.call({ action: 'upgrade', version })).code, 'up-to-date')
   globalThis.fetch = async () => { throw new Error('offline') }
   const offline = await mount({ pluginManager: manager().value })
   assert.equal((await offline.call({ action: 'upgrade', version: '0.99.0' })).code, 'check-failed')

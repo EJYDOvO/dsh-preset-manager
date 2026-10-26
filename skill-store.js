@@ -2,7 +2,7 @@
  * Pure rules for per-mode skill control: which skills a mode hides, which it serves from a saved version, and the
  * versions kept for each skill.
  *
- * The stored file (`.dsh-modes/skills.json`) holds `presets` (mode id → `{ off, pins }`), `global.off` (skills hidden in
+ * The stored file (`.dsh-preset-manager/skills.json`) holds `presets` (mode id → `{ off, pins }`), `global.off` (skills hidden in
  * every mode), and `skills` (name → `{ info, versions }`). `info` remembers the description, file path, and source a
  * skill had when it was last seen unhidden, because a hidden skill no longer shows its own entry in a mode's catalog.
  */
@@ -35,7 +35,7 @@ export function policyFor(content, preset) {
  */
 export function needsRow(content, preset) {
   const own = content.presets?.[preset]
-  return (content.global?.off ?? []).length > 0 || (own?.off ?? []).length > 0 || Object.keys(own?.pins ?? {}).length > 0
+  return (content.global?.off ?? []).length > 0 || (own?.off ?? []).length > 0 || Object.keys(own?.pins ?? {}).length > 0 || Object.keys(own?.assigned ?? {}).length > 0
 }
 
 /**
@@ -216,5 +216,5 @@ export function withLineEndingsOf(text, current) {
  * @returns {boolean} false for packaged skills, the manager's own entries, and skills without a file.
  */
 export function isEditableSkill(info) {
-  return typeof info?.path === 'string' && info.source !== 'bundled' && info.source !== 'dsh-modes' && !/[\\/]node_modules[\\/]/.test(info.path)
+  return typeof info?.path === 'string' && info.source !== 'bundled' && info.source !== 'dsh-preset-manager' && !/[\\/]node_modules[\\/]/.test(info.path)
 }

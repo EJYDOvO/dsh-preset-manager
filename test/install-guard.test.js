@@ -18,8 +18,8 @@ test('rows the manager added stay off once it is uninstalled; other rows are lef
   const rows = [
     { id: 'persona', name: PERSONA_MODULE, config: { prefix: 'Hi' } },
     { id: 'tool-fs', name: '@deepseek-ai/dsh-tool-fs', disabled: { __jsExpr: "process.platform === 'win32'" } },
-    { id: 'dsh-modes-skills', name: 'dsh-modes/skills', config: { preset: 'standard' } },
-    { id: 'dsh-modes-prompt-tool', name: 'dsh-modes/prompt-tool', disabled: true },
+    { id: 'dsh-preset-manager-skills', name: 'dsh-preset-manager/skills', config: { preset: 'standard' } },
+    { id: 'dsh-preset-manager-prompt-tool', name: 'dsh-preset-manager/prompt-tool', disabled: true },
   ]
   assert.deepEqual(guardRows(rows), [
     rows[0],
@@ -54,14 +54,14 @@ test('rows inside groups are guarded, and unguardRows takes everything back out'
   assert.deepEqual(unguardRows(guarded), rows)
 })
 
-test('the conditions follow whether dsh-modes resolves from the row base', async () => {
-  const profile = await mkdtemp(join(tmpdir(), 'dsh-modes-guard-'))
+test('the conditions follow whether dsh-preset-manager resolves from the row base', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-guard-'))
   const base = { baseUrl: pathToFileURL(`${profile}/`).href }
   assert.equal(evaluate(base, WHEN_GONE), true, 'not installed: the added rows are off')
   assert.equal(evaluate(base, WHEN_INSTALLED), false, 'not installed: the stand-in persona runs')
 
-  await mkdir(join(profile, 'node_modules', 'dsh-modes'), { recursive: true })
-  await writeFile(join(profile, 'node_modules', 'dsh-modes', 'package.json'), JSON.stringify({ name: 'dsh-modes', exports: { './package.json': './package.json' } }))
+  await mkdir(join(profile, 'node_modules', 'dsh-preset-manager'), { recursive: true })
+  await writeFile(join(profile, 'node_modules', 'dsh-preset-manager', 'package.json'), JSON.stringify({ name: 'dsh-preset-manager', exports: { './package.json': './package.json' } }))
   assert.equal(evaluate(base, WHEN_GONE), false, 'installed: the added rows run')
   assert.equal(evaluate(base, WHEN_INSTALLED), true, 'installed: the stand-in persona is off')
 
@@ -76,13 +76,13 @@ test('the package exports the file the conditions resolve', async () => {
 })
 
 test('on start, overrides saved without the conditions get them; others are not written', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-modes-guard-'))
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-guard-'))
   const declaration = (id, plugins, overridden = true) => ({
     entry: { options: { name: '@deepseek-ai/dsh-agent-preset', config: { id, plugins } } },
     inherited: { plugins: [] },
     override: overridden ? { config: { plugins } } : {},
   })
-  const skills = { id: 'dsh-modes-skills', name: 'dsh-modes/skills', config: { preset: 'standard' } }
+  const skills = { id: 'dsh-preset-manager-skills', name: 'dsh-preset-manager/skills', config: { preset: 'standard' } }
   const declarations = [
     declaration('standard', [{ id: 'persona', name: PERSONA_MODULE }, skills]),
     declaration('ptc', [{ id: 'persona', name: PERSONA_MODULE }, { ...skills, config: { preset: 'ptc' }, disabled: gone }]),

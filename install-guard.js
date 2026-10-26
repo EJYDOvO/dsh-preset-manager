@@ -1,9 +1,9 @@
 /**
- * Keeps a built-in mode loading after dsh-modes is uninstalled.
+ * Keeps a built-in mode loading after dsh-preset-manager is uninstalled.
  *
- * The manager adds rows of its own modules (`dsh-modes/...`) to the profile override of a built-in mode. Uninstalling
+ * The manager adds rows of its own modules (`dsh-preset-manager/...`) to the profile override of a built-in mode. Uninstalling
  * the package leaves that override behind, and a row whose module cannot be imported makes DSH reject the whole mode.
- * Each such row is therefore saved with a `disabled` condition that is true once `dsh-modes` no longer resolves from
+ * Each such row is therefore saved with a `disabled` condition that is true once `dsh-preset-manager` no longer resolves from
  * the row's resolution base. A live persona replaces the mode's persona row, so it is followed by an official persona
  * row with the same prompt whose condition is the complement: exactly one of the two runs, and the mode keeps its
  * prompt either way. When the check cannot tell (any failure other than a missing package), the manager's rows stay
@@ -11,17 +11,17 @@
  */
 
 export const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
-export const LIVE_MODULE = 'dsh-modes/live-persona'
-/** The official persona row that stands in for a live persona once dsh-modes is gone. */
-export const FALLBACK_ROW_ID = 'dsh-modes-persona-fallback'
+export const LIVE_MODULE = 'dsh-preset-manager/live-persona'
+/** The official persona row that stands in for a live persona once dsh-preset-manager is gone. */
+export const FALLBACK_ROW_ID = 'dsh-preset-manager-persona-fallback'
 
 /** Every condition this module writes starts with this comment, which is how a saved condition is recognized. */
-const MARK = '/* dsh-modes: '
-const INSTALLED = "(() => { try { process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-modes/package.json'); return true } catch (error) { return error?.code !== 'MODULE_NOT_FOUND' } })()"
-/** `disabled` of a row the manager added: true once dsh-modes is uninstalled. */
-export const WHEN_GONE = `${MARK}off once dsh-modes is uninstalled */ !${INSTALLED}`
-/** `disabled` of the stand-in persona row: true while dsh-modes is installed. */
-export const WHEN_INSTALLED = `${MARK}on only once dsh-modes is uninstalled */ ${INSTALLED}`
+const MARK = '/* dsh-preset-manager: '
+const INSTALLED = "(() => { try { process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-preset-manager/package.json'); return true } catch (error) { return error?.code !== 'MODULE_NOT_FOUND' } })()"
+/** `disabled` of a row the manager added: true once dsh-preset-manager is uninstalled. */
+export const WHEN_GONE = `${MARK}off once dsh-preset-manager is uninstalled */ !${INSTALLED}`
+/** `disabled` of the stand-in persona row: true while dsh-preset-manager is installed. */
+export const WHEN_INSTALLED = `${MARK}on only once dsh-preset-manager is uninstalled */ ${INSTALLED}`
 
 function isExpr(value) {
   return value !== null && typeof value === 'object' && typeof value.__jsExpr === 'string'
@@ -33,7 +33,7 @@ export function isGuard(value) {
 }
 
 export function isOwnModule(name) {
-  return typeof name === 'string' && name.startsWith('dsh-modes/')
+  return typeof name === 'string' && name.startsWith('dsh-preset-manager/')
 }
 
 function withoutSwitch(row) {

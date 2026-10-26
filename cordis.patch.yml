@@ -1,9 +1,9 @@
 # Two rows: the manager serves the Settings page's routes; the container holds
 # user-created presets, so editing them restarts only the container.
 - insert:
-    - id: dsh-modes
-      name: dsh-modes
-    - id: dsh-modes-custom
-      name: dsh-modes/container
+    - id: dsh-preset-manager
+      name: dsh-preset-manager
+    - id: dsh-preset-manager-custom
+      name: dsh-preset-manager/container
       config:
         presets: []

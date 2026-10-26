@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { commands, fetchLatest, isNewer, parseVersion, readLatest, registryBases, sourceKind } from '../update.js'
 
-const document = (extra = {}) => ({ name: 'dsh-modes', version: '0.7.0', dist: { tarball: 'https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.7.0.tgz' }, ...extra })
+const document = (extra = {}) => ({ name: 'dsh-preset-manager', version: '0.7.0', dist: { tarball: 'https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz' }, ...extra })
 const answer = (body, status = 200) => async () => ({ ok: status === 200, status, json: async () => body })
 
 test('compares versions numerically and never offers a prerelease', () => {
@@ -22,18 +22,18 @@ test('tells how the profile depends on the package from the manager\'s source sp
   assert.equal(sourceKind('0.6.1'), 'registry')
   assert.equal(sourceKind('latest'), 'registry')
   assert.equal(sourceKind('^0.6.0'), 'registry')
-  assert.equal(sourceKind('https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.6.1.tgz'), 'tarball')
-  assert.equal(sourceKind('github:xiaohai-78/dsh-modes'), 'git')
-  assert.equal(sourceKind('github:xiaohai-78/dsh-modes#97fd46f'), 'git')
-  assert.equal(sourceKind('xiaohai-78/dsh-modes'), 'git')
-  assert.equal(sourceKind('git+https://github.com/xiaohai-78/dsh-modes.git'), 'git')
-  assert.equal(sourceKind('link:/Users/me/dsh-modes'), 'link')
-  assert.equal(sourceKind('/Users/me/dsh-modes'), 'link')
-  assert.equal(sourceKind('file:../dsh-modes'), 'link')
-  assert.equal(sourceKind('C:\\Users\\me\\dsh-modes'), 'link')
-  assert.equal(sourceKind('D:/work/dsh-modes'), 'link')
-  assert.equal(sourceKind('link:C:\\Users\\me\\dsh-modes'), 'link')
-  assert.equal(sourceKind('\\\\server\\share\\dsh-modes'), 'link')
+  assert.equal(sourceKind('https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.6.1.tgz'), 'tarball')
+  assert.equal(sourceKind('github:xiaohai-78/dsh-preset-manager'), 'git')
+  assert.equal(sourceKind('github:xiaohai-78/dsh-preset-manager#97fd46f'), 'git')
+  assert.equal(sourceKind('xiaohai-78/dsh-preset-manager'), 'git')
+  assert.equal(sourceKind('git+https://github.com/EJYDOvO/dsh-preset-manager.git'), 'git')
+  assert.equal(sourceKind('link:/Users/me/dsh-preset-manager'), 'link')
+  assert.equal(sourceKind('/Users/me/dsh-preset-manager'), 'link')
+  assert.equal(sourceKind('file:../dsh-preset-manager'), 'link')
+  assert.equal(sourceKind('C:\\Users\\me\\dsh-preset-manager'), 'link')
+  assert.equal(sourceKind('D:/work/dsh-preset-manager'), 'link')
+  assert.equal(sourceKind('link:C:\\Users\\me\\dsh-preset-manager'), 'link')
+  assert.equal(sourceKind('\\\\server\\share\\dsh-preset-manager'), 'link')
   assert.equal(sourceKind(undefined), 'unknown')
 })
 
@@ -48,14 +48,14 @@ test('lists the configured registries first, without duplicates, and falls back 
 
 test('accepts only this package\'s tarball on the registry that answered', () => {
   const base = 'https://registry.npmjs.org/'
-  assert.deepEqual(readLatest(document(), base), { ok: true, version: '0.7.0', tarball: 'https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.7.0.tgz' })
+  assert.deepEqual(readLatest(document(), base), { ok: true, version: '0.7.0', tarball: 'https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz' })
   const refused = tarball => readLatest(document({ dist: { tarball } }), base).ok
-  assert.equal(refused('https://evil.example/dsh-modes/-/dsh-modes-0.7.0.tgz'), false)
+  assert.equal(refused('https://evil.example/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz'), false)
   assert.equal(refused('https://registry.npmjs.org/other/-/other-0.7.0.tgz'), false)
-  assert.equal(refused('https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.6.0.tgz'), false)
-  assert.equal(refused('https://registry.npmjs.org/dsh-modes/-/dsh-modes-0.7.0.tgz?token=1'), false)
-  assert.equal(refused('https://user:pw@registry.npmjs.org/dsh-modes/-/dsh-modes-0.7.0.tgz'), false)
-  assert.equal(refused('http://registry.npmjs.org/dsh-modes/-/dsh-modes-0.7.0.tgz'), false)
+  assert.equal(refused('https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.6.0.tgz'), false)
+  assert.equal(refused('https://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz?token=1'), false)
+  assert.equal(refused('https://user:pw@registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz'), false)
+  assert.equal(refused('http://registry.npmjs.org/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz'), false)
   assert.equal(readLatest(document({ name: 'other' }), base).ok, false)
   assert.equal(readLatest(document({ version: '0.8.0-rc.1' }), base).ok, false)
   assert.equal(readLatest(document({ dist: {} }), base).ok, false)
@@ -63,7 +63,7 @@ test('accepts only this package\'s tarball on the registry that answered', () =>
 })
 
 test('follows a registry served under a path', () => {
-  const body = document({ dist: { tarball: 'https://host.example/npm/dsh-modes/-/dsh-modes-0.7.0.tgz' } })
+  const body = document({ dist: { tarball: 'https://host.example/npm/dsh-preset-manager/-/dsh-preset-manager-0.7.0.tgz' } })
   assert.equal(readLatest(body, 'https://host.example/npm/').ok, true)
   assert.equal(readLatest(body, 'https://host.example/').ok, false)
 })
@@ -79,7 +79,7 @@ test('asks the registries in turn and reports every failure when none answers', 
   const found = await fetchLatest(['https://down.example/', 'https://bad.example/', 'https://registry.npmjs.org/'], fetchImpl)
   assert.equal(found.ok, true)
   assert.equal(found.registry, 'https://registry.npmjs.org/')
-  assert.deepEqual(calls, ['https://down.example/dsh-modes/latest', 'https://bad.example/dsh-modes/latest', 'https://registry.npmjs.org/dsh-modes/latest'])
+  assert.deepEqual(calls, ['https://down.example/dsh-preset-manager/latest', 'https://bad.example/dsh-preset-manager/latest', 'https://registry.npmjs.org/dsh-preset-manager/latest'])
   const none = await fetchLatest(['https://down.example/', 'https://bad.example/'], fetchImpl)
   assert.equal(none.ok, false)
   assert.match(none.error, /down\.example: connect refused; bad\.example: HTTP 503/)
@@ -88,8 +88,8 @@ test('asks the registries in turn and reports every failure when none answers', 
 
 test('builds the commands for upgrading and rolling back', () => {
   assert.deepEqual(commands('web', '0.6.1'), {
-    upgrade: 'dsh plugin --profile web add dsh-modes@latest',
-    git: 'dsh plugin --profile web add github:xiaohai-78/dsh-modes',
-    rollback: 'dsh plugin --profile web add dsh-modes@0.6.1',
+    upgrade: 'dsh plugin --profile web add dsh-preset-manager@latest',
+    git: 'dsh plugin --profile web add github:xiaohai-78/dsh-preset-manager',
+    rollback: 'dsh plugin --profile web add dsh-preset-manager@0.6.1',
   })
 })

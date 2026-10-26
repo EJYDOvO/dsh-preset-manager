@@ -67,7 +67,7 @@ test('rewrites the frontmatter name and keeps the line endings', () => {
 })
 
 test('reads a candidate and says why DSH could not use it as it is', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   assert.deepEqual(await readCandidate(await skill(root, 'ok')), { path: join(root, 'ok'), folder: 'ok', name: 'ok', description: 'Does ok' })
   const bad = await readCandidate(await skill(root, 'bad', 'name: My Tool\ndescription: d'))
   assert.equal(bad.problem, 'name-invalid')
@@ -76,7 +76,7 @@ test('reads a candidate and says why DSH could not use it as it is', async () =>
 })
 
 test('lists skill folders one level deep, leaving out dot folders and folders without SKILL.md', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   await skill(root, 'b')
   await skill(root, 'a')
   await skill(root, '.system')
@@ -86,7 +86,7 @@ test('lists skill folders one level deep, leaving out dot folders and folders wi
 })
 
 test('finds plugin skills and keeps the most recently changed copy of a cached plugin', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-plugins-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-plugins-'))
   const old = await skill(join(root, 'cache', 'market', 'tools', '1.0.0', 'skills'), 'lint')
   const fresh = await skill(join(root, 'cache', 'market', 'tools', '1.1.0', 'skills'), 'lint')
   await utimes(join(old, 'SKILL.md'), new Date(2020, 0, 1), new Date(2020, 0, 1))
@@ -96,7 +96,7 @@ test('finds plugin skills and keeps the most recently changed copy of a cached p
 })
 
 test('lists the files of a skill without version control data, links that leave it, or linked folders', noLinks, async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const dir = await skill(root, 'links')
   await writeFile(join(root, 'secret.txt'), 'outside\n')
   await mkdir(join(dir, '.git'))
@@ -111,14 +111,14 @@ test('lists the files of a skill without version control data, links that leave 
 })
 
 test('refuses a skill with more files than a version may hold', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const dir = await skill(root, 'big')
   await Promise.all(Array.from({ length: VERSION_MAX_FILES }, (_, index) => writeFile(join(dir, `f${index}.txt`), '')))
   await assert.rejects(skillFiles(dir), (error) => error instanceof SkillFileError && error.code === 'skill-too-large')
 })
 
 test('fingerprints tell a touched file from a changed one', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const dir = await skill(root, 'print')
   const first = await fingerprint(dir)
   await utimes(join(dir, 'scripts', 'run.sh'), new Date(2021, 0, 1), new Date(2021, 0, 1))
@@ -132,7 +132,7 @@ test('fingerprints tell a touched file from a changed one', async () => {
 })
 
 test('copies a skill under a new name and leaves no partial folder when the target exists', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const from = await skill(root, 'source', 'name: My Tool\ndescription: d')
   const to = join(root, 'dest', 'my-tool')
   assert.deepEqual(await copySkill({ from, to, name: 'my-tool' }), { skipped: [] })
@@ -143,7 +143,7 @@ test('copies a skill under a new name and leaves no partial folder when the targ
 })
 
 test('replaces an imported copy in place, and refuses a linked folder', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const from = await skill(root, 'source')
   const to = join(root, 'dest', 'source')
   await copySkill({ from, to })
@@ -157,7 +157,7 @@ test('replaces an imported copy in place, and refuses a linked folder', async ()
 })
 
 test('on Windows writes a copy straight into its folder and leaves an existing folder alone', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const from = await skill(root, 'source', 'name: My Tool\ndescription: d')
   const to = join(root, 'dest', 'my-tool')
   await copySkill({ from, to, name: 'my-tool', platform: 'win32' })
@@ -169,7 +169,7 @@ test('on Windows writes a copy straight into its folder and leaves an existing f
 })
 
 test('on Windows replaces a skill in its own folder, removing what the source lacks', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const from = await skill(root, 'source')
   const to = join(root, 'dest', 'source')
   await copySkill({ from, to })
@@ -188,7 +188,7 @@ test('on Windows replaces a skill in its own folder, removing what the source la
 })
 
 test('replaces a skill whose folder and root are being watched', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-import-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-import-'))
   const from = await skill(root, 'source')
   const skills = join(root, 'skills')
   const to = join(skills, 'source')

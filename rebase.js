@@ -78,7 +78,7 @@ function mergeFields(base, user, latest, conflicts, id) {
  * @param {object[]} userRows - the preset's current rows.
  * @param {object[]} latestRows - the latest built-in rows.
  * @param {object[] | undefined} baseRows - the built-in rows `userRows` were last merged with.
- * @param {{newRow?: (row: object) => object, keep?: (row: object) => boolean}} [options] -
+ * @param {{newRow?: (row: object) => object, keep?: (row: object) => boolean, preserveLayout?: boolean}} [options] -
  *   `newRow` adjusts a row the built-in list added since `base`; `keep` retains a row the built-in list does not have.
  * @returns {{rows: object[], changed: boolean, summary: {added: string[], removed: string[], updated: string[], conflicts: string[]}}}
  *   the merged rows, whether they differ from `userRows`, and the row ids each kind of change touched.
@@ -110,7 +110,7 @@ export function rebase(userRows, latestRows, baseRows, options = {}) {
     }
     return mergeFields(original ?? latest, mine, latest, summary.conflicts, id)
   })
-  const rows = visit(Array.isArray(latestRows) ? latestRows : [])
+  let rows = visit(Array.isArray(latestRows) ? latestRows : [])
 
   let previous
   for (const row of Array.isArray(userRows) ? userRows : []) {
@@ -126,6 +126,20 @@ export function rebase(userRows, latestRows, baseRows, options = {}) {
       }
     }
     if (id !== undefined) previous = id
+  }
+  if (options.preserveLayout && base !== undefined) {
+    const layout = (merged, mine) => {
+      const byId = new Map(merged.map(row => [row.id, row])), kept = []
+      for (const row of mine ?? []) {
+        const next = byId.get(row.id)
+        if (!next) continue
+        byId.delete(row.id)
+        kept.push(next.group === true ? { ...next, config: layout(next.config, row.config) } : next)
+      }
+      for (const next of byId.values()) if (!base.has(next.id)) kept.push(next)
+      return kept
+    }
+    rows = layout(rows, userRows)
   }
   return { rows, changed: !same(rows, userRows), summary }
 }

@@ -1,1 +1,1 @@
-{ "meta": { "title": "Mode Manager", "description": "Manage agent modes in Settings → Modes: switch what each mode can do, edit its system prompt and the tool descriptions the model reads, turn skills on or off per mode with saved versions, create modes from templates, and merge built-in updates after a dsh upgrade." } }
+{ "meta": { "title": "Preset Manager", "description": "Manage Presets, installed Plugins and Skills in native DSH Settings. Includes Overrides, Config Schema and composition checks, ordering and update merges. Forked from dsh-modes." } }

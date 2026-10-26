@@ -26,11 +26,11 @@ test('lists an entry nobody may invoke for each hidden skill and the saved versi
     skillVersion: async (skill, id) => (skill === 'pdf' && id === 'v1' ? version : undefined),
     watchSkills: (listener) => { listeners.push(listener); return () => {} },
   })
-  assert.equal(provider.name, 'dsh-modes')
+  assert.equal(provider.name, 'dsh-preset-manager')
   const candidates = await provider.list({})
   assert.deepEqual(candidates.map(candidate => [candidate.name, candidate.invocation, candidate.rank, candidate.provider]), [
-    ['web', { modelInvocable: false, userInvocable: false }, -1000, 'dsh-modes'],
-    ['pdf', { modelInvocable: true, userInvocable: false }, -1000, 'dsh-modes'],
+    ['web', { modelInvocable: false, userInvocable: false }, -1000, 'dsh-preset-manager'],
+    ['pdf', { modelInvocable: true, userInvocable: false }, -1000, 'dsh-preset-manager'],
   ])
   assert.deepEqual(candidates[1].resourceBase, { kind: 'directory', path: '/v/pdf/v1/files' })
   assert.equal(candidates[1].whenToUse, 'For PDFs')

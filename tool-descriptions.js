@@ -12,7 +12,7 @@
  * code mode (`run_code`) lists tool descriptions inside its own prompt text, which this row does not rewrite.
  */
 
-export const name = 'dsh-modes-tool-descriptions'
+export const name = 'dsh-preset-manager-tool-descriptions'
 export const inject = ['systemPrompt']
 
 export function apply(ctx, config) {

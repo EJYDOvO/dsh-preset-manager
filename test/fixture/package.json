@@ -1,0 +1,7 @@
+{
+  "name": "dsh-pm-fixture",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": { ".": "./index.js", "./unused": "./index.js", "./needs": "./needs.js", "./host": "./host.js", "./throws": "./throws.js", "./flaky": "./flaky.js", "./package.json": "./package.json" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

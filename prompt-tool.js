@@ -11,7 +11,7 @@
 const TOOL = 'mode_prompt'
 const ACTIONS = ['read', 'replace', 'append']
 
-export const name = 'dsh-modes-prompt-tool'
+export const name = 'dsh-preset-manager-prompt-tool'
 export const inject = ['tools']
 
 const DESCRIPTION = [
@@ -82,7 +82,7 @@ function definition(ctx) {
 }
 
 export function apply(ctx) {
-  ctx.effect(() => ctx.tools.register(definition(ctx)), 'dsh-modes: mode_prompt tool')
+  ctx.effect(() => ctx.tools.register(definition(ctx)), 'dsh-preset-manager: mode_prompt tool')
   ctx.on('tools/pre-execute', async (exec, next) => {
     const decision = await next()
     if (exec.name !== TOOL || decision.kind !== 'allow' || exec.arguments?.action === 'read') return decision

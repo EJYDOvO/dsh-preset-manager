@@ -1,5 +1,5 @@
 /**
- * Profile-local state kept beside the profile patch, under `<profile>/.dsh-modes/`:
+ * Profile-local state kept beside the profile patch, under `<profile>/.dsh-preset-manager/`:
  *
  * - `state.json` — per preset, the built-in rows its plugin list was last merged
  *   with (`base`); for a custom preset also the built-in preset it follows
@@ -7,7 +7,7 @@
  * - `history.json` — per preset, the most recent prompt versions, oldest first.
  * - `tool-descriptions.json` — per preset, the tool description overrides (`tools`: name → `{ text, base }`) and
  *   the most recent changes to them (`history`, oldest first); read on every model step by the row in tool-descriptions.js.
- * - `settings.json` — the plugin's own switches: `checkUpdates` (default true) allows the automatic version check;
+ * - `settings.json` — the plugin's own switches: `checkUpdates` (default false) allows the automatic version check;
  *   `upgraded` (`{ from, to, at }`) is the upgrade last started from the page, which the new version reports once.
  * - `skills.json` — per-mode skill settings, skills hidden in every mode, and the saved versions of each skill; the
  *   versions' files live in `skill-versions/<skill>/<version>/`. See skill-store.js.
@@ -27,7 +27,7 @@ const FILES = {
   state: { name: 'state.json', empty: () => ({ version: 1, presets: {} }) },
   history: { name: 'history.json', empty: () => ({ version: 1, presets: {} }) },
   tools: { name: 'tool-descriptions.json', empty: () => ({ version: 1, presets: {} }) },
-  settings: { name: 'settings.json', empty: () => ({ version: 1, checkUpdates: true }), plain: true },
+  settings: { name: 'settings.json', empty: () => ({ version: 1, checkUpdates: false }), plain: true },
   skills: { name: 'skills.json', empty: () => ({ version: 1, presets: {}, global: { off: [] }, skills: {} }) },
 }
 

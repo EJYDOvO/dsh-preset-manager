@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { rebase } from '../rebase.js'
 
 const persona = (prefix, extra = {}) => ({ id: 'persona', name: '@deepseek-ai/dsh-persona', config: { prefix, suffix: 'S1', ...extra } })
-const keep = row => row.name.startsWith('dsh-modes/')
+const keep = row => row.name.startsWith('dsh-preset-manager/')
 const find = (rows, id) => rows.find(row => row.id === id)
 
 const base = [
@@ -18,7 +18,7 @@ const user = [
   { id: 'tool-web', name: 'web', disabled: true, config: { fetch: true, timeout: 1 } },
   { id: 'tool-fs', name: 'fs' },
   { id: 'old', name: 'old-mod' },
-  { id: 'dsh-modes-prompt-tool', name: 'dsh-modes/prompt-tool' },
+  { id: 'dsh-preset-manager-prompt-tool', name: 'dsh-preset-manager/prompt-tool' },
 ]
 // Upstream changed the suffix and the web timeout, configured fs, dropped `old`, and added `new`.
 const latest = [
@@ -37,7 +37,7 @@ test('keeps the user\'s changes and takes every built-in change they did not tou
   assert.deepEqual(find(result.rows, 'tool-fs'), { id: 'tool-fs', name: 'fs', config: { write: true } })
   assert.ok(find(result.rows, 'new'))
   assert.equal(find(result.rows, 'old'), undefined)
-  assert.ok(find(result.rows, 'dsh-modes-prompt-tool'))
+  assert.ok(find(result.rows, 'dsh-preset-manager-prompt-tool'))
   assert.deepEqual(result.summary.added, ['new'])
   assert.deepEqual(result.summary.removed, ['old'])
   assert.deepEqual(result.summary.updated.sort(), ['persona', 'tool-fs', 'tool-web'])

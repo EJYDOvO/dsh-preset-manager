@@ -10,12 +10,12 @@
  * running in this mode receives a replacement skill catalog on its next model step.
  */
 
-const PROVIDER = 'dsh-modes'
+const PROVIDER = 'dsh-preset-manager'
 /** Lower ranks win duplicate names within a scope; the filesystem provider uses 100–600. */
 const RANK = -1000
-const OFF_DESCRIPTION = 'Turned off in this mode by dsh-modes.'
+const OFF_DESCRIPTION = 'Turned off in this mode by dsh-preset-manager.'
 
-export const name = 'dsh-modes-skills'
+export const name = 'dsh-preset-manager-skills'
 export const inject = ['skills']
 
 function pinned(skill, version) {
@@ -65,6 +65,10 @@ export function apply(ctx, config) {
             const version = await service.skillVersion(skill, id)
             if (version !== undefined) candidates.push({ ...pinned(skill, version), rank: RANK, locator: { kind: 'pin', version: id } })
           }
+          for (const [skill, version] of await service.assignedSkills?.(config.preset) ?? []) {
+            if (policy.off.has(skill) || policy.pins.has(skill)) continue
+            candidates.push({ ...pinned(skill, version), rank: RANK, locator: { kind: 'assigned' } })
+          }
           return candidates
         } catch (error) {
           warn(error)
@@ -72,10 +76,14 @@ export function apply(ctx, config) {
         }
       },
       async get(candidate) {
+        if (candidate.locator?.kind === 'assigned') {
+          const version = await ctx.get('dshModes')?.assignedSkill(config.preset, candidate.name)
+          return version === undefined ? undefined : { ...pinned(candidate.name, version), content: version.meta.content }
+        }
         if (candidate.locator?.kind !== 'pin') return undefined
         const version = await ctx.get('dshModes')?.skillVersion(candidate.name, candidate.locator.version)
         return version === undefined ? undefined : { ...pinned(candidate.name, version), content: version.meta.content }
       },
     }
-  }), 'dsh-modes: skill policy')
+  }), 'dsh-preset-manager: skill policy')
 }

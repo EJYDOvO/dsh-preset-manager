@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.tgz
+.local/
+test-data/
+AGENTS.md
+publication.md

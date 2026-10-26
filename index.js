@@ -5,11 +5,11 @@
  * Shipped presets are ordinary `@deepseek-ai/dsh-agent-preset` rows; an edit
  * writes the profile's `cordis.patch.yml` override for that row through
  * `configEditor.edit()`, which validates, persists, and reloads it. User-created
- * presets live in the `dsh-modes-custom` container row (container.js).
+ * presets live in the `dsh-preset-manager-custom` container row (container.js).
  * Running sessions keep the revision they started with; new sessions see edits.
  *
  * Every edit first merges the preset onto the latest built-in rows (rebase.js)
- * with the base recorded in `<profile>/.dsh-modes/state.json` (state.js), so a
+ * with the base recorded in `<profile>/.dsh-preset-manager/state.json` (state.js), so a
  * DSH update reaches an edited preset without discarding the user's changes.
  * Rows of this package's modules in a shipped preset carry a condition that
  * switches them off once the package is uninstalled (install-guard.js).
@@ -17,6 +17,7 @@
 import { readFileSync } from 'node:fs'
 import { mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { allRowsById, rebase, same, stable } from './rebase.js'
 import { HISTORY_LIMIT, StateStore } from './state.js'
 import { applyWrites, catalogEntries, overridesOf, planEdits, planRestore } from './tool-edit.js'
@@ -25,21 +26,22 @@ import { NOTE_MAX_CHARS, SKILL_NAME, VERSION_ID, isEditableSkill, needsRow, next
 import { SkillFileError, readVersionMeta, restoreVersion, skillLocation, writeText, writeVersion } from './skill-files.js'
 import { FALLBACK_ROW_ID, LIVE_MODULE, PERSONA_MODULE, guardRows, isGuard, isOwnModule, unguardRows } from './install-guard.js'
 import { DESCRIPTION_MAX_CHARS, copySkill, displayPath, expandHome, findPluginSkills, fingerprint, hasSkillFile, importRoots, listSkillDirs, newSkillText, readCandidate, replaceSkill, skillRoots, sourceState } from './skill-import.js'
+import { PluginEditError, revision, installedCatalog, inspectModule, planPluginEdit, validateComposition, discoverSkills } from './preset-plugins.js'
 
-const ROUTE = '/api/dsh-modes'
+const ROUTE = '/api/dsh-preset-manager'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
-const CONTAINER_ID = 'dsh-modes-custom'
+const CONTAINER_ID = 'dsh-preset-manager-custom'
 const REGISTRY_SETTINGS = 'agent-preset-registry'
 const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
 const CUSTOM_ORDER_BASE = 100
-const TOOL_MODULE = 'dsh-modes/prompt-tool'
-const TOOL_ROW_ID = 'dsh-modes-prompt-tool'
-const DESCRIPTIONS_MODULE = 'dsh-modes/tool-descriptions'
-const DESCRIPTIONS_ROW_ID = 'dsh-modes-tool-descriptions'
-const SKILLS_MODULE = 'dsh-modes/skills'
-const SKILLS_ROW_ID = 'dsh-modes-skills'
+const TOOL_MODULE = 'dsh-preset-manager/prompt-tool'
+const TOOL_ROW_ID = 'dsh-preset-manager-prompt-tool'
+const DESCRIPTIONS_MODULE = 'dsh-preset-manager/tool-descriptions'
+const DESCRIPTIONS_ROW_ID = 'dsh-preset-manager-tool-descriptions'
+const SKILLS_MODULE = 'dsh-preset-manager/skills'
+const SKILLS_ROW_ID = 'dsh-preset-manager-skills'
 /** The provider name the skill policy row registers; its entries are the manager's own, not a skill's. */
-const SKILLS_PROVIDER = 'dsh-modes'
+const SKILLS_PROVIDER = 'dsh-preset-manager'
 const VERSIONS_DIR = 'skill-versions'
 /** Longest SKILL.md the page edits, in characters. */
 const SKILL_FILE_MAX_CHARS = 200000
@@ -59,7 +61,7 @@ const SCAN_TTL_MS = 5 * 60 * 1000
 const PERSONA_MODULES = new Set([PERSONA_MODULE, LIVE_MODULE])
 const PROMPT_MAX_CHARS = 20000
 const PROMPT_EXCERPT_CHARS = 160
-const STATE_DIR = '.dsh-modes'
+const STATE_DIR = '.dsh-preset-manager'
 /** The prompt registry's reference syntax (`dsh-system-prompt` GROUP_AT / VARIABLE_NAME). */
 const VARIABLE_GROUP = /^\{\{([^{}]*)\}\}/
 const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
@@ -106,8 +108,8 @@ const TEMPLATES = {
   },
 }
 
-export const name = 'dsh-modes'
-export const inject = ['agentPresets', 'configEditor']
+export const name = 'dsh-preset-manager'
+export const inject = ['agentPresets', 'configEditor', 'loader', 'pluginPackages']
 
 /** A refusal the page can word in its own locale; `message` is the English fallback. */
 class ActionError extends Error {
@@ -119,7 +121,9 @@ class ActionError extends Error {
 }
 
 export function apply(ctx) {
-  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), toolsFile: undefined, scans: new Map(), seen: new Map(), check: undefined, upgrade: undefined, skillsFile: undefined, skillScans: new Map(), skillWatchers: new Set(), versions: new Map() }
+  if (ctx.get('dshModes')) throw new Error('Enable either dsh-modes or Preset Manager, not both')
+  const m = { ctx, store: new StateStore(join(dirname(ctx.configEditor.documentPath), STATE_DIR)), mutation: Promise.resolve(), closed: false, toolsFile: undefined, scans: new Map(), seen: new Map(), check: undefined, upgrade: undefined, skillsFile: undefined, skillScans: new Map(), skillWatchers: new Set(), versions: new Map() }
+  ctx.effect?.(() => () => { m.closed = true })
   ctx.provide('dshModes', {
     /** Latest saved persona config of a preset, from the loaded configuration; undefined when unknown. */
     persona: id => findPersona(savedRows(ctx, id))?.config,
@@ -136,6 +140,11 @@ export function apply(ctx) {
     observeTools: (id, tools) => observeTools(m, id, tools),
     /** The skills a mode hides and the saved versions it serves: `{ off: Set, pins: Map(skill → version id) }`. */
     skillPolicy: async id => policyFor(await readSkills(m), id),
+    assignedSkill: (id, skill) => assignedSkill(m, id, skill),
+    assignedSkills: async id => {
+      const entries = await Promise.all(Object.keys((await readSkills(m)).presets?.[id]?.assigned ?? {}).map(async name => [name, await assignedSkill(m, id, name)]))
+      return entries.filter(([, value]) => value !== undefined)
+    },
     /** One saved skill version: its metadata and the directory holding its files; undefined when it is gone. */
     skillVersion: (skill, version) => skillVersion(m, skill, version),
     /** Call `listener` after every change to skill settings; returns the function that stops it. */
@@ -146,12 +155,9 @@ export function apply(ctx) {
   })
   guardSavedRows(m)
   ctx.inject(['connection'], (c) => {
-    c.effect(() => c.connection.fetch.register({
-      path: ROUTE,
-      methods: ['POST'],
-      requestBody: 'buffered',
-      fetch: request => handle(m, request),
-    }), 'dsh-modes: route')
+    for (const path of [ROUTE, '/api/dsh-modes']) c.effect(() => c.connection.fetch.register({
+      path, methods: ['POST'], requestBody: 'buffered', fetch: request => handle(m, request),
+    }), 'dsh-preset-manager: route')
   })
 }
 
@@ -168,11 +174,11 @@ async function guardSavedRows(m) {
       try {
         await ctx.configEditor.edit(declaration.entry, current => (Array.isArray(current.plugins) ? { ...current, plugins: guardRows(current.plugins) } : current))
       } catch (error) {
-        ctx.logger.warn(`dsh-modes could not add the uninstall condition to mode ${id}: ${error instanceof Error ? error.message : String(error)}`)
+        ctx.logger.warn(`dsh-preset-manager could not add the uninstall condition to mode ${id}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
   } catch (error) {
-    ctx.logger.warn(`dsh-modes could not check the modes it changed: ${error instanceof Error ? error.message : String(error)}`)
+    ctx.logger.warn(`dsh-preset-manager could not check the modes it changed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -181,6 +187,11 @@ function reply(body) {
 }
 
 const ACTIONS = {
+  pluginCatalog: (m, body) => pluginCatalog(m, body.refresh === true),
+  inspectPlugin: async (m, body) => inspectModule(m.ctx, String(body.module), (await pluginCatalog(m)).modules),
+  editPlugin: (m, body) => editPlugin(m, body),
+  installedSkills: m => installedSkills(m),
+  assignSkill: (m, body) => assignSkill(m, body),
   list: m => list(m),
   read: (m, body) => m.ctx.agentPresets.readDocument(String(body.id)),
   toggle: (m, body) => toggle(m, String(body.id), String(body.rowId), body.enabled === true, body.force === true),
@@ -229,7 +240,7 @@ const ACTIONS = {
   importSkills: (m, body) => importSkills(m, body),
 }
 /** Actions that answer with their own value instead of the refreshed list. */
-const READS = new Set(['list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'dismissUpgraded', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion', 'skillSources'])
+const READS = new Set(['pluginCatalog', 'inspectPlugin', 'installedSkills', 'list', 'read', 'prompt', 'history', 'usage', 'tools', 'updateStatus', 'upgradeStatus', 'setUpdateCheck', 'dismissUpgraded', 'upgrade', 'cancelUpgrade', 'skills', 'readSkillFile', 'readSkillVersion', 'skillSources'])
 
 async function handle(m, request) {
   let body
@@ -238,16 +249,29 @@ async function handle(m, request) {
   } catch {
     return reply({ ok: false, code: 'bad-request', error: 'Request body must be JSON' })
   }
-  const action = ACTIONS[body?.action]
+  // The native Connection client sends the same request through Web or Desktop RPC.
+  if (body?.type === 'client-request') {
+    if (!['dsh-preset-manager', 'dsh-modes'].includes(body.method) || typeof body.rpcId !== 'string' || body.rpcId.length > 128) return reply({ ok: false, code: 'bad-request', error: 'Invalid RPC envelope' })
+    const response = await handle(m, { json: async () => body.payload })
+    return reply({ type: 'server-response', rpcId: body.rpcId, result: { ok: true, value: await response.json() } })
+  }
+  const action = Object.hasOwn(ACTIONS, body?.action ?? '') ? ACTIONS[body.action] : undefined
   if (action === undefined) return reply({ ok: false, code: 'bad-request', error: `Unknown action: ${String(body?.action)}` })
   try {
-    const value = await action(m, body)
+    const execute = () => {
+      if (m.closed) throw new ActionError('unavailable', 'Preset Manager is unloaded')
+      return action(m, body)
+    }
+    // All mutations share one queue; a rejected operation does not poison later saves.
+    let value
+    if (READS.has(body.action)) value = await execute()
+    else { const run = m.mutation.then(execute); m.mutation = run.catch(() => {}); value = await run }
     if (READS.has(body.action)) return reply({ ok: true, value })
     return reply({ ok: true, value: { ...await list(m), ...value !== null && typeof value === 'object' ? { effect: value } : {} } })
   } catch (error) {
     return reply({
       ok: false,
-      code: error instanceof ActionError || error instanceof SkillFileError ? error.code : 'failed',
+      code: error instanceof ActionError || error instanceof SkillFileError || error instanceof PluginEditError ? error.code : 'failed',
       error: error instanceof Error ? error.message : String(error),
       ...(error instanceof ActionError || error instanceof SkillFileError) && error.details !== undefined ? { details: error.details } : {},
     })
@@ -376,6 +400,7 @@ function parseFailures(broken, plugins) {
 function mergeOptions(templateId) {
   const allow = templateId === undefined ? undefined : TEMPLATES[templateId]?.allow
   return {
+    preserveLayout: true,
     keep: row => isOwnModule(row.name) || PERSONA_MODULES.has(row.name),
     ...allow === undefined ? {} : { newRow: row => (allow.includes(row.id) ? row : { ...row, disabled: true }) },
   }
@@ -491,7 +516,7 @@ async function list(m) {
   } catch (error) {
     m.ctx.logger.warn(`skill settings cannot be read: ${error instanceof Error ? error.message : String(error)}`)
   }
-  const skillEdits = id => (skillSettings[id]?.off ?? []).length + Object.keys(skillSettings[id]?.pins ?? {}).length
+  const skillEdits = id => (skillSettings[id]?.off ?? []).length + Object.keys(skillSettings[id]?.pins ?? {}).length + Object.keys(skillSettings[id]?.assigned ?? {}).length
   const rows = roster.map((row) => {
     const declaration = declared.get(row.id)
     const own = custom.get(row.id)
@@ -512,6 +537,7 @@ async function list(m) {
       ...row,
       isDefault: row.id === presets.defaultId,
       source: own !== undefined ? 'custom' : declaration === undefined ? 'external' : declaration.overridden ? 'overridden' : 'builtin',
+      pluginRevision: revision(plugins ?? []),
       usage: usage.get(row.id) ?? 0,
       ...typeof prefix === 'string' ? { promptExcerpt: prefix.slice(0, PROMPT_EXCERPT_CHARS) } : {},
       ...persona?.name === LIVE_MODULE ? { live: true } : {},
@@ -619,35 +645,143 @@ async function recordState(m, change) {
  * rows are saved with the uninstall conditions of {@link guardRows}; a custom preset's without them.
  * @returns {Promise<{synced?: object}>} the merge summary when the merge changed the rows.
  */
+async function pluginCatalog(m, refresh = false) {
+  const rows = [...declarations(m.ctx).values()].map(d => d.plugins).concat(customPresets(m.ctx).map(p => p.plugins))
+  const key = revision(rows), generation = m.ctx.get('pluginPackages')?.resolution
+  if (refresh || m.catalog?.key !== key || m.catalog?.generation !== generation || Date.now() - m.catalog.at > 60000) m.catalog = { key, generation, at: Date.now(), value: await installedCatalog(m.ctx, rows) }
+  return m.catalog.value
+}
+
+async function editPlugin(m, body) {
+  const id = String(body.id), before = presetRows(m.ctx, id).plugins
+  const catalog = await pluginCatalog(m), next = planPluginEdit(before, body, catalog.modules)
+  if (body.op === 'add') await inspectModule(m.ctx, String(body.module), catalog.modules)
+  const effect = await editPlugins(m, id, rows => {
+    if (revision(rows) !== body.base) throw new ActionError('plugin-conflict', 'Preset changed during validation. Refresh before saving.')
+    return next
+  })
+  m.scans.clear(); m.skillScans.clear()
+  return effect
+}
+
+async function installedSkills(m) {
+  const roots = [...Object.values(skillRoots())]
+  const rows = [...declarations(m.ctx).values()].flatMap(d => [...allRowsById(d.plugins).values()])
+    .concat(customPresets(m.ctx).flatMap(p => [...allRowsById(p.plugins).values()]))
+  for (const row of rows) if (row.name === '@deepseek-ai/dsh-skill-filesystem') {
+    roots.push(...(row.config?.customSkillDirs ?? []).filter(p => typeof p === 'string'))
+    for (const key of ['dshHome', 'agentsHome']) if (typeof row.config?.[key] === 'string') roots.push(join(row.config[key], 'skills'))
+    if (typeof row.config?.bundledSkillDir === 'string') roots.push(row.config.bundledSkillDir)
+  }
+  const packages = m.ctx.get('pluginPackages'), resolution = packages?.resolution
+  for (const entry of resolution?.entries ?? []) roots.push(join(entry.packageDir, 'skills'))
+  const base = pathToFileURL(join(dirname(m.ctx.configEditor.documentPath), 'package.json')).href
+  for (const name of resolution?.localPackageNames ?? []) {
+    const pkg = packages.packageOf(name, base)
+    if (pkg) roots.push(join(pkg.dir, 'skills'))
+  }
+  for (const agent of m.ctx.get('agents')?.list() ?? []) {
+    const cwd = agent.session?.header?.cwd ?? agent.cwd
+    if (typeof cwd === 'string') roots.push(join(cwd, '.dsh', 'skills'), join(cwd, '.agents', 'skills'))
+  }
+  return discoverSkills(roots)
+}
+
+async function assignedSkill(m, id, name) {
+  const path = (await readSkills(m)).presets?.[id]?.assigned?.[name]
+  if (typeof path !== 'string') return undefined
+  return readInstalledSkill(m, name, path)
+}
+async function readInstalledSkill(m, name, path) {
+  try {
+    const text = await readFile(path, 'utf8'), { fields, body } = parseSkillFile(text)
+    if (text.length > SKILL_FILE_MAX_CHARS || fields.name !== name || !fields.description) return undefined
+    const base = pathToFileURL(join(dirname(m.ctx.configEditor.documentPath), 'package.json')).href
+    const yaml = await m.ctx.loader.internal.import('yaml', base, {})
+    const frontmatter = yaml.parse(/^﻿?---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? '')
+    if (!frontmatter || typeof frontmatter.name !== 'string' || typeof frontmatter.description !== 'string') return undefined
+    for (const key of ['disableModelInvocation', 'modelInvocable', 'userInvocable']) if (Object.hasOwn(frontmatter, key)) return undefined
+    for (const key of ['disable-model-invocation', 'user-invocable']) if (frontmatter[key] !== undefined && typeof frontmatter[key] !== 'boolean') return undefined
+    const invocation = { modelInvocable: frontmatter['disable-model-invocation'] !== true, userInvocable: frontmatter['user-invocable'] !== false }
+    return { meta: { description: fields.description, content: body, invocation }, file: path, files: dirname(path) }
+  } catch { return undefined }
+}
+
+async function assignSkill(m, body) {
+  const id = String(body.id), name = checkSkill(body.skill)
+  presetRows(m.ctx, id)
+  if (body.base !== revision(presetRows(m.ctx, id).plugins)) throw new ActionError('plugin-conflict', 'Preset changed; refresh before saving')
+  const found = (await installedSkills(m)).skills.find(s => s.name === name)
+  if (body.enabled !== false && (!found || found.conflicts?.length)) throw new ActionError('skill-conflict', 'Installed skill missing or ambiguous; resolve duplicate names first')
+  if (body.enabled !== false && !await readInstalledSkill(m, name, found.path)) throw new ActionError('skill-conflict', 'Installed skill metadata or invocation policy is invalid')
+  const previous = structuredClone((await readSkills(m)).presets[id])
+  await updateSkills(m, content => {
+    const record = content.presets[id] ??= {}
+    record.assigned ??= {}
+    if (body.enabled === false) { delete record.assigned[name]; record.off = [...new Set([...record.off ?? [], name])] }
+    else { record.assigned[name] = found.path; record.off = (record.off ?? []).filter(s => s !== name) }
+  })
+  const { failed } = await syncSkillRows(m, new Set([id]))
+  if (failed.length) {
+    await updateSkills(m, content => { if (previous === undefined) delete content.presets[id]; else content.presets[id] = previous })
+    throw new ActionError('composition-invalid', 'Skill policy could not be mounted; assignment restored')
+  }
+  return { skills: await skillsView(m) }
+}
+
 async function editPlugins(m, id, change) {
   const { ctx } = m
   const state = await m.store.read('state')
   const record = state.presets[id]
   const declared = declarations(ctx)
+  const original = presetRows(ctx, id).plugins, expected = revision(original)
+  // Validate the same merged composition for legacy toggles, capabilities, prompts and Skills too.
+  const own = customPresets(ctx).find(preset => preset.id === id)
+  const declaration = declared.get(id)
+  const latest = own ? (record?.origin === undefined || record.base === undefined ? undefined : declared.get(record.origin)?.builtIn) : declaration?.builtIn
+  let proposed = structuredClone(original)
+  if (latest !== undefined && (own || !same(proposed, latest))) proposed = rebase(proposed, latest, record?.base, mergeOptions(own ? record?.template : undefined)).rows
+  proposed = own ? unguardRows(change(proposed, undefined)) : guardRows(change(proposed, latest))
+  // Loader is an injected native service; mock-only upstream unit contexts have no Loader.
+  if (ctx.loader?.internal) await validateComposition(ctx, proposed)
+  if (m.closed) throw new ActionError('unavailable', 'Preset Manager is unloaded')
   let synced
   if (customPresets(ctx).some(preset => preset.id === id)) {
+    const previous = structuredClone(own)
+    let applied
     const latest = record?.origin === undefined || record.base === undefined ? undefined : declared.get(record.origin)?.builtIn
     await ctx.configEditor.edit(containerEntry(ctx), current => ({
       ...current,
       presets: current.presets.map((preset) => {
         if (preset.id !== id) return preset
+        if (revision(preset.plugins) !== expected) throw new ActionError('plugin-conflict', 'Preset changed during validation')
         let rows = preset.plugins
         if (latest !== undefined) {
           const merged = rebase(rows, latest, record.base, mergeOptions(record.template))
           if (merged.changed) synced = merged.summary
           rows = merged.rows
         }
-        return { ...preset, plugins: unguardRows(change(rows, undefined)) }
+        applied = { ...preset, plugins: unguardRows(change(rows, undefined)) }
+        return applied
       }),
     }))
+    await verifySavedPreset(ctx, id, () => ctx.configEditor.edit(containerEntry(ctx), current => ({
+      ...current, presets: current.presets.map(preset => {
+        if (preset.id !== id) return preset
+        if (!same(preset, applied)) throw new ActionError('plugin-conflict', 'Activation failed and configuration changed; automatic recovery refused')
+        return previous
+      }),
+    })))
     if (latest !== undefined && !same(latest, record.base)) await recordState(m, (next) => { next.presets[id] = { ...next.presets[id], base: latest } })
     return synced === undefined ? {} : { synced }
   }
-  const declaration = declared.get(id)
   if (declaration === undefined) throw new ActionError('not-editable', `Preset ${id} is not declared in an editable row`, { id })
   let builtIn
   let rows
+  const previous = structuredClone(declaration.entry.options.config)
+  let applied
   await ctx.configEditor.edit(declaration.entry, (current, inherited) => {
+    if (revision(current.plugins ?? inherited.plugins ?? []) !== expected) throw new ActionError('plugin-conflict', 'Preset changed during validation')
     builtIn = Array.isArray(inherited.plugins) ? inherited.plugins : []
     let base = Array.isArray(current.plugins) ? current.plugins : builtIn
     if (!same(base, builtIn)) {
@@ -656,13 +790,29 @@ async function editPlugins(m, id, change) {
       base = merged.rows
     }
     rows = guardRows(change(base, builtIn))
-    return { ...current, plugins: rows }
+    applied = { ...current, plugins: rows }
+    return applied
   })
+  await verifySavedPreset(ctx, id, () => ctx.configEditor.edit(declaration.entry, current => {
+    if (!same(current, applied)) throw new ActionError('plugin-conflict', 'Activation failed and configuration changed; automatic recovery refused')
+    return previous
+  }))
   await recordState(m, (next) => {
     if (same(rows, builtIn)) delete next.presets[id]
     else next.presets[id] = { ...next.presets[id], base: builtIn }
   })
   return synced === undefined ? {} : { synced }
+}
+
+async function verifySavedPreset(ctx, id, rollback) {
+  if (!ctx.loader?.internal) return // Upstream mock-only contexts have no native runtime.
+  const verify = async () => { const lease = await ctx.agentPresets.acquireScope(id); await lease[Symbol.asyncDispose]() }
+  try { await verify() }
+  catch (error) {
+    try { await rollback(); await verify() }
+    catch (recovery) { throw new ActionError('recovery-required', `Preset activation failed; automatic recovery needs inspection: ${recovery.message}`) }
+    throw new ActionError('composition-invalid', `Preset activation failed; previous configuration restored: ${error.message}`)
+  }
 }
 
 function toggle(m, id, rowId, enabled, force) {
@@ -1345,7 +1495,7 @@ async function readSettings(m) {
     return await m.store.read('settings')
   } catch (error) {
     m.ctx.logger.warn(error instanceof Error ? error.message : String(error))
-    return { checkUpdates: true }
+    return { checkUpdates: false }
   }
 }
 
@@ -1619,6 +1769,12 @@ async function skillsView(m, refresh = false) {
         const { name: _name, provider: _provider, ...info } = skill
         live.set(skill.name, info)
       }
+    }
+  }
+  if (m.ctx.get('pluginPackages')?.resolution) {
+    for (const info of (await installedSkills(m)).skills) if (!live.has(info.name)) { const { name, ...rest } = info; live.set(name, rest) }
+    for (const [id, record] of Object.entries(content.presets ?? {})) for (const name of Object.keys(record.assigned ?? {})) {
+      if (await assignedSkill(m, id, name)) { if (!presence.has(name)) presence.set(name, new Set()); presence.get(name).add(id) }
     }
   }
   const stale = [...live].filter(([name, info]) => stable(content.skills?.[name]?.info ?? null) !== stable(info))

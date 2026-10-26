@@ -1,0 +1,22 @@
+- insert:
+  - id: pm-fixture-preset
+    name: '@deepseek-ai/dsh-agent-preset'
+    config:
+      id: pm-fixture
+      name: Manager fixture
+      plugins:
+        - id: persona
+          name: '@deepseek-ai/dsh-persona'
+          config:
+            prefix: Isolated manager fixture.
+        - id: tool-skill
+          name: '@deepseek-ai/dsh-tool-skill'
+  - id: pm-worker-preset
+    name: '@deepseek-ai/dsh-agent-preset'
+    config:
+      id: root-planner-worker
+      plugins:
+        - id: persona
+          name: '@deepseek-ai/dsh-persona'
+          config:
+            prefix: Ordinary Worker Preset, managed without extra boundaries.

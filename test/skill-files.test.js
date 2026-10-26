@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import { readVersionMeta, restoreVersion, skillLocation, SkillFileError, VERSION_MAX_FILES, writeText, writeVersion } from '../skill-files.js'
 
 async function bundle() {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-skill-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-skill-'))
   const skill = join(root, 'skills', 'pdf')
   await mkdir(join(skill, 'scripts'), { recursive: true })
   await writeFile(join(skill, 'SKILL.md'), '---\nname: pdf\ndescription: v1\n---\nBody v1\n')
@@ -36,7 +36,7 @@ test('saves a bundle with its resources and restores it over later changes, keep
 })
 
 test('saves and restores a flat skill file as SKILL.md inside the version', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-modes-skill-'))
+  const root = await mkdtemp(join(tmpdir(), 'dsh-preset-manager-skill-'))
   const file = join(root, 'notes.md')
   await writeFile(file, '---\nname: notes\ndescription: flat\n---\nFlat v1\n')
   const dir = join(root, 'versions', 'notes', 'v1')

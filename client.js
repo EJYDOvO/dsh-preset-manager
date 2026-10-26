@@ -1,10 +1,10 @@
 window.__ModuleLoader__.load({
-  id: 'dsh-modes',
+  id: 'dsh-preset-manager',
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const NS = 'dsh-modes'
-    const ROUTE = '/api/dsh-modes'
+    const NS = 'dsh-preset-manager'
+    const ROUTE = '/api/dsh-preset-manager'
     const PRESET_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
     /** The skill name grammar of the DSH skill registry; the Host repeats this check. */
     const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -16,10 +16,10 @@ window.__ModuleLoader__.load({
     const PROMPT_MAX_CHARS = 20000
     const TOOL_MAX_CHARS = 20000
     /** Where the page points to for what changed in a release. */
-    const CHANGES_URL = 'https://github.com/xiaohai-78/dsh-modes/commits/main'
-    const DRAFT_PREFIX = 'dsh-modes:draft:'
+    const CHANGES_URL = 'https://github.com/EJYDOvO/dsh-preset-manager/commits/main'
+    const DRAFT_PREFIX = 'dsh-preset-manager:draft:'
     /** The mode the tool and skill views last showed, kept per browser; empty is all modes. */
-    const SCOPE_KEY = 'dsh-modes:scope'
+    const SCOPE_KEY = 'dsh-preset-manager:scope'
     /** Error-map key for the create form, which belongs to no preset card yet. */
     const CREATE_ERROR = '\0create'
     const PERSONA_MODULE = '@deepseek-ai/dsh-persona'
@@ -28,11 +28,39 @@ window.__ModuleLoader__.load({
     const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
     const ZH = {
+      'pm.plugins': '已安装插件编排',
+      'pm.override': '基础 Preset 的源定义只读；所有修改保存为当前 Profile 的 Override。不会安装插件。变更影响新 Session，现有 Session 保留原修订。',
+      'pm.row': '选择现有插件行',
+      'pm.add': '添加插件',
+      'pm.inspect': '查看 Schema 与依赖',
+      'pm.search': '搜索已安装组件',
+      'pm.module': '已安装插件模块',
+      'pm.select': '选择模块',
+      'pm.rowId': '唯一插件行 ID',
+      'pm.group': '目标分组',
+      'pm.root': 'Preset 顶层',
+      'pm.config': '插件配置（JSON）',
+      'pm.schema': 'Schema、服务依赖与限制',
+      'pm.save': '保存配置',
+      'pm.toggle': '切换启停',
+      'pm.remove': '移除插件',
+      'pm.up': '上移',
+      'pm.down': '下移',
+      'pm.confirm': '确认应用此修改？保存前将装配临时 Preset 校验已安装代码。',
+      'pm.commit': '确认修改',
+      'pm.cancel': '取消',
+      'pm.jsonError': '配置不是有效 JSON。',
+      'pm.skills': '已安装 Skills 分配',
+      'pm.skillsHint': '包括尚未被 Preset 引用的本地与插件 Skills。只分配已有文件，不复制或安装；重复名称须先处理。启停与版本继续使用下方原有管理功能。',
+      'pm.preset': '目标 Preset',
+      'pm.assign': '分配/启用',
+      'pm.unassign': '移除/停用',
+      'pm.refreshSkills': '已保存。刷新 Skills 列表以查看更新。',
       'crash.title': '这个页面出错了',
       'crash.body': '点「重新加载」会重新打开这个页面。如果反复出现，请把下面的错误原文发给插件作者。',
       'crash.reload': '重新加载',
-      nav: '模式管理',
-      title: '模式管理',
+      nav: 'Preset 管理',
+      title: 'Preset 管理',
       intro: '模式决定 Agent 能做什么、怎么说话。改动只影响之后新建的会话；开启了即时生效的模式，保存的提示词会立刻用到正在运行的会话。',
       refresh: '刷新',
       newPreset: '新建模式',
@@ -512,7 +540,7 @@ window.__ModuleLoader__.load({
       'update.upgrade': '升级…',
       'update.manualHint': '在终端运行下面的命令升级，然后重启 dsh：',
       'update.gitHint': '你是从 GitHub 安装的。要升级，在终端运行下面的命令，然后重启 dsh：',
-      'update.confirm': '把 dsh-modes 从 {from} 升级到 {to}？DSH 会从 {host} 下载并安装；新版本在重启 dsh 后生效，正在运行的会话不受影响，你的模式和修改都会保留。',
+      'update.confirm': '把 dsh-preset-manager 从 {from} 升级到 {to}？DSH 会从 {host} 下载并安装；新版本在重启 dsh 后生效，正在运行的会话不受影响，你的模式和修改都会保留。',
       'update.confirmAction': '升级',
       'update.installing': '正在安装 {to}…（{phase}）',
       'update.phase.installing': '下载并安装',
@@ -531,7 +559,7 @@ window.__ModuleLoader__.load({
       'update.cancelled': '已取消，已安装的版本没有变化。',
       'update.upgraded': '已升级到 {to}（之前是 {from}）。',
       'update.dismiss': '知道了',
-      'update.version': 'dsh-modes {version}',
+      'update.version': 'dsh-preset-manager {version}',
       'update.dev': '本地开发安装，不检查更新',
       'update.auto': '自动检查更新',
       'update.checkNow': '立即检查',
@@ -546,11 +574,39 @@ window.__ModuleLoader__.load({
       'err.not-running': '没有正在进行的升级',
     }
     const EN = {
+      'pm.plugins': 'Installed plugin composition',
+      'pm.override': 'Base sources are read-only; changes use this Profile override. No plugins are installed. New Sessions use changes; existing Sessions retain their revisions.',
+      'pm.row': 'Existing plugin row',
+      'pm.add': 'Add plugin',
+      'pm.inspect': 'Inspect schema and dependencies',
+      'pm.search': 'Search installed components',
+      'pm.module': 'Installed plugin module',
+      'pm.select': 'Select module',
+      'pm.rowId': 'Unique plugin row ID',
+      'pm.group': 'Target group',
+      'pm.root': 'Preset root',
+      'pm.config': 'Plugin configuration (JSON)',
+      'pm.schema': 'Schema, service dependencies and limitations',
+      'pm.save': 'Save configuration',
+      'pm.toggle': 'Toggle enabled',
+      'pm.remove': 'Remove plugin',
+      'pm.up': 'Move up',
+      'pm.down': 'Move down',
+      'pm.confirm': 'Apply this change? Validation temporarily composes installed code before saving.',
+      'pm.commit': 'Confirm change',
+      'pm.cancel': 'Cancel',
+      'pm.jsonError': 'Configuration must be valid JSON.',
+      'pm.skills': 'Assign installed Skills',
+      'pm.skillsHint': 'Includes unreferenced local and plugin Skills. Assign existing files without copying or installing. Resolve duplicate names first. Use the original controls below for switches and versions.',
+      'pm.preset': 'Target Preset',
+      'pm.assign': 'Assign / enable',
+      'pm.unassign': 'Remove / disable',
+      'pm.refreshSkills': 'Saved. Refresh Skills to see the updated list.',
       'crash.title': 'This page ran into an error',
       'crash.body': 'Reload opens the page again. If it keeps happening, send the error below to the plugin author.',
       'crash.reload': 'Reload',
-      nav: 'Modes',
-      title: 'Modes',
+      nav: 'Preset Manager',
+      title: 'Preset Manager',
       intro: 'A mode decides what the agent can do and how it talks. Changes apply to sessions created afterwards; in a mode with live prompts, a saved prompt reaches running sessions right away.',
       refresh: 'Refresh',
       newPreset: 'New mode',
@@ -1030,7 +1086,7 @@ window.__ModuleLoader__.load({
       'update.upgrade': 'Upgrade…',
       'update.manualHint': 'Run this command in a terminal, then restart dsh:',
       'update.gitHint': 'You installed from GitHub. To upgrade, run this in a terminal, then restart dsh:',
-      'update.confirm': 'Upgrade dsh-modes from {from} to {to}? DSH downloads it from {host} and installs it. The new version loads when you restart dsh; running sessions are not affected, and your modes and edits stay.',
+      'update.confirm': 'Upgrade dsh-preset-manager from {from} to {to}? DSH downloads it from {host} and installs it. The new version loads when you restart dsh; running sessions are not affected, and your modes and edits stay.',
       'update.confirmAction': 'Upgrade',
       'update.installing': 'Installing {to}… ({phase})',
       'update.phase.installing': 'downloading and installing',
@@ -1049,7 +1105,7 @@ window.__ModuleLoader__.load({
       'update.cancelled': 'Cancelled; the installed version is unchanged.',
       'update.upgraded': 'Upgraded to {to} (was {from}).',
       'update.dismiss': 'Dismiss',
-      'update.version': 'dsh-modes {version}',
+      'update.version': 'dsh-preset-manager {version}',
       'update.dev': 'Development install; updates are not checked',
       'update.auto': 'Check for updates automatically',
       'update.checkNow': 'Check now',
@@ -1299,19 +1355,10 @@ window.__ModuleLoader__.load({
       }
     }
 
-    async function call(action, payload) {
-      let response
-      try {
-        response = await fetch(ROUTE, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action, ...payload }),
-        })
-      } catch {
-        throw new ActionFailure('network', 'Network error')
-      }
-      if (!response.ok) throw new ActionFailure(response.status === 404 ? 'network' : 'failed', `HTTP ${response.status}`)
-      const body = await response.json()
+    async function request(connection, action, payload, signal) {
+      const result = await connection.rpc.call('/api', 'dsh-preset-manager', { action, ...payload }, signal)
+      if (!result.ok) throw new ActionFailure('network', result.error?.message ?? 'Host unavailable')
+      const body = result.value
       if (body.ok !== true) throw new ActionFailure(body.code ?? 'failed', body.error, body.details)
       return body.value
     }
@@ -1371,7 +1418,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Localized title and description for the rows this plugin adds to a mode. */
-    const OWN_ROWS = { 'dsh-modes/live-persona': 'live', 'dsh-modes/prompt-tool': 'tool' }
+    const OWN_ROWS = { 'dsh-preset-manager/live-persona': 'live', 'dsh-preset-manager/prompt-tool': 'tool' }
 
     /**
      * Official names and descriptions of the rows the shipped presets mount (Chinese from each package's locale),
@@ -1789,7 +1836,7 @@ window.__ModuleLoader__.load({
       const [copied, setCopied] = React.useState(false)
       React.useEffect(() => {
         let live = true
-        call('read', { id: preset.id }).then((doc) => { if (live) setContent(doc.content) }, (error) => { if (live) setFailure(ui.describe(error)) })
+        ui.call('read', { id: preset.id }).then((doc) => { if (live) setContent(doc.content) }, (error) => { if (live) setFailure(ui.describe(error)) })
         return () => { live = false }
       }, [preset.id, preset.rows])
       React.useEffect(() => {
@@ -1822,7 +1869,7 @@ window.__ModuleLoader__.load({
       const [failure, setFailure] = React.useState(null)
       React.useEffect(() => {
         let live = true
-        call('history', { id: preset.id }).then((value) => { if (live) setEntries(value.entries) }, (reason) => { if (live) setFailure(ui.describe(reason)) })
+        ui.call('history', { id: preset.id }).then((value) => { if (live) setEntries(value.entries) }, (reason) => { if (live) setFailure(ui.describe(reason)) })
         return () => { live = false }
       }, [preset.id])
       if (failure !== null) return h('div', { className: 'pm-error', role: 'alert' }, failure)
@@ -1864,7 +1911,7 @@ window.__ModuleLoader__.load({
       const suffixArea = React.useRef(null)
       const lastFocus = React.useRef('prefix')
       const fileInput = React.useRef(null)
-      const reload = React.useCallback(() => call('prompt', { id: preset.id }), [preset.id])
+      const reload = React.useCallback(() => ui.call('prompt', { id: preset.id }), [preset.id])
       const toggle = name => setPanel(previous => ({ ...previous, [name]: !previous[name] }))
       /** Show `value` as stored, or `draft` on top of it when a draft is being restored. */
       const adopt = (value, draft) => {
@@ -1923,7 +1970,7 @@ window.__ModuleLoader__.load({
           ...changedKeys.includes('includeRuntimeContext') ? { includeRuntimeContext: runtime } : {},
           ...overwrite ? {} : { base },
         }
-        call('setPrompt', { id: preset.id, ...payload })
+        ui.call('setPrompt', { id: preset.id, ...payload })
           .then((value) => {
             const key = info.live ? 'notice.promptSavedLive' : value.effect?.synced ? 'notice.savedSynced' : 'notice.promptSaved'
             ui.setDraft(preset.id, undefined)
@@ -2150,7 +2197,7 @@ window.__ModuleLoader__.load({
       const [usage, setUsage] = React.useState(null)
       React.useEffect(() => {
         let live = true
-        call('usage', { id: preset.id }).then((value) => { if (live) setUsage(value) }, () => { if (live) setUsage({ open: preset.usage }) })
+        ui.call('usage', { id: preset.id }).then((value) => { if (live) setUsage(value) }, () => { if (live) setUsage({ open: preset.usage }) })
         return () => { live = false }
       }, [preset.id])
       if (usage === null) return h('div', { className: 'pm-hint' }, t('confirm.checking'))
@@ -2179,6 +2226,92 @@ window.__ModuleLoader__.load({
         h('ul', null, lines.map(line => h('li', { key: line }, line))))
     }
 
+    function InstalledPlugins({ ui, preset }) {
+      const { t } = ui
+      const [catalog, setCatalog] = React.useState(null)
+      const [query, setQuery] = React.useState('')
+      const [target, setTarget] = React.useState('')
+      const [module, setModule] = React.useState('')
+      const [rowId, setRowId] = React.useState('')
+      const [parentId, setParentId] = React.useState('')
+      const [text, setText] = React.useState('{}')
+      const [info, setInfo] = React.useState(null)
+      const [error, setError] = React.useState(null)
+      const [armed, setArmed] = React.useState(null)
+      const sequence = React.useRef(0)
+      const selected = preset.rows.find(row => row.id === target)
+      const busy = ui.pending.size > 0
+      React.useEffect(() => {
+        let alive = true
+        ui.call('pluginCatalog', { refresh: ui.reloadKey > 0 }).then(value => { if (alive) setCatalog(value) }, reason => { if (alive) setError(ui.describe(reason)) })
+        return () => { alive = false; sequence.current++ }
+      }, [preset.id, preset.pluginRevision, ui.reloadKey])
+      React.useEffect(() => {
+        sequence.current++; setInfo(null); setArmed(null); setError(null)
+        setText(JSON.stringify(selected?.config ?? {}, null, 2))
+      }, [target, module, preset.pluginRevision])
+      const inspect = () => {
+        const ticket = ++sequence.current
+        ui.call('inspectPlugin', { module: selected?.module ?? module }).then(value => {
+          if (ticket === sequence.current) { setInfo(value); setError(null) }
+        }, reason => { if (ticket === sequence.current) setError(ui.describe(reason)) })
+      }
+      const arm = op => {
+        try {
+          const payload = { id: preset.id, base: preset.pluginRevision, op, rowId: selected?.id ?? rowId, module, ...(parentId ? { parentId } : {}) }
+          if (op === 'add' || op === 'configure') payload.config = JSON.parse(text)
+          if (op === 'toggle') payload.enabled = !selected?.enabled
+          setArmed(payload); setError(null)
+        } catch { setError(t('pm.jsonError')) }
+      }
+      const commit = () => ui.run('plugins:' + preset.id, 'editPlugin', armed, 'notice.saved', () => { setArmed(null); setTarget('') })
+      const button = (label, action, disabled = false) => h('button', { type: 'button', className: 'pm-btn', onClick: action, disabled: busy || disabled }, label)
+      const filtered = (catalog?.modules ?? []).filter(item => [item.module, item.description].some(v => v?.toLowerCase().includes(query.toLowerCase())))
+      return h('details', { className: 'pm-advanced', open: true }, h('summary', null, t('pm.plugins')),
+        h('p', { className: 'pm-hint' }, t('pm.override')),
+        h('div', { className: 'pm-bar' },
+          h('select', { className: 'pm-input', value: target, 'aria-label': t('pm.row'), disabled: busy, onChange: e => setTarget(e.target.value) },
+            h('option', { value: '' }, t('pm.add')), preset.rows.filter(row => row.id).map(row => h('option', { key: row.id, value: row.id }, row.id + ' · ' + row.module))),
+          button(t('pm.inspect'), inspect, !selected && !module)),
+        !selected ? h(React.Fragment, null,
+          h('input', { className: 'pm-input', type: 'search', value: query, 'aria-label': t('pm.search'), placeholder: t('pm.search'), onChange: e => setQuery(e.target.value) }),
+          h('select', { className: 'pm-input', value: module, 'aria-label': t('pm.module'), disabled: busy, onChange: e => setModule(e.target.value) },
+            h('option', { value: '' }, t('pm.select')), filtered.map(item => h('option', { key: item.module, value: item.module, disabled: !item.addable }, `${item.module} ${item.version ?? ''}${item.addable ? '' : ' [Host]'}`))),
+          h('input', { className: 'pm-input', value: rowId, placeholder: t('pm.rowId'), 'aria-label': t('pm.rowId'), onChange: e => setRowId(e.target.value) }),
+          h('select', { className: 'pm-input', value: parentId, 'aria-label': t('pm.group'), onChange: e => setParentId(e.target.value) }, h('option', { value: '' }, t('pm.root')), [...new Set(preset.rows.map(row => row.group).filter(Boolean))].map(id => h('option', { key: id, value: id }, id)))) : null,
+        h('label', null, t('pm.config'), h('textarea', { className: 'pm-input', rows: 7, value: text, disabled: busy, 'aria-label': t('pm.config'), onChange: e => { setText(e.target.value); setArmed(null) } })),
+        info ? h('details', null, h('summary', null, t('pm.schema')), h('pre', { className: 'pm-code' }, JSON.stringify(info, null, 2))) : null,
+        h('div', { className: 'pm-bar' }, button(t(selected ? 'pm.save' : 'pm.add'), () => arm(selected ? 'configure' : 'add'), !selected && (!module || !rowId)),
+          selected ? h(React.Fragment, null, button(t('pm.toggle'), () => arm('toggle')), button(t('pm.remove'), () => arm('remove')),
+            ...[-1, 1].map(direction => h('button', { key: direction, type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setArmed({ id: preset.id, base: preset.pluginRevision, op: 'move', rowId: selected.id, direction }) }, t(direction < 0 ? 'pm.up' : 'pm.down')))) : null),
+        armed ? h('div', { className: 'pm-confirm', role: 'alert' }, h('p', null, t('pm.confirm')), button(t('pm.commit'), commit), button(t('pm.cancel'), () => setArmed(null))) : null,
+        error ? h('p', { className: 'pm-error', role: 'alert' }, error) : null,
+        catalog?.diagnostics.length ? h('pre', null, JSON.stringify(catalog.diagnostics, null, 2)) : null)
+    }
+
+    function InstalledSkills({ ui }) {
+      const { t } = ui
+      const [data, setData] = React.useState(null), [query, setQuery] = React.useState(''), [id, setId] = React.useState(ui.scope || ui.presets[0]?.id || '')
+      const [error, setError] = React.useState(null), [armed, setArmed] = React.useState(null)
+      React.useEffect(() => {
+        let alive = true
+        ui.call('installedSkills').then(value => { if (alive) setData(value) }, reason => { if (alive) setError(ui.describe(reason)) })
+        return () => { alive = false }
+      }, [ui.reloadKey])
+      React.useEffect(() => { setArmed(null) }, [id])
+      const preset = ui.presets.find(p => p.id === id), busy = ui.pending.size > 0
+      const commit = () => ui.run('assign:' + id, 'assignSkill', { id, base: preset.pluginRevision, skill: armed.skill, enabled: armed.enabled }, 'notice.saved', () => { setArmed(null); ui.announce('notice', t('pm.refreshSkills')) })
+      return h('details', { open: true }, h('summary', null, t('pm.skills')),
+        h('p', { className: 'pm-hint' }, t('pm.skillsHint')),
+        h('div', { className: 'pm-bar' }, h('select', { className: 'pm-input', value: id, 'aria-label': t('pm.preset'), onChange: e => setId(e.target.value) }, ui.presets.filter(p => p.source !== 'external').map(p => h('option', { key: p.id, value: p.id }, p.name ?? p.id))),
+          h('input', { className: 'pm-input', type: 'search', value: query, placeholder: t('pm.search'), 'aria-label': t('pm.search'), onChange: e => setQuery(e.target.value) })),
+        (data?.skills ?? []).filter(skill => (skill.name + skill.description).toLowerCase().includes(query.toLowerCase())).map(skill => h('div', { key: skill.name, className: 'pm-bar' },
+          h('span', { className: 'pm-grow' }, skill.name + ' · ' + skill.description + (skill.conflicts?.length ? ' [duplicate]' : '')),
+          ...[true, false].map(enabled => h('button', { key: String(enabled), type: 'button', className: 'pm-btn', disabled: busy || !preset || !!skill.conflicts?.length, onClick: () => setArmed({ skill: skill.name, enabled }) }, t(enabled ? 'pm.assign' : 'pm.unassign'))))),
+        armed ? h('div', { role: 'alert' }, t('pm.confirm'), h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: commit }, t('pm.commit')), h('button', { type: 'button', className: 'pm-btn', onClick: () => setArmed(null) }, t('pm.cancel'))) : null,
+        error ? h('p', { role: 'alert', className: 'pm-error' }, error) : null)
+    }
+
     /** The full row list with its own search, for users who want plugin-level control. */
     function PluginsPanel({ ui, preset }) {
       const { t } = ui
@@ -2192,6 +2325,7 @@ window.__ModuleLoader__.load({
         return [row.id, row.module, copy.title, copy.description].some(value => value?.toLowerCase().includes(needle))
       })
       return h(React.Fragment, null,
+        preset.source !== 'external' ? h(InstalledPlugins, { key: preset.id, ui, preset }) : null,
         h('div', { className: 'pm-bar', style: { margin: '8px 0 4px' } },
           h('input', { className: 'pm-input pm-search', type: 'search', value: query, placeholder: t('plugins.search'), 'aria-label': t('plugins.search'), onChange: e => setQuery(e.target.value) }),
           h('label', { className: 'pm-check' },
@@ -2371,7 +2505,7 @@ window.__ModuleLoader__.load({
           await new Promise(resolve => setTimeout(resolve, 100))
         }
       } catch (error) {
-        console.warn(`dsh-modes: could not compose the new session with ${preset}`, error)
+        console.warn(`dsh-preset-manager: could not compose the new session with ${preset}`, error)
       }
     }
 
@@ -2522,7 +2656,7 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         let alive = true
         setLoadError(null)
-        call('tools', { refresh: reloadKey > 0 }).then((value) => {
+        ui.call('tools', { refresh: reloadKey > 0 }).then((value) => {
           if (!alive) return
           setCatalog(value.presets)
           setSelected(previous => previous ?? new Set(value.presets.filter(usableMode).map(mode => mode.id)))
@@ -2575,7 +2709,7 @@ window.__ModuleLoader__.load({
         setBusy(true)
         setFailures([])
         setConfirm(null)
-        call(action, payload).then(value => finish(value, tools), error => ui.announce('error', ui.describe(error))).finally(() => setBusy(false))
+        ui.call(action, payload).then(value => finish(value, tools), error => ui.announce('error', ui.describe(error))).finally(() => setBusy(false))
       }
       const save = (tools) => {
         const edits = tools.flatMap(name => chosen.flatMap(mode => (maps.get(mode.id).has(name)
@@ -2672,7 +2806,7 @@ window.__ModuleLoader__.load({
       const [problem, setProblem] = React.useState(null)
       const load = (refresh) => {
         setChecking(refresh)
-        return call('updateStatus', { refresh }).then((value) => {
+        return ui.call('updateStatus', { refresh }).then((value) => {
           setInfo(value)
           setProgress(previous => (previous !== null && previous.state !== 'idle' ? previous : value.upgrade.state === 'idle' ? null : value.upgrade))
         }, () => undefined).finally(() => setChecking(false))
@@ -2687,7 +2821,7 @@ window.__ModuleLoader__.load({
           void load(false)
         }
         const timer = setInterval(() => {
-          call('upgradeStatus').then((status) => {
+          ui.call('upgradeStatus').then((status) => {
             failures = 0
             if (status.state === 'idle') replaced()
             else setProgress(status)
@@ -2706,17 +2840,17 @@ window.__ModuleLoader__.load({
         setCheck: (enabled) => {
           // The box follows the click at once; a failed save puts it back.
           setInfo(previous => (previous === null ? previous : { ...previous, checkUpdates: enabled }))
-          return call('setUpdateCheck', { enabled }).then(setInfo, (error) => {
+          return ui.call('setUpdateCheck', { enabled }).then(setInfo, (error) => {
             setInfo(previous => (previous === null ? previous : { ...previous, checkUpdates: !enabled }))
             setProblem(ui.describe(error))
           })
         },
         start: (version) => {
           setProblem(null)
-          return call('upgrade', { version }).then(setProgress, error => setProblem(ui.describe(error)))
+          return ui.call('upgrade', { version }).then(setProgress, error => setProblem(ui.describe(error)))
         },
-        dismissUpgraded: () => call('dismissUpgraded').then(setInfo, error => setProblem(ui.describe(error))),
-        cancel: () => call('cancelUpgrade').then(undefined, error => setProblem(ui.describe(error))),
+        dismissUpgraded: () => ui.call('dismissUpgraded').then(setInfo, error => setProblem(ui.describe(error))),
+        cancel: () => ui.call('cancelUpgrade').then(undefined, error => setProblem(ui.describe(error))),
       }
     }
 
@@ -2848,10 +2982,10 @@ window.__ModuleLoader__.load({
       skill.versions.map(version => h('option', { key: version.id, value: version.id }, versionLabel(ui, version))))
       const showVersion = (version) => {
         if (preview?.id === version.id) { setPreview(null); return }
-        call('readSkillVersion', { skill: skill.name, version: version.id }).then(value => setPreview({ id: version.id, text: value.text }), error => ui.announce('error', ui.describe(error)))
+        ui.call('readSkillVersion', { skill: skill.name, version: version.id }).then(value => setPreview({ id: version.id, text: value.text }), error => ui.announce('error', ui.describe(error)))
       }
       // A text area reports LF line endings; the Host keeps the file's own endings when it writes.
-      const openEditor = () => call('readSkillFile', { skill: skill.name }).then((value) => {
+      const openEditor = () => ui.call('readSkillFile', { skill: skill.name }).then((value) => {
         const text = value.text.replace(/\r\n?/g, '\n')
         setEditor({ text, base: text })
       }, error => ui.announce('error', ui.describe(error)))
@@ -3038,7 +3172,7 @@ window.__ModuleLoader__.load({
       const load = (path) => {
         setLoading(true)
         setError(null)
-        return call('skillSources', path === undefined ? {} : { folder: path }).then((value) => {
+        return ui.call('skillSources', path === undefined ? {} : { folder: path }).then((value) => {
           setSources(value)
           setChoices(new Map(value.groups.flatMap(group => group.items.map((item) => {
             const prefix = group.source === 'folder' ? '' : `${group.source.split('-')[0]}-`
@@ -3184,13 +3318,13 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         let alive = true
         setLoadError(null)
-        call('skills', { refresh: reloadKey > 0 }).then((value) => { if (alive) setView(value) }, (error) => { if (alive) setLoadError(ui.describe(error)) })
+        ui.call('skills', { refresh: reloadKey > 0 }).then((value) => { if (alive) setView(value) }, (error) => { if (alive) setLoadError(ui.describe(error)) })
         return () => { alive = false }
       }, [reloadKey])
       /** Run one change; resolves true on success and rejects with the failure for callers that handle it. */
       const send = (action, payload, success = 'skills.saved') => {
         setBusy(true)
-        return call(action, payload).then((value) => {
+        return ui.call(action, payload).then((value) => {
           ui.setList(value)
           setView(value.effect.skills)
           const bad = [...value.effect.results ?? []].filter(result => !['saved', 'unchanged'].includes(result.status))
@@ -3215,10 +3349,10 @@ window.__ModuleLoader__.load({
         const changes = preset === undefined ? [] : enableChanges(capabilityRows(capability, preset).counted)
         if (changes.length === 0) return
         setBusy(true)
-        call('applyRows', { id, changes })
+        ui.call('applyRows', { id, changes })
           .then((value) => {
             ui.setList(value)
-            return call('skills', {}).then((next) => {
+            return ui.call('skills', {}).then((next) => {
               setView(next)
               ui.announce('notice', t('skills.capEnabled', { mode: ui.nameOf(id) }), { long: true })
             })
@@ -3229,7 +3363,7 @@ window.__ModuleLoader__.load({
       /** Create a skill, then open it with its file in the editor. */
       const createSkill = (payload) => {
         setBusy(true)
-        return call('createSkill', payload).then((value) => {
+        return ui.call('createSkill', payload).then((value) => {
           ui.setList(value)
           setView(value.effect.skills)
           setPanel(null)
@@ -3246,7 +3380,7 @@ window.__ModuleLoader__.load({
        */
       const runImport = (items, target) => {
         setBusy(true)
-        return call('importSkills', { items, target }).then((value) => {
+        return ui.call('importSkills', { items, target }).then((value) => {
           ui.setList(value)
           setView(value.effect.skills)
           const results = value.effect.results
@@ -3331,7 +3465,7 @@ window.__ModuleLoader__.load({
         }))))
     }
 
-    function Page({ ctx, t, close }) {
+    function Page({ ctx, t, close, api }) {
       const [data, setData] = React.useState(null)
       const [pageError, setPageError] = React.useState(null)
       const [pending, setPending] = React.useState(() => new Set())
@@ -3363,6 +3497,7 @@ window.__ModuleLoader__.load({
       const [reloadKey, setReloadKey] = React.useState(0)
       const feedbackTimer = React.useRef(undefined)
       const dataRef = React.useRef(null)
+      const dataSequence = React.useRef(0)
       dataRef.current = data
       const timers = React.useRef(new Map())
       React.useEffect(() => () => {
@@ -3421,12 +3556,14 @@ window.__ModuleLoader__.load({
       }
       /** Run one action; a failure of the create form renders under the form, every other one in the feedback bar. */
       const run = (key, action, payload, success, after, errorKey = payload.id) => {
+        const ticket = ++dataSequence.current
         const presetId = payload.id
         const before = dataRef.current?.presets
         setPending(previous => new Set(previous).add(key))
         setErrors((previous) => { const next = new Map(previous); next.delete(errorKey); return next })
-        return call(action, payload)
+        return ui.call(action, payload)
           .then((value) => {
+            if (ticket !== dataSequence.current) return value
             setData(value)
             highlight(presetId)
             if (success !== undefined) announce('notice', presetId, t(value.effect?.synced !== undefined && success === 'notice.saved' ? 'notice.savedSynced' : success), [...value.presets, ...before ?? []])
@@ -3440,8 +3577,10 @@ window.__ModuleLoader__.load({
           .finally(() => { setPending((previous) => { const next = new Set(previous); next.delete(key); return next }) })
       }
       const load = () => {
+        const ticket = ++dataSequence.current
         setPageError(null)
-        call('list').then((value) => {
+        ui.call('list').then((value) => {
+          if (ticket !== dataSequence.current) return
           setData(value)
           setDrafts(new Map(value.presets.flatMap((preset) => {
             const draft = readDraft(preset.id)
@@ -3465,6 +3604,8 @@ window.__ModuleLoader__.load({
 
       const workspace = ctx.get('uiWorkspace')
       const ui = {
+        reloadKey,
+        call: api,
         t, text, describe, describeCode, pending, notices, errors, run, drafts, setDraft,
         lang: String(ctx.locale.getSnapshot().active).toLowerCase().startsWith('zh') ? 'zh' : 'en',
         applyList: (value, presetId) => { setData(value); highlight(presetId) },
@@ -3516,7 +3657,7 @@ window.__ModuleLoader__.load({
         h('style', null, CSS),
         h('div', { className: 'pm-bar' },
           h('h3', { className: 'pm-grow' }, t('title')),
-          h('button', { type: 'button', className: 'pm-btn', onClick: () => { load(); setReloadKey(key => key + 1) } }, t('refresh')),
+          h('button', { type: 'button', className: 'pm-btn', disabled: pending.size > 0, onClick: () => { load(); setReloadKey(key => key + 1) } }, t('refresh')),
           view === 'modes' ? h('button', { type: 'button', className: 'pm-btn pm-primary', disabled: data === null, onClick: () => setCreating({ kind: 'develop' }) }, t('newPreset')) : null),
         h('div', {
           className: 'pm-tabs pm-views', role: 'tablist', 'aria-label': t('title'),
@@ -3537,7 +3678,7 @@ window.__ModuleLoader__.load({
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
         view === 'tools' ? h(ToolDescriptions, { ui, reloadKey }) : null,
-        view === 'skills' ? h(SkillsView, { ui, reloadKey }) : null,
+        view === 'skills' ? h(React.Fragment, null, h(InstalledSkills, { ui }), h(SkillsView, { ui, reloadKey })) : null,
         view !== 'modes' || creating === null ? null : h('div', { className: 'pm-card' },
           h(CreateForm, {
             key: `${creating.kind}:${creating.from ?? ''}`, ui, presets, templates: data?.templates ?? [], initial: creating,
@@ -3612,17 +3753,30 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale'],
+      inject: ['slots', 'locale', 'connection'],
       apply(ctx) {
-        ctx.effect(() => ctx.locale.register(NS, { zh: ZH, en: EN }), 'dsh-modes: dictionaries')
+        const pending = new Set()
+        let closed = false
+        const api = async (action, payload) => {
+          if (closed) throw new ActionFailure('network', 'Preset Manager is unloaded')
+          const abort = new AbortController(); pending.add(abort)
+          const timer = setTimeout(() => abort.abort(), 30000)
+          try {
+            const value = await request(ctx.connection, action, payload, abort.signal)
+            if (closed) throw new ActionFailure('network', 'Preset Manager is unloaded')
+            return value
+          } finally { clearTimeout(timer); pending.delete(abort) }
+        }
+        ctx.effect(() => () => { closed = true; for (const abort of pending) abort.abort(); pending.clear() })
+        ctx.effect(() => ctx.locale.register(NS, { zh: ZH, en: EN }), 'dsh-preset-manager: dictionaries')
         const t = ctx.locale.bind(NS)
         ctx.slots.inject('settings.section', () => ctx.slots.register({
           name: 'settings.section',
-          id: 'dsh-modes',
+          id: 'dsh-preset-manager',
           order: 21,
           label: () => t('nav'),
           locale: NS,
-        }, props => h(PageGuard, { t }, h(Page, { ctx, t, close: props.close }))))
+        }, props => h(PageGuard, { t }, h(Page, { ctx, t, api, close: props.close }))))
       },
     }
   },

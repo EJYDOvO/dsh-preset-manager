@@ -1,1 +1,1 @@
-{ "meta": { "title": "模式管理", "description": "在「设置 → 模式管理」里管理 Agent 模式：开关每个模式能做的事，修改系统提示词和模型读到的工具描述，按模式开关技能并保存版本，用模板新建模式，dsh 升级后一键合并内置更新。" } }
+{ "meta": { "title": "Preset 管理", "description": "在 DSH 原生设置中管理 Preset、已安装 Plugins 与 Skills，支持 Override、Schema/组合校验、排序和更新合并。基于 dsh-modes 的独立 Fork。" } }
