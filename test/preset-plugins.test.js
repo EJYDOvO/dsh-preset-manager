@@ -6,9 +6,18 @@ import { join } from 'node:path'
 import { planPluginEdit, revision, installedCatalog, discoverSkills, validateComposition } from '../preset-plugins.js'
 import { rebase } from '../rebase.js'
 import { StateStore } from '../state.js'
+import { clientEntryFromHtml } from './client-graph.js'
 const catalog = [{ module: 'dsh-fixture', addable: true }]
 const base = [{ id: 'one', name: 'dsh-fixture', config: { count: 1 } }, { id: 'two', name: 'dsh-fixture' }]
 const plan = (rows, input) => planPluginEdit(rows, { base: revision(rows), ...input }, catalog)
+test('frontend checks use the actual advertised resource and reject stale/missing/foreign URLs', () => {
+  const html = entry => '<script>globalThis["__DSH_BOOT__"] = ' + JSON.stringify({ entries: [entry] }) + '</script>'
+  const entry = { id: 'dsh-preset-manager', rev: 'abc', url: 'plugins/??dsh-preset-manager/client.js&rev=abc' }
+  assert.equal(clientEntryFromHtml(html(entry), entry.id).url, entry.url)
+  assert.throws(() => clientEntryFromHtml(html(entry), 'missing'), /not in/)
+  assert.throws(() => clientEntryFromHtml(html({ ...entry, url: 'https://untrusted.invalid/client.js' }), entry.id), /Invalid/)
+  assert.throws(() => clientEntryFromHtml(html({ ...entry, url: entry.url.replace('rev=abc', 'rev=stale') }), entry.id), /Invalid/)
+})
 
 test('literal additions, configuration, toggle, sibling order and removal preserve the source', () => {
   const original = structuredClone(base)

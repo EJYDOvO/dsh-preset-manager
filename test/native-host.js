@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 import { scopeOf } from '@deepseek-ai/dsh-scope'
 import { LlmAdapter } from '@deepseek-ai/dsh-llm'
+import { clientEntryFromHtml } from './client-graph.js'
 
 export const inject = ['agentPresets', 'configEditor', 'pluginPackages', 'agents', 'tools', 'skills', 'connection', 'webServer', 'llm', 'subagents']
 export function apply(ctx, config) {
@@ -45,6 +46,13 @@ async function run(ctx, config) {
     const rpc = await (await raw({ type: 'client-request', rpcId: runId, method: 'dsh-preset-manager', payload: { action: 'list' } })).json()
     assert.equal(rpc.type, 'server-response'); assert.equal(rpc.result.value.ok, true)
     result.checks.push('Native authentication, Origin, non-owner Peer and Web/Desktop RPC envelope')
+    const html = await (await fetch(origin + '/', { headers: { cookie } })).text()
+    const clientEntry = clientEntryFromHtml(html, 'dsh-preset-manager')
+    const clientResponse = await fetch(new URL(clientEntry.url, origin + '/'))
+    assert.equal(clientResponse.status, 200)
+    const clientCode = await clientResponse.text(); assert(clientCode.includes('settings.section') && clientCode.includes('Preset 管理'))
+    assert.equal((await fetch(origin + '/plugins/dsh-preset-manager/client.js')).status, 404, 'Unversioned client resource is deliberately unavailable')
+    result.checks.push('Actual frontend graph advertises and serves the versioned manager client bundle')
     const catalog = await good('pluginCatalog')
     assert(catalog.modules.some(p => p.module === 'dsh-pm-fixture/unused' && p.referenced === restarted))
     const schema = await good('inspectPlugin', { module: 'dsh-pm-fixture/unused' })

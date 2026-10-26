@@ -46,7 +46,7 @@ powershell -NoProfile -File scripts/run-host.ps1
 
 单元测试不需要 DSH。原生测试用全新 Profile、合成模型/Skills，经两个进程验证配置、权限拒绝、依赖/Scope 失败、并发、真实 Spawn 与冷恢复；不读真实 QQ、记忆或凭据。临时文件全部在忽略的 `.local/`。
 
-本轮已验证原生 Host API、持久化与重启，未连接现有实例。GUI 已接入原生模块；实际点击、布局、Desktop 窗口和 HMR 视觉验收仍待完成。Windows 上游有一项文件符号链接测试默认跳过，跨平台 CI 保留该测试。
+已在 DSH 0.2.1-rc.2 的既有 Character test.16 Profile 安装并重启验证：Owner API、Schema 投影和原生页面发布的版本化客户端资源正常，Character、Worker 与单一 QQ Gateway 保持运行，数据校验不变。隔离测试另覆盖持久化、冷恢复和装配失败回退。实际页面点击、布局、Desktop 窗口和 HMR 视觉验收仍待完成；接口与资源可用不等于已完成视觉验收。Windows 上游有一项文件符号链接测试默认跳过，跨平台 CI 保留该测试。
 
 动态 Provider 激活后才能由原生 Registry 枚举；不会为了发现 Skills 自动执行未引用 Provider，也不扫描整个磁盘。无元信息的导出显示为候选，名称不证明其是插件；没有 Config 的模块无 Schema，仍需装配验证。
 

@@ -38,4 +38,6 @@ Original self-update helpers are retained for the manager itself with the new pa
 
 Run `npm test` and the two-process `scripts/run-host.ps1` against the installed DSH. The native test covers Owner fencing, real API envelopes, package discovery, Schema projection, invalid/missing/leaking plugin rejection without Profile writes, CAS, source read-only, scoped Skills, ordinary Workers and native Spawn/cold recovery. Synthetic LLM responses prove routing, not model quality. Browser/actual Desktop visual acceptance is not yet verified.
 
+Frontend resource checks read the advertised URL from the native `__DSH_BOOT__` graph. This Host serves revisioned combo resources; an invented `/plugins/<package>/client.js` address deliberately returns 404 and is not evidence of failed activation.
+
 Before replacing a package, retain package manifest/lock, Profile patch and `.dsh-preset-manager/`. Roll back package and matching configuration together through native management; retain user Session/Memory files. No automatic migration from original Modes or live deployment is performed by the test scripts. Useful failure evidence is left in `.local/`, never packaged or committed.
