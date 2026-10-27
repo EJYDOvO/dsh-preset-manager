@@ -28,6 +28,31 @@ window.__ModuleLoader__.load({
     const VARIABLE_NAME = /^[a-z][a-z0-9_]*$/
 
     const ZH = {
+      'resources.added': '已添加',
+      'resources.available': '未添加',
+      'resources.official': 'DSH 官方',
+      'resources.extra': '额外安装',
+      'resources.unknown': '来源未确认',
+      'resources.empty': '此分区没有匹配资源。',
+      'resources.loading': '正在扫描已安装资源…',
+      'resources.failed': '扫描失败，请刷新重试。',
+      'resources.refresh': '刷新资源',
+      'resources.enabled': '已启用',
+      'resources.disabled': '已关闭',
+      'resources.conditional': '条件启用',
+      'resources.failedRow': '装配失败',
+      'resources.unmounted': '当前未装配',
+      'resources.missing': '文件或模块缺失',
+      'resources.hostOnly': '仅限 Host，不能加入 Preset',
+      'resources.edit': '配置',
+      'resources.saving': '正在保存…',
+      'resources.native': '原生继承 · 可关闭，不删除文件',
+      'resources.assigned': '手动分配',
+      'resources.managed': '策略配置 · 停用或固定版本',
+      'resources.noTool': '未装配 Skill Tool',
+      'resources.duplicate': '名称冲突',
+      'resources.policy': '调用策略限制',
+      'view.plugins': '插件',
       'pm.plugins': '已安装插件编排',
       'pm.override': '基础 Preset 的源定义只读；所有修改保存为当前 Profile 的 Override。不会安装插件。变更影响新 Session，现有 Session 保留原修订。',
       'pm.row': '选择现有插件行',
@@ -359,7 +384,7 @@ window.__ModuleLoader__.load({
       'skills.notInMode': '这个模式找不到它',
       'skills.currentFile': '当前文件',
       'skills.noTool': '这些模式未开启「技能」能力，不受影响：{modes}',
-      'skills.capOff': '这些模式未开启「技能」能力，技能对它们不起作用，也不会出现在下面的开关里：{modes}',
+      'skills.capOff': '这些模式未装配 Skill Tool：{modes}。仍可查看发现的文件及分配记录，但不代表 Agent 能调用。',
       'skills.capOn': '为「{mode}」开启',
       'skills.capEnabled': '已为「{mode}」开启技能能力 · 之后新建的会话生效',
       'skills.versions': '版本',
@@ -578,6 +603,31 @@ window.__ModuleLoader__.load({
       'err.not-running': '没有正在进行的升级',
     }
     const EN = {
+      'resources.added': 'Added',
+      'resources.available': 'Not added',
+      'resources.official': 'DSH official',
+      'resources.extra': 'Additional installations',
+      'resources.unknown': 'Origin unconfirmed',
+      'resources.empty': 'No matching resources in this section.',
+      'resources.loading': 'Scanning installed resources…',
+      'resources.failed': 'Scan failed. Refresh to retry.',
+      'resources.refresh': 'Refresh resources',
+      'resources.enabled': 'Enabled',
+      'resources.disabled': 'Disabled',
+      'resources.conditional': 'Conditional',
+      'resources.failedRow': 'Assembly failed',
+      'resources.unmounted': 'Not currently mounted',
+      'resources.missing': 'File or module missing',
+      'resources.hostOnly': 'Host only; cannot add to a Preset',
+      'resources.edit': 'Configure',
+      'resources.saving': 'Saving…',
+      'resources.native': 'Native access · disable without deleting files',
+      'resources.assigned': 'Assigned manually',
+      'resources.managed': 'Policy configuration · disabled or pinned',
+      'resources.noTool': 'Skill Tool not assembled',
+      'resources.duplicate': 'Name conflict',
+      'resources.policy': 'Invocation policy restriction',
+      'view.plugins': 'Plugins',
       'pm.plugins': 'Installed plugin composition',
       'pm.override': 'Base sources are read-only; changes use this Profile override. No plugins are installed. New Sessions use changes; existing Sessions retain their revisions.',
       'pm.row': 'Existing plugin row',
@@ -909,7 +959,7 @@ window.__ModuleLoader__.load({
       'skills.notInMode': 'Not found in this mode',
       'skills.currentFile': 'Current file',
       'skills.noTool': 'These modes have the Skills capability off and are not affected: {modes}',
-      'skills.capOff': 'These modes have the Skills capability off, so skills do nothing in them and they are not in the switches below: {modes}',
+      'skills.capOff': 'These modes do not assemble the Skill Tool: {modes}. Discovered files and assignments remain visible; this does not mean the Agent can invoke them.',
       'skills.capOn': 'Turn it on for {mode}',
       'skills.capEnabled': 'Skills capability on for {mode} · applies to new sessions',
       'skills.versions': 'Versions',
@@ -1270,6 +1320,12 @@ window.__ModuleLoader__.load({
 .pm-behavior { display: flex; flex-direction: column; margin-top: 6px; padding-top: 4px; border-top: .5px solid var(--dsw-alias-border-l3); }
 .pm-behavior .pm-capline + .pm-capline { border-top: .5px solid var(--dsw-alias-border-l4); }
 .pm-views { margin: 0; }
+.pm-resource-section { margin-top: 16px; }
+.pm-resource-group { margin: 10px 0; min-width: 0; }
+.pm-resource-section h3 { font-size: 15px; margin: 12px 0; }
+.pm-resource-group h4 { font-size: 13px; margin: 8px 0; color: var(--dsw-alias-label-secondary); }
+.pm-resource-skill { margin: 8px 0; }
+.pm-resource-browser { min-width: 0; overflow-wrap: anywhere; }
 .pm-tools { display: flex; flex-direction: column; gap: 10px; }
 .pm-toolrow { border: .5px solid var(--dsw-alias-settings-card-stroke); border-radius: var(--pm-r-md); background: var(--dsw-alias-settings-card-fill); }
 .pm-toolrow.is-dirty { border-color: var(--dsw-alias-state-warn-primary); }
@@ -2264,116 +2320,100 @@ window.__ModuleLoader__.load({
         }), info.form.fallback.length ? h('p', { className: 'pm-hint' }, t('pm.jsonFallback') + ': ' + info.form.fallback.join(', ')) : null)
     }
 
+    // Display groups never change Row identity, native Scope or configuration order.
+    function resourceSections(t, items, query, render) {
+      const needle = query.trim().toLowerCase()
+      return [true, false].map(added => {
+        const all = items.filter(item => item.added === added)
+        return h('section', { key: String(added), className: 'pm-resource-section', 'aria-label': t(added ? 'resources.added' : 'resources.available') },
+          h('h3', null, t(added ? 'resources.added' : 'resources.available') + ' · ' + all.length),
+          ...['official', 'extra'].map(origin => {
+            const group = all.filter(item => (item.origin === 'official' ? 'official' : 'extra') === origin)
+            const visible = group.filter(item => !needle || item.search.toLowerCase().includes(needle))
+            return h('section', { key: origin, className: 'pm-resource-group', 'aria-label': t(`resources.${origin}`) },
+              h('h4', null, t(`resources.${origin}`) + ' · ' + visible.length + (needle ? ' / ' + group.length : '')),
+              visible.length ? visible.map(render) : h('p', { className: 'pm-muted' }, t('resources.empty')))
+          }))
+      })
+    }
+    function pluginState(row, item) {
+      if (row.failure) return 'failedRow'
+      if (item?.availability === 'unresolved') return 'missing'
+      if (row.declared === 'conditional') return 'conditional'
+      if (row.declared === false || row.inheritedOff) return 'disabled'
+      return row.enabled === true ? 'enabled' : 'unmounted'
+    }
     function InstalledPlugins({ ui, preset }) {
       const { t } = ui
-      const [catalog, setCatalog] = React.useState(null)
-      const [query, setQuery] = React.useState('')
-      const [target, setTarget] = React.useState('')
-      const [module, setModule] = React.useState('')
-      const [rowId, setRowId] = React.useState('')
-      const [parentId, setParentId] = React.useState('')
-      const [text, setText] = React.useState('{}')
-      const [info, setInfo] = React.useState(null)
-      const [error, setError] = React.useState(null)
-      const [armed, setArmed] = React.useState(null)
-      const sequence = React.useRef(0)
-      const selected = preset.rows.find(row => row.id === target)
-      const busy = ui.pending.size > 0
+      const [catalog, setCatalog] = React.useState(null), [query, setQuery] = React.useState('')
+      const [target, setTarget] = React.useState(''), [module, setModule] = React.useState(''), [rowId, setRowId] = React.useState(''), [parentId, setParentId] = React.useState('')
+      const [text, setText] = React.useState('{}'), [info, setInfo] = React.useState(null), [error, setError] = React.useState(null), [armed, setArmed] = React.useState(null)
+      const [loading, setLoading] = React.useState(true), [refresh, setRefresh] = React.useState(0)
+      const sequence = React.useRef(0), mounted = React.useRef(true), submitting = React.useRef(false)
+      const selected = preset.rows.find(row => row.id === target), busy = ui.pending.size > 0
+      React.useEffect(() => { mounted.current = true; return () => { mounted.current = false; sequence.current++ } }, [])
       React.useEffect(() => {
-        let alive = true
-        ui.call('pluginCatalog', { refresh: ui.reloadKey > 0 }).then(value => { if (alive) setCatalog(value) }, reason => { if (alive) setError(ui.describe(reason)) })
+        let alive = true; setLoading(true); setError(null); setCatalog(null)
+        ui.call('pluginCatalog', { refresh: refresh > 0 || ui.reloadKey > 0 }).then(value => { if (alive) setCatalog(value) }, reason => { if (alive) setError(ui.describe(reason)) }).finally(() => { if (alive) setLoading(false) })
         return () => { alive = false; sequence.current++ }
-      }, [preset.id, preset.pluginRevision, ui.reloadKey])
-      React.useEffect(() => {
-        sequence.current++; setInfo(null); setArmed(null); setError(null)
-        setText(JSON.stringify(selected?.config ?? {}, null, 2))
-        const name = selected?.module ?? module
-        if (name && catalog?.modules.some(item => item.module === name && item.availability === 'installed')) inspect(name)
-      }, [target, module, preset.pluginRevision])
+      }, [preset.id, preset.pluginRevision, ui.reloadKey, refresh])
+      React.useEffect(() => { sequence.current++; setInfo(null); setArmed(null); setError(null); setText(JSON.stringify(selected?.config ?? {}, null, 2)) }, [target, module, preset.pluginRevision])
       const inspect = (name = selected?.module ?? module) => {
         const ticket = ++sequence.current
-        ui.call('inspectPlugin', { module: name }).then(value => {
-          if (ticket === sequence.current) { setInfo(value); setError(null) }
-        }, reason => { if (ticket === sequence.current) setError(ui.describe(reason)) })
+        ui.call('inspectPlugin', { module: name }).then(value => { if (ticket === sequence.current && mounted.current) setInfo(value) }, reason => { if (ticket === sequence.current && mounted.current) setError(ui.describe(reason)) })
       }
+      const choose = (row, item) => { setTarget(row?.id ?? ''); setModule(row ? '' : item.module); setRowId(''); setInfo(null); setArmed(null) }
       const arm = op => {
         try {
           const payload = { id: preset.id, base: preset.pluginRevision, op, rowId: selected?.id ?? rowId, module, ...(parentId ? { parentId } : {}) }
           if (op === 'add' || op === 'configure') payload.config = JSON.parse(text)
-          if (op === 'toggle') payload.enabled = !selected?.enabled
+          if (op === 'toggle') payload.enabled = selected?.declared === false
           setArmed(payload); setError(null)
         } catch { setError(t('pm.jsonError')) }
       }
-      const commit = () => ui.run('plugins:' + preset.id, 'editPlugin', armed, 'notice.saved', () => { setArmed(null); setTarget('') })
+      const commit = () => {
+        if (submitting.current || !armed || busy) return
+        submitting.current = true
+        Promise.resolve(ui.run('plugins:' + preset.id, 'editPlugin', armed, 'notice.saved', () => { if (mounted.current) { setArmed(null); setTarget(''); setModule(''); setRefresh(n => n + 1) } })).finally(() => { submitting.current = false })
+      }
       const button = (label, action, disabled = false) => h('button', { type: 'button', className: 'pm-btn', onClick: action, disabled: busy || disabled }, label)
-      const filtered = (catalog?.modules ?? []).filter(item => [item.module, item.description].some(v => v?.toLowerCase().includes(query.toLowerCase())))
-      return h('details', { className: 'pm-advanced', open: true }, h('summary', null, t('pm.plugins')),
-        h('p', { className: 'pm-hint' }, t('pm.override')),
-        h('div', { className: 'pm-bar' },
-          h('select', { className: 'pm-input', value: target, 'aria-label': t('pm.row'), disabled: busy, onChange: e => setTarget(e.target.value) },
-            h('option', { value: '' }, t('pm.add')), preset.rows.filter(row => row.id).map(row => h('option', { key: row.id, value: row.id }, row.id + ' · ' + row.module))),
-          button(t('pm.inspect'), () => inspect(), !selected && !module)),
-        !selected ? h(React.Fragment, null,
-          h('input', { className: 'pm-input', type: 'search', value: query, 'aria-label': t('pm.search'), placeholder: t('pm.search'), onChange: e => setQuery(e.target.value) }),
-          h('select', { className: 'pm-input', value: module, 'aria-label': t('pm.module'), disabled: busy, onChange: e => setModule(e.target.value) },
-            h('option', { value: '' }, t('pm.select')), filtered.map(item => h('option', { key: item.module, value: item.module, disabled: !item.addable }, `${item.module} ${item.version ?? ''}${item.availability !== 'installed' ? ' [unresolved]' : item.hostOnly ? ' [Host]' : ''}${item.referenced ? ' [referenced]' : ''}`))),
-          h('input', { className: 'pm-input', value: rowId, placeholder: t('pm.rowId'), 'aria-label': t('pm.rowId'), onChange: e => setRowId(e.target.value) }),
-          h('select', { className: 'pm-input', value: parentId, 'aria-label': t('pm.group'), onChange: e => setParentId(e.target.value) }, h('option', { value: '' }, t('pm.root')), [...new Set(preset.rows.map(row => row.group).filter(Boolean))].map(id => h('option', { key: id, value: id }, id)))) : null,
-        h(PluginConfigForm, { info, text, busy, t, onChange: value => { setText(value); setArmed(null) } }),
-        h('label', null, t('pm.config'), h('textarea', { className: 'pm-input', rows: 7, value: text, disabled: busy, 'aria-label': t('pm.config'), onChange: e => { setText(e.target.value); setArmed(null) } })),
-        info ? h('details', null, h('summary', null, t('pm.schema')), h('pre', { className: 'pm-code' }, JSON.stringify(info, null, 2))) : null,
-        h('div', { className: 'pm-bar' }, button(t(selected ? 'pm.save' : 'pm.add'), () => arm(selected ? 'configure' : 'add'), !selected && (!module || !rowId)),
-          selected ? h(React.Fragment, null, button(t('pm.toggle'), () => arm('toggle')), button(t('pm.remove'), () => arm('remove')),
-            ...[-1, 1].map(direction => h('button', { key: direction, type: 'button', className: 'pm-btn', disabled: busy, onClick: () => setArmed({ id: preset.id, base: preset.pluginRevision, op: 'move', rowId: selected.id, direction }) }, t(direction < 0 ? 'pm.up' : 'pm.down')))) : null),
-        armed ? h('div', { className: 'pm-confirm', role: 'alert' }, h('p', null, t('pm.confirm')), button(t('pm.commit'), commit), button(t('pm.cancel'), () => setArmed(null))) : null,
-        error ? h('p', { className: 'pm-error', role: 'alert' }, error) : null,
+      const lookup = new Map((catalog?.modules ?? []).map(item => [item.module, item]))
+      const configured = new Set(preset.rows.map(row => row.module))
+      const items = preset.rows.map((row, i) => ({ key: 'row:' + i, added: true, origin: lookup.get(row.module)?.origin, search: [row.id, row.module, rowCopy(ui,row).title, rowCopy(ui,row).description, row.group].join(' '), row, item: lookup.get(row.module) }))
+        .concat((catalog?.modules ?? []).filter(item => !configured.has(item.module)).map(item => ({ key: item.module, added: false, origin: item.origin, search: item.module + ' ' + item.description, item })))
+      const editor = !!selected || !!module
+      return h('div', { className: 'pm-resource-browser' }, h('p', { className: 'pm-hint' }, t('pm.override')),
+        h('div', { className: 'pm-bar' }, h('input', { className: 'pm-input pm-grow', type: 'search', value: query, 'aria-label': t('pm.search'), placeholder: t('pm.search'), onChange: e => setQuery(e.target.value) }), button(t('resources.refresh'), () => setRefresh(n => n + 1), loading)),
+        loading ? h('p', { role: 'status' }, t('resources.loading')) : null,
+        ...resourceSections(t, items, query, ({ key, row, item, origin }) => h('article', { key, className: 'pm-toolrow', 'data-row-id': row?.id, style: { padding: 12 } },
+          h('div', { className: 'pm-bar' }, h('strong', { className: 'pm-grow' }, row ? rowCopy(ui,row).title + ' · ' + (row.id ?? '—') : item.module),
+            h('span', { className: 'pm-badge' }, t(`resources.${row ? pluginState(row,item) : item.availability === 'unresolved' ? 'missing' : 'available'}`)),
+            origin !== 'official' && origin !== 'extra' ? h('span', { className: 'pm-hint' }, t('resources.unknown')) : null,
+            row ? button(t('resources.edit'), () => choose(row), !row.id || preset.source === 'external') : item.addable ? button(t('pm.add'), () => choose(null, item), preset.source === 'external') : null),
+          h('div', { className: 'pm-hint' }, row ? [row.module, row.group, row.condition, row.failure, item?.error].filter(Boolean).join(' · ') : item.hostOnly ? t('resources.hostOnly') : item.error ?? item.description),
+          row && row.enabled !== undefined ? h('div', { className: 'pm-hint' }, t('detail.live') + ': ' + t(row.enabled ? 'live.on' : 'live.off')) : null)),
+        editor ? h('div', { className: 'pm-advanced' }, h('h4', null, selected ? selected.id + ' · ' + selected.module : module),
+          button(t('pm.cancel'), () => { sequence.current++; setTarget(''); setModule(''); setArmed(null) }), button(t('pm.inspect'), () => inspect(), !lookup.get(selected?.module ?? module)?.availability || lookup.get(selected?.module ?? module)?.availability === 'unresolved'),
+          !selected ? h('div', { className: 'pm-bar' }, h('input', { className: 'pm-input', value: rowId, placeholder: t('pm.rowId'), 'aria-label': t('pm.rowId'), onChange: e => { setRowId(e.target.value); setArmed(null) } }),
+            h('select', { className: 'pm-input', value: parentId, 'aria-label': t('pm.group'), onChange: e => { setParentId(e.target.value); setArmed(null) } }, h('option', { value: '' }, t('pm.root')), (preset.groups ?? [...new Set(preset.rows.map(row => row.group).filter(Boolean))]).map(id => h('option', { key: id, value: id }, id)))) : null,
+          h(PluginConfigForm, { info, text, busy, t, onChange: value => { setText(value); setArmed(null) } }),
+          h('label', null, t('pm.config'), h('textarea', { className: 'pm-input', rows: 7, value: text, disabled: busy, 'aria-label': t('pm.config'), onChange: e => { setText(e.target.value); setArmed(null) } })),
+          info ? h('details', null, h('summary', null, t('pm.schema')), h('pre', { className: 'pm-code' }, JSON.stringify(info, null, 2))) : null,
+          h('div', { className: 'pm-bar' }, button(t(selected ? 'pm.save' : 'pm.add'), () => arm(selected ? 'configure' : 'add'), !selected && (!module || !rowId)),
+            selected ? h(React.Fragment, null, button(t('pm.toggle'), () => arm('toggle'), selected.declared === 'conditional' || selected.inheritedOff), button(t('pm.remove'), () => arm('remove')),
+              ...[-1, 1].map(direction => button(t(direction < 0 ? 'pm.up' : 'pm.down'), () => setArmed({ id: preset.id, base: preset.pluginRevision, op: 'move', rowId: selected.id, direction })))) : null)) : null,
+        armed ? h('div', { className: 'pm-confirm', role: 'alertdialog' }, h('p', null, t('pm.confirm')), button(t('pm.commit'), commit), button(t('pm.cancel'), () => setArmed(null))) : null,
+        busy ? h('p', { role: 'status' }, t('resources.saving')) : null,
+        error || ui.errors?.get(preset.id) ? h('p', { className: 'pm-error', role: 'alert' }, error ?? ui.errors.get(preset.id)) : null,
         catalog?.diagnostics.length ? h('pre', null, JSON.stringify(catalog.diagnostics, null, 2)) : null)
     }
 
-    function InstalledSkills({ ui }) {
-      const { t } = ui
-      const [data, setData] = React.useState(null), [query, setQuery] = React.useState(''), [id, setId] = React.useState(ui.scope || ui.presets[0]?.id || '')
-      const [error, setError] = React.useState(null), [armed, setArmed] = React.useState(null)
-      React.useEffect(() => {
-        let alive = true
-        ui.call('installedSkills').then(value => { if (alive) setData(value) }, reason => { if (alive) setError(ui.describe(reason)) })
-        return () => { alive = false }
-      }, [ui.reloadKey])
-      React.useEffect(() => { setArmed(null) }, [id])
-      const preset = ui.presets.find(p => p.id === id), busy = ui.pending.size > 0
-      const commit = () => ui.run('assign:' + id, 'assignSkill', { id, base: preset.pluginRevision, skill: armed.skill, enabled: armed.enabled }, 'notice.saved', () => { setArmed(null); ui.announce('notice', t('pm.refreshSkills')) })
-      return h('details', { open: true }, h('summary', null, t('pm.skills')),
-        h('p', { className: 'pm-hint' }, t('pm.skillsHint')),
-        h('div', { className: 'pm-bar' }, h('select', { className: 'pm-input', value: id, 'aria-label': t('pm.preset'), onChange: e => setId(e.target.value) }, ui.presets.filter(p => p.source !== 'external').map(p => h('option', { key: p.id, value: p.id }, p.name ?? p.id))),
-          h('input', { className: 'pm-input', type: 'search', value: query, placeholder: t('pm.search'), 'aria-label': t('pm.search'), onChange: e => setQuery(e.target.value) })),
-        (data?.skills ?? []).filter(skill => (skill.name + skill.description).toLowerCase().includes(query.toLowerCase())).map(skill => h('div', { key: skill.name, className: 'pm-bar' },
-          h('span', { className: 'pm-grow' }, skill.name + ' · ' + skill.description + (skill.conflicts?.length ? ' [duplicate]' : '')),
-          ...[true, false].map(enabled => h('button', { key: String(enabled), type: 'button', className: 'pm-btn', disabled: busy || !preset || !!skill.conflicts?.length, onClick: () => setArmed({ skill: skill.name, enabled }) }, t(enabled ? 'pm.assign' : 'pm.unassign'))))),
-        armed ? h('div', { role: 'alert' }, t('pm.confirm'), h('button', { type: 'button', className: 'pm-btn', disabled: busy, onClick: commit }, t('pm.commit')), h('button', { type: 'button', className: 'pm-btn', onClick: () => setArmed(null) }, t('pm.cancel'))) : null,
-        error ? h('p', { role: 'alert', className: 'pm-error' }, error) : null)
-    }
+    function PluginsPanel({ ui, preset }) { return h(InstalledPlugins, { key: preset.id, ui, preset }) }
 
-    /** The full row list with its own search, for users who want plugin-level control. */
-    function PluginsPanel({ ui, preset }) {
-      const { t } = ui
-      const [query, setQuery] = React.useState('')
-      const [onlyChanged, setOnlyChanged] = React.useState(false)
-      const needle = query.trim().toLowerCase()
-      const rows = preset.rows.filter((row) => {
-        if (onlyChanged && !row.changed) return false
-        if (needle === '') return true
-        const copy = rowCopy(ui, row)
-        return [row.id, row.module, copy.title, copy.description].some(value => value?.toLowerCase().includes(needle))
-      })
-      return h(React.Fragment, null,
-        preset.source !== 'external' ? h(InstalledPlugins, { key: preset.id, ui, preset }) : null,
-        h('div', { className: 'pm-bar', style: { margin: '8px 0 4px' } },
-          h('input', { className: 'pm-input pm-search', type: 'search', value: query, placeholder: t('plugins.search'), 'aria-label': t('plugins.search'), onChange: e => setQuery(e.target.value) }),
-          h('label', { className: 'pm-check' },
-            h('input', { type: 'checkbox', checked: onlyChanged, onChange: e => setOnlyChanged(e.target.checked) }),
-            t('plugins.onlyChanged'))),
-        h('div', { className: 'pm-hint' }, t('plugins.intro')),
-        h(PluginList, { ui, preset, rows }))
+    function PluginsView({ ui }) {
+      const id = ui.presets.some(p => p.id === ui.scope) ? ui.scope : ui.presets[0]?.id
+      const preset = ui.presets.find(p => p.id === id)
+      return h('div', null, h('label', null, ui.t('pm.preset'), h('select', { className: 'pm-input', 'aria-label': ui.t('pm.preset'), value: id, onChange: e => ui.setScope(e.target.value) }, ui.presets.map(p => h('option', { key:p.id, value:p.id }, ui.presetName(p))))), preset ? h(PluginsPanel, { ui, preset }) : null)
     }
 
     function PresetCard({ ui, preset, presets, open, onOpen, onDuplicate }) {
@@ -3355,17 +3395,22 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = React.useState(false)
       const [panel, setPanel] = React.useState(null)
       const [editName, setEditName] = React.useState(null)
-      React.useEffect(() => { setBulk(null) }, [ui.scope])
+      const [assignment, setAssignment] = React.useState(null), [scanKey, setScanKey] = React.useState(0), [scanning, setScanning] = React.useState(true)
+      const alive = React.useRef(true), requests = React.useRef(0), submitting = React.useRef(false)
+      React.useEffect(() => { alive.current = true; return () => { alive.current = false; requests.current++ } }, [])
+      React.useEffect(() => { setBulk(null); setAssignment(null); setExpanded(null) }, [ui.scope])
       React.useEffect(() => {
         let alive = true
-        setLoadError(null)
-        ui.call('skills', { refresh: reloadKey > 0 }).then((value) => { if (alive) setView(value) }, (error) => { if (alive) setLoadError(ui.describe(error)) })
+        setLoadError(null); setScanning(true)
+        ui.call('skills', { refresh: reloadKey > 0 || scanKey > 0 }).then((value) => { if (alive) setView(value) }, (error) => { if (alive) setLoadError(ui.describe(error)) }).finally(() => { if (alive) setScanning(false) })
         return () => { alive = false }
-      }, [reloadKey])
+      }, [reloadKey, scanKey])
       /** Run one change; resolves true on success and rejects with the failure for callers that handle it. */
       const send = (action, payload, success = 'skills.saved') => {
-        setBusy(true)
+        if (submitting.current) return Promise.reject(Error(t('resources.saving')))
+        submitting.current = true; const ticket = ++requests.current; setBusy(true)
         return ui.call(action, payload).then((value) => {
+          if (!alive.current || ticket !== requests.current) return false
           ui.setList(value)
           setView(value.effect.skills)
           const bad = [...value.effect.results ?? []].filter(result => !['saved', 'unchanged'].includes(result.status))
@@ -3380,7 +3425,7 @@ window.__ModuleLoader__.load({
         }, (error) => {
           ui.announce('error', ui.describe(error))
           throw error
-        }).finally(() => setBusy(false))
+        }).finally(() => { submitting.current = false; if (alive.current) setBusy(false) })
       }
       const quiet = (action, payload, success) => send(action, payload, success).catch(() => false)
       /** Switch a mode's Skills capability on, as its card's switch does, then read the skills again. */
@@ -3447,20 +3492,23 @@ window.__ModuleLoader__.load({
         if (action === 'setSkillGlobal') return effect.skills.modes.filter(mode => mode.editable && mode.hasSkillTool).map(mode => mode.id)
         return []
       }
-      if (loadError !== null) return h('div', { className: 'pm-error', role: 'alert' }, loadError)
-      if (view === null) return h('div', { className: 'pm-muted' }, t('skills.loading'))
+      if (loadError !== null) return h('div', { className: 'pm-error', role: 'alert' }, loadError, h('button', { type:'button', className:'pm-btn', onClick:()=>setScanKey(k=>k+1) }, t('resources.refresh')))
+      if (view === null) return h('div', { className: 'pm-muted', role:'status' }, t('resources.loading'))
       const usable = view.modes.filter(mode => mode.editable && mode.hasSkillTool)
       // Modes the page could manage but whose Skills capability is off: they have no skill tool to filter.
       const capOff = view.modes.filter(mode => mode.editable && !mode.hasSkillTool && mode.error === undefined)
-      const focus = usable.some(mode => mode.id === ui.scope) ? ui.scope : ''
+      const focus = view.modes.some(mode => mode.id === ui.scope) ? ui.scope : view.modes[0]?.id ?? ''
+      const targetMode = view.modes.find(m => m.id === focus), targetPreset = ui.presets.find(p => p.id === focus)
       const needle = query.trim().toLowerCase()
       // Viewed for one mode, the list holds the skills that mode finds, and those it has a setting for.
-      const inFocus = skill => focus === '' || skill.modes[focus]?.present || skill.modes[focus]?.off || skill.modes[focus]?.pin !== undefined
+      // All discoverable files stay visible, including those without the Skill Tool.
       const matching = view.skills.filter(skill => needle === '' || skill.name.includes(needle) || (skill.description ?? '').toLowerCase().includes(needle))
-      const shown = matching.filter(inFocus)
-      const onHere = shown.filter(skill => !skill.off && !skill.modes[focus]?.off).length
+      const shown = matching
+      const added = skill => { const state=skill.modes[focus]; return !!(state?.present || state?.assigned || state?.managed || state?.off || state?.pin !== undefined) }
+      const assignmentCommit = () => { if (!assignment || !targetPreset) return; void quiet('assignSkill', { id:focus, base:targetPreset.pluginRevision, skill:assignment.name, enabled:true }).then(ok=>{ if(ok && alive.current) setAssignment(null) }) }
+      const onHere = shown.filter(skill => added(skill) && targetMode?.hasSkillTool && !skill.off && !skill.modes[focus]?.off && !skill.modes[focus]?.missing && skill.exists!==false).length
       const bulkChanges = enabled => shown
-        .filter(skill => !skill.off && Boolean(skill.modes[focus]?.off) === enabled)
+        .filter(skill => added(skill) && !skill.off && Boolean(skill.modes[focus]?.off) === enabled)
         .map(skill => ({ preset: focus, skill: skill.name, enabled }))
       const runBulk = (enabled) => {
         const changes = bulkChanges(enabled)
@@ -3472,14 +3520,16 @@ window.__ModuleLoader__.load({
         view.companion === 'dsh-mode-skills' ? h('div', { className: 'pm-warn pm-info', role: 'note' }, t('skills.companion')) : null,
         view.modes.some(mode => mode.error !== undefined) ? h('div', { className: 'pm-warn' }, view.modes.filter(mode => mode.error !== undefined).map(mode => `${ui.nameOf(mode.id)}: ${mode.error}`).join('; ')) : null,
         h('div', { className: 'pm-bar' },
-          h(ScopeSelect, { ui, modes: view.modes, usable, reasonOf: skillReason }),
-          h('span', { className: 'pm-hint pm-grow' }, focus === '' ? null : t('skills.modeSummary', { on: onHere, total: shown.length })),
+          h('label', null, t('pm.preset'), h('select', { className:'pm-input', 'aria-label':t('pm.preset'), value:focus, disabled:busy, onChange:e=>ui.setScope(e.target.value) }, view.modes.map(m=>h('option',{key:m.id,value:m.id},ui.nameOf(m.id))))),
+          h('button',{type:'button',className:'pm-btn',disabled:busy||scanning,onClick:()=>setScanKey(k=>k+1)},t('resources.refresh')),
+          h('span', { className: 'pm-hint pm-grow' }, focus === '' ? null : t('skills.modeSummary', { on: onHere, total: shown.filter(added).length })),
           h('button', { type: 'button', className: 'pm-btn', 'aria-expanded': panel === 'create', disabled: busy, onClick: () => setPanel(panel === 'create' ? null : 'create') }, t('skills.create')),
           h('button', { type: 'button', className: 'pm-btn', 'aria-expanded': panel === 'import', disabled: busy && panel !== 'import', onClick: () => setPanel(panel === 'import' ? null : 'import') }, t('skills.import'))),
         focus === '' ? null : h('div', { className: 'pm-bar pm-end' },
           h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(true).length === 0, onClick: () => runBulk(true) }, t('skills.allOn')),
           h('button', { type: 'button', className: 'pm-btn', disabled: busy || bulkChanges(false).length === 0, onClick: () => setBulk('off') }, t('skills.allOff'))),
-        scopeNote(ui, view.modes, usable, skillReason),
+        scanning ? h('p',{role:'status'},t('resources.loading')) : null,
+        targetMode && !targetMode.hasSkillTool ? h('p',{className:'pm-warn'},t('resources.noTool')) : null,
         capOff.length === 0 ? null : h('div', { className: 'pm-warn pm-info', role: 'note' },
           h('span', { className: 'pm-grow' }, t('skills.capOff', { modes: capOff.map(mode => ui.nameOf(mode.id)).join(ui.lang === 'zh' ? '、' : ', ') })),
           capOff.filter(mode => ui.presets.some(preset => preset.id === mode.id && preset.rows.some(row => row.id === 'tool-skill'))).map(mode => h('button', {
@@ -3497,14 +3547,19 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'pm-btn pm-danger', disabled: busy, onClick: () => runBulk(false) }, t('skills.allOff')))) : null,
         h('input', { className: 'pm-input', style: { width: '100%' }, type: 'search', value: query, placeholder: t('skills.search'), 'aria-label': t('skills.search'), onChange: event => setQuery(event.target.value) }),
         focus !== '' && matching.length > shown.length ? h('div', { className: 'pm-hint' }, t('skills.hiddenOthers', { n: matching.length - shown.length, mode: ui.nameOf(focus) })) : null,
-        shown.length === 0 ? h('div', { className: 'pm-muted' }, t(view.skills.length === 0 ? 'skills.none' : 'skills.empty')) : h('div', { role: 'list', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, shown.map(skill => h(SkillRow, {
-          key: skill.name, ui, skill, modes: view.modes, focus, open: expanded === skill.name, busy,
-          autoEdit: editName === skill.name, onAutoEdited: () => setEditName(null),
-          onReimport: () => runImport([{ path: skill.imported.from, source: skill.imported.source }], 'dsh'),
-          onToggle: () => setExpanded(expanded === skill.name ? null : skill.name),
-          send: (action, payload, success) => (action === 'writeSkillFile' ? send(action, payload, success) : quiet(action, payload, success)),
-        }))))
+        assignment ? h('div',{className:'pm-confirm',role:'alertdialog'},t('pm.confirm'),h('button',{type:'button',className:'pm-btn',disabled:busy,onClick:assignmentCommit},t('pm.commit')),h('button',{type:'button',className:'pm-btn',onClick:()=>setAssignment(null)},t('pm.cancel'))) : null,
+        ...resourceSections(t, shown.map(skill=>({key:skill.name,added:added(skill),origin:skill.origin,search:skill.name+' '+(skill.description??''),skill})), query, ({skill,added:configured,key,origin})=>{
+          const state=skill.modes[focus]??{}, reason=skill.off||state.off?'disabled':skill.exists===false||state.missing?'missing':skill.conflicts?.length?'duplicate':targetMode?.error?'failedRow':!targetMode?.hasSkillTool?'noTool':state.invocation?.modelInvocable===false&&state.invocation?.userInvocable===false?'policy':'enabled'
+          return h('article',{key,className:'pm-resource-skill'},h('div',{className:'pm-bar'},h('span',{className:'pm-badge'},t(`resources.${configured?reason:'available'}`)),
+            origin!=='official'&&origin!=='extra'?h('span',{className:'pm-hint'},t('resources.unknown')):null,
+            configured?h('span',{className:'pm-hint'},t(state.assigned?'resources.assigned':state.native?'resources.native':'resources.managed')):h('button',{type:'button',className:'pm-btn',disabled:busy||!targetMode?.editable||skill.exists===false||skill.assignable===false||!!skill.conflicts?.length,onClick:()=>setAssignment(skill)},t('pm.assign'))),
+            configured ? h(SkillRow, { ui, skill, modes:view.modes, focus, open:expanded===skill.name, busy:busy||!targetMode?.editable,
+              autoEdit:editName===skill.name,onAutoEdited:()=>setEditName(null),onReimport:()=>runImport([{path:skill.imported.from,source:skill.imported.source}],'dsh'),onToggle:()=>setExpanded(expanded===skill.name?null:skill.name),
+              send:(action,payload,success)=>action==='writeSkillFile'?send(action,payload,success):quiet(action,payload,success)
+            }) : h('p',{className:'pm-hint'},skill.name+' · '+skill.description+(skill.conflicts?.length?' · '+t('resources.duplicate'):'')+(skill.assignable===false?' · '+t('resources.policy'):'')))
+        }))
     }
+
 
     function Page({ ctx, t, close, api }) {
       const [data, setData] = React.useState(null)
@@ -3705,12 +3760,12 @@ window.__ModuleLoader__.load({
           onKeyDown: (event) => {
             if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
             event.preventDefault()
-            const order = ['modes', 'tools', 'skills']
+            const order = ['modes', 'plugins', 'tools', 'skills']
             const next = order[(order.indexOf(view) + (event.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length]
             setView(next)
             event.currentTarget.querySelector(`#pm-view-${next}`)?.focus()
           },
-        }, ['modes', 'tools', 'skills'].map(name => h('button', {
+        }, ['modes', 'plugins', 'tools', 'skills'].map(name => h('button', {
           key: name, type: 'button', role: 'tab', id: `pm-view-${name}`, 'aria-selected': view === name, tabIndex: view === name ? 0 : -1,
           className: 'pm-tab', onClick: () => setView(name),
         }, t(`view.${name}`)))),
@@ -3719,7 +3774,8 @@ window.__ModuleLoader__.load({
         pageError === null ? null : h('div', { className: 'pm-error', role: 'alert' }, pageError),
         data?.stateError === undefined ? null : h('div', { className: 'pm-error', role: 'alert' }, t('stateError', { detail: data.stateError })),
         view === 'tools' ? h(ToolDescriptions, { ui, reloadKey }) : null,
-        view === 'skills' ? h(React.Fragment, null, h(InstalledSkills, { ui }), h(SkillsView, { ui, reloadKey })) : null,
+        view === 'plugins' ? h(PluginsView, { ui }) : null,
+        view === 'skills' ? h(SkillsView, { ui, reloadKey }) : null,
         view !== 'modes' || creating === null ? null : h('div', { className: 'pm-card' },
           h(CreateForm, {
             key: `${creating.kind}:${creating.from ?? ''}`, ui, presets, templates: data?.templates ?? [], initial: creating,

@@ -51,3 +51,9 @@ Character test.17 removes default Worker Boundary. The manager itself neither st
 ## Runtime selection
 
 The rc.3 official installer may place DSH outside the existing data/toolkit directory. Tests accept `DSH_CHARACTER_HOST_ROOT` for the selected executable/SDK, while `DSH_INSTALL_ROOT` remains the existing data/tool runtime root. Windows CLI paths are explicitly quoted. No Character dependency or runtime plugin change is needed; native rc.3 Config/Scope/Owner RPC contracts passed the existing two-process regression.
+
+## Resource browser (test.3)
+
+`pluginCatalog` adds display-only `origin` (`official`, `extra`, `unknown`) using resolved installation provenance. `list` retains every configured Row and adds Group IDs, including empty Groups. No catalog scan imports unselected modules. `installedSkills` caches bounded file discovery and reports `assignable`; `skills` combines native visibility with per-Preset `assigned`, `native`, `missing` and invocation state. These fields are UI metadata, never authority or proof of successful tool assembly. Native Config/Scope validation and existing CAS remain mandatory.
+
+Unattributed provider-only resources stay in Additional installations with an unconfirmed-origin label. Profile/junction package paths are canonicalized. No data schema migration is required; rollback restores the previous package and matching Profile lock, retaining `.dsh-preset-manager/`, Session and Memory.

@@ -1,8 +1,9 @@
 /** Installed-only catalog and literal row edits. No installer or package execution during discovery. */
 import { readFile, readdir, stat } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
+import { realpathSync } from 'node:fs'
 import { schemaForm } from './schema-form.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { allRowsById, stable } from './rebase.js'
@@ -12,6 +13,7 @@ export class PluginEditError extends Error {
 }
 const fail = (code, message) => { throw new PluginEditError(code, message) }
 export const revision = rows => createHash('sha256').update(stable(rows)).digest('hex')
+const canonical = value => { try { return realpathSync(value) } catch { return resolve(value) } }
 const safeId = id => typeof id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(id) && !['constructor', 'prototype', '__proto__'].includes(id)
 export function assertLiteral(value, previous) {
   if (value && typeof value === 'object') {
@@ -60,6 +62,26 @@ function entryModules(manifest) {
   return keys.filter(key => !key.includes('*') && !/(?:client|locale|icon|package\.json|types|schema|registry|session)(?:\/|$|\.)/.test(key))
     .map(key => key === '.' ? manifest.name : manifest.name + key.slice(1))
 }
+/** Display provenance only. A package name alone never establishes official origin. */
+export function resourceOrigin(packages, pkg, name) {
+  const entries = packages?.resolution?.entries ?? []
+  const samePath = (a, b) => typeof a === 'string' && typeof b === 'string' && canonical(a) === canonical(b)
+  const entry = entries.find(e => e.name === name && samePath(e.packageDir, pkg?.dir))
+  const base = entries.find(e => e.name === '@deepseek-ai/dsh-base' && e.scope === 'installation')
+  if (entry?.scope === 'installation' && name.startsWith('@deepseek-ai/') && base && samePath(dirname(entry.packageDir), dirname(base.packageDir))) return 'official'
+  return entry || packages?.resolution?.localPackageNames?.includes(name) ? 'extra' : 'unknown'
+}
+export function skillOrigin(packages, file) {
+  if (typeof file !== 'string') return 'unknown'
+  const target = canonical(file)
+  const candidates = [...packages?.resolution?.entries ?? []]
+  if (packages?.resolution?.profileDir) for (const name of packages.resolution.localPackageNames ?? []) {
+    try { const pkg=packages.packageOf(name,pathToFileURL(join(packages.resolution.profileDir,'package.json')).href);if(pkg)candidates.push({name,packageDir:pkg.dir,scope:'profile'}); } catch {}
+  }
+  const entries = candidates.filter(e => target.startsWith(canonical(e.packageDir) + (process.platform === 'win32' ? '\\' : '/'))).sort((a,b) => b.packageDir.length - a.packageDir.length)
+  const entry = entries[0]
+  return entry ? resourceOrigin(packages, { dir: entry.packageDir }, entry.name) : 'unknown'
+}
 export async function installedCatalog(ctx, declaredRows = []) {
   const packages = ctx.get('pluginPackages'), resolution = packages?.resolution
   if (!resolution?.entries) fail('unsupported-host', 'Installed package resolution API is unavailable')
@@ -89,7 +111,7 @@ export async function installedCatalog(ctx, declaredRows = []) {
       if (result.has(module)) continue
       const hostOnly = hostModules.has(module) && !presetModules.has(module)
       const present = await confirmed(module)
-      result.set(module, { module, package: manifest.name, version: manifest.version, description: typeof manifest.description === 'string' ? manifest.description : '',
+      result.set(module, { module, package: manifest.name, version: manifest.version, description: typeof manifest.description === 'string' ? manifest.description : '', origin: resourceOrigin(packages, pkg, manifest.name),
         referenced: presetModules.has(module), addable: present && !hostOnly, availability: present ? 'installed' : 'unresolved', hostOnly,
         scope: hostOnly ? 'host' : present ? 'requires-validation' : 'unresolved', bundle: !!manifest.dsh?.bundle })
     }
@@ -97,7 +119,7 @@ export async function installedCatalog(ctx, declaredRows = []) {
   // A reference is not installation evidence. Resolve unenumerated subpaths without importing code.
   for (const module of presetModules) if (typeof module === 'string' && !result.has(module)) {
     const present = await confirmed(module)
-    result.set(module, { module, referenced: true, addable: present, availability: present ? 'installed' : 'unresolved', hostOnly: false, scope: present ? 'requires-validation' : 'unresolved' })
+    result.set(module, { module, origin:'unknown', referenced: true, addable: present, availability: present ? 'installed' : 'unresolved', hostOnly: false, scope: present ? 'requires-validation' : 'unresolved', ...(!present ? { error:'Module cannot be resolved to an installed file' } : {}) })
   }
   return { modules: [...result.values()].sort((a, b) => a.module.localeCompare(b.module)), diagnostics }
 }

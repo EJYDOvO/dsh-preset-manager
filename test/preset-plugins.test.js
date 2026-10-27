@@ -3,13 +3,21 @@ import { test } from 'node:test'
 import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { planPluginEdit, revision, installedCatalog, discoverSkills, validateComposition } from '../preset-plugins.js'
+import { planPluginEdit, revision, installedCatalog, discoverSkills, validateComposition, resourceOrigin, skillOrigin } from '../preset-plugins.js'
 import { rebase } from '../rebase.js'
 import { StateStore } from '../state.js'
 import { clientEntryFromHtml } from './client-graph.js'
 const catalog = [{ module: 'dsh-fixture', addable: true, availability: 'installed' }]
 const base = [{ id: 'one', name: 'dsh-fixture', config: { count: 1 } }, { id: 'two', name: 'dsh-fixture' }]
 const plan = (rows, input) => planPluginEdit(rows, { base: revision(rows), ...input }, catalog)
+
+test('official origin needs Host installation provenance and resolved package location, never just a name',()=>{
+ const dir=join(tmpdir(),'provenance','node_modules','@deepseek-ai'),base=join(dir,'dsh-base'),official=join(dir,'dsh-tool-fixture'),third=join(tmpdir(),'local-package');
+ const packages={resolution:{entries:[{name:'@deepseek-ai/dsh-base',packageDir:base,scope:'installation'},{name:'@deepseek-ai/dsh-tool-fixture',packageDir:official,scope:'installation'},{name:'dsh-thirdparty',packageDir:third,scope:'profile'}],localPackageNames:[]}};
+ assert.equal(resourceOrigin(packages,{dir:official},'@deepseek-ai/dsh-tool-fixture'),'official');
+ assert.equal(resourceOrigin(packages,{dir:third},'@deepseek-ai/dsh-tool-fixture'),'unknown');assert.equal(resourceOrigin(packages,{dir:third},'dsh-thirdparty'),'extra');
+ assert.equal(skillOrigin(packages,join(official,'skills','a','SKILL.md')),'official');assert.equal(skillOrigin(packages,join(third,'skills','a','SKILL.md')),'extra');assert.equal(skillOrigin(packages,join(tmpdir(),'unknown','SKILL.md')),'unknown');
+});
 test('frontend checks use the actual advertised resource and reject stale/missing/foreign URLs', () => {
   const html = entry => '<script>globalThis["__DSH_BOOT__"] = ' + JSON.stringify({ entries: [entry] }) + '</script>'
   const entry = { id: 'dsh-preset-manager', rev: 'abc', url: 'plugins/??dsh-preset-manager/client.js&rev=abc' }

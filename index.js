@@ -26,7 +26,7 @@ import { NOTE_MAX_CHARS, SKILL_NAME, VERSION_ID, isEditableSkill, needsRow, next
 import { SkillFileError, readVersionMeta, restoreVersion, skillLocation, writeText, writeVersion } from './skill-files.js'
 import { FALLBACK_ROW_ID, LIVE_MODULE, PERSONA_MODULE, guardRows, isGuard, isOwnModule, unguardRows } from './install-guard.js'
 import { DESCRIPTION_MAX_CHARS, copySkill, displayPath, expandHome, findPluginSkills, fingerprint, hasSkillFile, importRoots, listSkillDirs, newSkillText, readCandidate, replaceSkill, skillRoots, sourceState } from './skill-import.js'
-import { PluginEditError, revision, installedCatalog, inspectModule, planPluginEdit, validateComposition, discoverSkills } from './preset-plugins.js'
+import { PluginEditError, revision, installedCatalog, inspectModule, planPluginEdit, validateComposition, discoverSkills, skillOrigin } from './preset-plugins.js'
 
 const ROUTE = '/api/dsh-preset-manager'
 const PRESET_MODULE = '@deepseek-ai/dsh-agent-preset'
@@ -190,7 +190,7 @@ const ACTIONS = {
   pluginCatalog: (m, body) => pluginCatalog(m, body.refresh === true),
   inspectPlugin: async (m, body) => inspectModule(m.ctx, String(body.module), (await pluginCatalog(m)).modules),
   editPlugin: (m, body) => editPlugin(m, body),
-  installedSkills: m => installedSkills(m),
+  installedSkills: (m, body) => installedSkills(m, body.refresh === true),
   assignSkill: (m, body) => assignSkill(m, body),
   list: m => list(m),
   read: (m, body) => m.ctx.agentPresets.readDocument(String(body.id)),
@@ -547,6 +547,7 @@ async function list(m) {
       ...failures.size === 0 ? {} : { failures: [...failures].map(([rowId, detail]) => ({ rowId, detail })) },
       ...sync === undefined ? {} : { sync },
       rows: flat,
+      groups: [...allRowsById(plugins ?? []).values()].filter(p => p.group === true && typeof p.id === 'string').map(p => p.id),
     }
   })
   const registered = new Set(roster.map(row => row.id))
@@ -664,7 +665,7 @@ async function editPlugin(m, body) {
   return effect
 }
 
-async function installedSkills(m) {
+async function installedSkills(m, refresh = false) {
   const roots = [...Object.values(skillRoots())]
   const rows = [...declarations(m.ctx).values()].flatMap(d => [...allRowsById(d.plugins).values()])
     .concat(customPresets(m.ctx).flatMap(p => [...allRowsById(p.plugins).values()]))
@@ -684,7 +685,12 @@ async function installedSkills(m) {
     const cwd = agent.session?.header?.cwd ?? agent.cwd
     if (typeof cwd === 'string') roots.push(join(cwd, '.dsh', 'skills'), join(cwd, '.agents', 'skills'))
   }
-  return discoverSkills(roots)
+  const key = stable(roots), generation = resolution
+  if (!refresh && m.installedSkillCache?.key === key && m.installedSkillCache.generation === generation && Date.now() - m.installedSkillCache.at < SCAN_TTL_MS) return m.installedSkillCache.value
+  const value = await discoverSkills(roots)
+  value.skills = await Promise.all(value.skills.map(async s => ({ ...s, origin: skillOrigin(packages, s.path), assignable: !!await readInstalledSkill(m, s.name, s.path) })))
+  m.installedSkillCache = { key, generation, at: Date.now(), value }
+  return value
 }
 
 async function assignedSkill(m, id, name) {
@@ -711,7 +717,7 @@ async function assignSkill(m, body) {
   const id = String(body.id), name = checkSkill(body.skill)
   presetRows(m.ctx, id)
   if (body.base !== revision(presetRows(m.ctx, id).plugins)) throw new ActionError('plugin-conflict', 'Preset changed; refresh before saving')
-  const found = (await installedSkills(m)).skills.find(s => s.name === name)
+  const found = (await installedSkills(m, true)).skills.find(s => s.name === name)
   if (body.enabled !== false && (!found || found.conflicts?.length)) throw new ActionError('skill-conflict', 'Installed skill missing or ambiguous; resolve duplicate names first')
   if (body.enabled !== false && !await readInstalledSkill(m, name, found.path)) throw new ActionError('skill-conflict', 'Installed skill metadata or invocation policy is invalid')
   const previous = structuredClone((await readSkills(m)).presets[id])
@@ -1751,6 +1757,7 @@ async function skillsView(m, refresh = false) {
   const modes = []
   const live = new Map()
   const presence = new Map()
+  const native = new Map(), assigned = new Map(), invocations = new Map(), missingAssignments = new Map(), managed = new Map()
   for (const mode of roster) {
     let scan
     try {
@@ -1761,10 +1768,14 @@ async function skillsView(m, refresh = false) {
     }
     modes.push({ id: mode.id, editable: mode.editable, hasSkillTool: scan.hasSkillTool })
     for (const skill of scan.skills) {
+      invocations.set(mode.id + '\0' + skill.name, skill.invocation)
       // The manager's own entries say nothing about whether the mode finds the skill itself.
-      if (skill.provider === SKILLS_PROVIDER) continue
+      if (skill.provider === SKILLS_PROVIDER) { if (!managed.has(skill.name)) managed.set(skill.name,new Set());managed.get(skill.name).add(mode.id);continue }
       if (!presence.has(skill.name)) presence.set(skill.name, new Set())
       presence.get(skill.name).add(mode.id)
+      if (!native.has(skill.name)) native.set(skill.name, new Set())
+      native.get(skill.name).add(mode.id)
+      invocations.set(mode.id + '\0' + skill.name, skill.invocation)
       if (!live.has(skill.name)) {
         const { name: _name, provider: _provider, ...info } = skill
         live.set(skill.name, info)
@@ -1772,9 +1783,12 @@ async function skillsView(m, refresh = false) {
     }
   }
   if (m.ctx.get('pluginPackages')?.resolution) {
-    for (const info of (await installedSkills(m)).skills) if (!live.has(info.name)) { const { name, ...rest } = info; live.set(name, rest) }
+    for (const info of (await installedSkills(m, refresh)).skills) { const { name, ...rest } = info; live.set(name, { ...rest, ...live.get(name), origin: info.origin, conflicts: info.conflicts }) }
     for (const [id, record] of Object.entries(content.presets ?? {})) for (const name of Object.keys(record.assigned ?? {})) {
-      if (await assignedSkill(m, id, name)) { if (!presence.has(name)) presence.set(name, new Set()); presence.get(name).add(id) }
+      if (!assigned.has(name)) assigned.set(name, new Set()); assigned.get(name).add(id)
+      const resource = await assignedSkill(m, id, name)
+      if (resource) { if (!presence.has(name)) presence.set(name, new Set()); presence.get(name).add(id) }
+      else { if (!missingAssignments.has(name)) missingAssignments.set(name, new Set()); missingAssignments.get(name).add(id) }
     }
   }
   const stale = [...live].filter(([name, info]) => stable(content.skills?.[name]?.info ?? null) !== stable(info))
@@ -1788,6 +1802,7 @@ async function skillsView(m, refresh = false) {
   }
   const named = [
     ...presence.keys(),
+    ...live.keys(),
     ...Object.keys(content.skills ?? {}),
     ...content.global?.off ?? [],
     ...Object.values(content.presets ?? {}).flatMap(record => [...record?.off ?? [], ...Object.keys(record?.pins ?? {})]),
@@ -1809,12 +1824,18 @@ async function skillsView(m, refresh = false) {
     return {
       name,
       ...info ?? {},
+      origin: info?.origin ?? skillOrigin(m.ctx.get('pluginPackages'), info?.path),
       ...exists.get(name) === undefined ? {} : { exists: exists.get(name) },
       ...typeof info?.path === 'string' ? { display: displayPath(info.path) } : {},
       editable: isEditableSkill(info),
       off: (content.global?.off ?? []).includes(name),
       modes: Object.fromEntries(modes.map(mode => [mode.id, {
         present: presence.get(name)?.has(mode.id) === true,
+        native: native.get(name)?.has(mode.id) === true,
+        assigned: assigned.get(name)?.has(mode.id) === true,
+        managed: managed.get(name)?.has(mode.id) === true,
+        missing: missingAssignments.get(name)?.has(mode.id) === true && !native.get(name)?.has(mode.id),
+        invocation: invocations.get(mode.id + '\0' + name),
         off: (content.presets?.[mode.id]?.off ?? []).includes(name),
         ...content.presets?.[mode.id]?.pins?.[name] === undefined ? {} : { pin: content.presets[mode.id].pins[name] },
       }])),

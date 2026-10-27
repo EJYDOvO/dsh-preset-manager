@@ -1,6 +1,6 @@
 {
   "name": "dsh-preset-manager",
-  "version": "0.1.0-test.2",
+  "version": "0.1.0-test.3",
   "description": "Installed-only Preset, Plugin and Skills manager for DSH, forked from dsh-modes",
   "keywords": [
     "deepseek-harness",
