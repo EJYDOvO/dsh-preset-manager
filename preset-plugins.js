@@ -1,7 +1,9 @@
 /** Installed-only catalog and literal row edits. No installer or package execution during discovery. */
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { pathToFileURL, fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
+import { schemaForm } from './schema-form.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { allRowsById, stable } from './rebase.js'
 
@@ -32,7 +34,7 @@ export function planPluginEdit(current, input, catalog) {
   const rows = structuredClone(current), byId = allRowsById(rows)
   if (input.op === 'add') {
     if (!safeId(input.rowId) || byId.has(input.rowId)) fail('invalid-row', 'Row id must be unique and valid')
-    if (!catalog.some(item => item.module === input.module && item.addable !== false)) fail('not-installed', 'Select an installed, Preset-compatible module')
+    if (!catalog.some(item => item.module === input.module && item.addable === true && item.availability === 'installed')) fail('not-installed', 'Select a confirmed installed, Preset-compatible module')
     const parent = input.parentId === undefined ? rows : byId.get(input.parentId)
     const target = Array.isArray(parent) ? parent : parent?.group === true ? parent.config : undefined
     if (!Array.isArray(target)) fail('invalid-row', 'Target group does not exist')
@@ -66,6 +68,15 @@ export async function installedCatalog(ctx, declaredRows = []) {
   const presetModules = new Set(declaredRows.flatMap(rows => [...allRowsById(rows).values()].map(row => row.name)))
   const hostModules = new Set(ctx.configEditor.entries().filter(e => !e.options.group).map(e => e.options.name))
   const installed = new Set([...resolution.entries.map(item => item.name), ...resolution.localPackageNames ?? []])
+  const confirmed = async module => {
+    try {
+      const pkg = packages.packageOf(module, base)
+      if (!pkg || !installed.has(pkg.name ?? JSON.parse(await readFile(pkg.manifestPath, 'utf8')).name)) return false
+      const loader = ctx.loader?.internal
+      const target = loader ? fileURLToPath((loader.version === 'v2' ? loader.resolveSync(base, { specifier: module, attributes: {} }) : loader.resolveSync(module, base, {})).url) : createRequire(base).resolve(module)
+      return (await stat(target)).isFile()
+    } catch { return false }
+  }
   for (const name of installed) {
     // Resolve through the Host so shadowed installation/profile packages cannot become two identities.
     const pkg = packages.packageOf(name, base)
@@ -77,18 +88,22 @@ export async function installedCatalog(ctx, declaredRows = []) {
     for (const module of entryModules(manifest)) {
       if (result.has(module)) continue
       const hostOnly = hostModules.has(module) && !presetModules.has(module)
+      const present = await confirmed(module)
       result.set(module, { module, package: manifest.name, version: manifest.version, description: typeof manifest.description === 'string' ? manifest.description : '',
-        referenced: presetModules.has(module), addable: !hostOnly,
-        scope: hostOnly ? 'host' : 'requires-validation', bundle: !!manifest.dsh?.bundle })
+        referenced: presetModules.has(module), addable: present && !hostOnly, availability: present ? 'installed' : 'unresolved', hostOnly,
+        scope: hostOnly ? 'host' : present ? 'requires-validation' : 'unresolved', bundle: !!manifest.dsh?.bundle })
     }
   }
-  // Subpath rows that lack an exports map stay discoverable, but additions still resolve natively.
-  for (const module of presetModules) if (typeof module === 'string' && !result.has(module)) result.set(module, { module, referenced: true, addable: true, scope: 'requires-validation' })
+  // A reference is not installation evidence. Resolve unenumerated subpaths without importing code.
+  for (const module of presetModules) if (typeof module === 'string' && !result.has(module)) {
+    const present = await confirmed(module)
+    result.set(module, { module, referenced: true, addable: present, availability: present ? 'installed' : 'unresolved', hostOnly: false, scope: present ? 'requires-validation' : 'unresolved' })
+  }
   return { modules: [...result.values()].sort((a, b) => a.module.localeCompare(b.module)), diagnostics }
 }
 /** Inspection imports installed trusted code but does not apply it. Native Loader unwraps CJS/default exports. */
 export async function inspectModule(ctx, module, catalog) {
-  if (!catalog.some(row => row.module === module)) fail('not-installed', 'Module is not in the installed catalog')
+  if (!catalog.some(row => row.module === module && row.availability === 'installed')) fail('not-installed', 'Module installation could not be confirmed')
   const base = pathToFileURL(join(dirname(ctx.configEditor.documentPath), 'package.json')).href
   const exports = await ctx.loader.internal.import(module, base, {})
   const plugin = ctx.loader.unwrapExports(exports)
@@ -97,12 +112,14 @@ export async function inspectModule(ctx, module, catalog) {
   const required = Array.isArray(inject) ? inject : Object.entries(inject).filter(([, v]) => v !== false && v?.required !== false).map(([k]) => k)
   let schema, limitations = []
   if (plugin.Config) {
-    const { createConfigProjector } = await ctx.loader.internal.import('@deepseek-ai/dsh-app-boot', base, {})
+    try {
+    const { createConfigProjector, LOADER_EXPRESSION_SCHEMA } = await ctx.loader.internal.import('@deepseek-ai/dsh-app-boot', base, {})
     const project = await createConfigProjector(), projected = project(plugin.Config, 'plugin')
-    schema = { ...projected.schema, $defs: projected.definitions }
+    schema = { ...projected.schema, $defs: { loaderExpression: LOADER_EXPRESSION_SCHEMA, ...projected.definitions } }
     limitations = projected.limitations
+    } catch (error) { limitations = ['Schema projection unavailable: ' + error.message] }
   }
-  return { module, required, schema, limitations, hasSchema: !!plugin.Config }
+  return { module, required, schema, limitations, form: schemaForm(schema, limitations), hasSchema: !!plugin.Config }
 }
 /** Native Preset revision performs dependency AND scope-leak audit; always unregister the probe. */
 export async function validateComposition(ctx, rows) {

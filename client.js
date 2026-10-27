@@ -39,6 +39,10 @@ window.__ModuleLoader__.load({
       'pm.rowId': '唯一插件行 ID',
       'pm.group': '目标分组',
       'pm.root': 'Preset 顶层',
+      'pm.form': '配置表单',
+      'pm.include': '设置此项',
+      'pm.omit': '使用默认值',
+      'pm.jsonFallback': '复杂字段请使用下方 JSON 编辑',
       'pm.config': '插件配置（JSON）',
       'pm.schema': 'Schema、服务依赖与限制',
       'pm.save': '保存配置',
@@ -585,6 +589,10 @@ window.__ModuleLoader__.load({
       'pm.rowId': 'Unique plugin row ID',
       'pm.group': 'Target group',
       'pm.root': 'Preset root',
+      'pm.form': 'Configuration form',
+      'pm.include': 'Set value',
+      'pm.omit': 'Use default',
+      'pm.jsonFallback': 'Edit complex fields in JSON below',
       'pm.config': 'Plugin configuration (JSON)',
       'pm.schema': 'Schema, service dependencies and limitations',
       'pm.save': 'Save configuration',
@@ -2226,6 +2234,36 @@ window.__ModuleLoader__.load({
         h('ul', null, lines.map(line => h('li', { key: line }, line))))
     }
 
+    // Literal fields only. Complex values and loader expressions remain editable as JSON.
+    function PluginConfigForm({ info, text, onChange, busy, t }) {
+      let value
+      try { value = JSON.parse(text) } catch { return null }
+      if (!info?.form || !value || Array.isArray(value) || typeof value !== 'object') return null
+      const change = (field, next, omit = false) => {
+        const copy = { ...value }
+        if (omit) delete copy[field.key]; else copy[field.key] = next
+        onChange(JSON.stringify(copy, null, 2))
+      }
+      return h('fieldset', { disabled: busy, className: 'pm-schema-form' }, h('legend', null, t('pm.form')),
+        info.form.fields.map(field => {
+          const present = Object.prototype.hasOwnProperty.call(value, field.key), current = value[field.key]
+          const complex = present && (current === null || typeof current === 'object')
+          const initial = field.default ?? field.enum?.[0] ?? (field.type === 'boolean' ? false : ['integer','number'].includes(field.type) ? 0 : '')
+          const label = 'config.' + field.key
+          const props = { className: 'pm-input', 'aria-label': label, disabled: !present || complex }
+          const input = field.type === 'enum' ? h('select', { ...props, value: JSON.stringify(current), onChange: e => change(field, JSON.parse(e.target.value)) },
+            field.enum.map(item => h('option', { key: JSON.stringify(item), value: JSON.stringify(item) }, String(item))))
+            : field.type === 'boolean' ? h('input', { ...props, type: 'checkbox', checked: current === true, onChange: e => change(field, e.target.checked) })
+            : h('input', { ...props, type: ['integer','number'].includes(field.type) ? 'number' : 'text', value: complex || !present ? '' : current,
+              min: field.minimum, max: field.maximum, minLength: field.minLength, maxLength: field.maxLength, pattern: field.pattern, step: field.type === 'integer' ? 1 : 'any',
+              onChange: e => { const next = field.type === 'string' ? e.target.value : e.target.valueAsNumber; if (typeof next !== 'number' || Number.isFinite(next)) change(field, next) } })
+          return h('div', { key: field.key, className: 'pm-bar' },
+            h('label', null, field.title + (field.required ? ' *' : ''), input),
+            h('button', { type: 'button', className: 'pm-btn', disabled: present && field.required, onClick: () => change(field, initial, present) }, t(present ? 'pm.omit' : 'pm.include')),
+            h('span', { className: 'pm-hint' }, complex ? t('pm.jsonFallback') : field.description))
+        }), info.form.fallback.length ? h('p', { className: 'pm-hint' }, t('pm.jsonFallback') + ': ' + info.form.fallback.join(', ')) : null)
+    }
+
     function InstalledPlugins({ ui, preset }) {
       const { t } = ui
       const [catalog, setCatalog] = React.useState(null)
@@ -2249,10 +2287,12 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         sequence.current++; setInfo(null); setArmed(null); setError(null)
         setText(JSON.stringify(selected?.config ?? {}, null, 2))
+        const name = selected?.module ?? module
+        if (name && catalog?.modules.some(item => item.module === name && item.availability === 'installed')) inspect(name)
       }, [target, module, preset.pluginRevision])
-      const inspect = () => {
+      const inspect = (name = selected?.module ?? module) => {
         const ticket = ++sequence.current
-        ui.call('inspectPlugin', { module: selected?.module ?? module }).then(value => {
+        ui.call('inspectPlugin', { module: name }).then(value => {
           if (ticket === sequence.current) { setInfo(value); setError(null) }
         }, reason => { if (ticket === sequence.current) setError(ui.describe(reason)) })
       }
@@ -2272,13 +2312,14 @@ window.__ModuleLoader__.load({
         h('div', { className: 'pm-bar' },
           h('select', { className: 'pm-input', value: target, 'aria-label': t('pm.row'), disabled: busy, onChange: e => setTarget(e.target.value) },
             h('option', { value: '' }, t('pm.add')), preset.rows.filter(row => row.id).map(row => h('option', { key: row.id, value: row.id }, row.id + ' · ' + row.module))),
-          button(t('pm.inspect'), inspect, !selected && !module)),
+          button(t('pm.inspect'), () => inspect(), !selected && !module)),
         !selected ? h(React.Fragment, null,
           h('input', { className: 'pm-input', type: 'search', value: query, 'aria-label': t('pm.search'), placeholder: t('pm.search'), onChange: e => setQuery(e.target.value) }),
           h('select', { className: 'pm-input', value: module, 'aria-label': t('pm.module'), disabled: busy, onChange: e => setModule(e.target.value) },
-            h('option', { value: '' }, t('pm.select')), filtered.map(item => h('option', { key: item.module, value: item.module, disabled: !item.addable }, `${item.module} ${item.version ?? ''}${item.addable ? '' : ' [Host]'}`))),
+            h('option', { value: '' }, t('pm.select')), filtered.map(item => h('option', { key: item.module, value: item.module, disabled: !item.addable }, `${item.module} ${item.version ?? ''}${item.availability !== 'installed' ? ' [unresolved]' : item.hostOnly ? ' [Host]' : ''}${item.referenced ? ' [referenced]' : ''}`))),
           h('input', { className: 'pm-input', value: rowId, placeholder: t('pm.rowId'), 'aria-label': t('pm.rowId'), onChange: e => setRowId(e.target.value) }),
           h('select', { className: 'pm-input', value: parentId, 'aria-label': t('pm.group'), onChange: e => setParentId(e.target.value) }, h('option', { value: '' }, t('pm.root')), [...new Set(preset.rows.map(row => row.group).filter(Boolean))].map(id => h('option', { key: id, value: id }, id)))) : null,
+        h(PluginConfigForm, { info, text, busy, t, onChange: value => { setText(value); setArmed(null) } }),
         h('label', null, t('pm.config'), h('textarea', { className: 'pm-input', rows: 7, value: text, disabled: busy, 'aria-label': t('pm.config'), onChange: e => { setText(e.target.value); setArmed(null) } })),
         info ? h('details', null, h('summary', null, t('pm.schema')), h('pre', { className: 'pm-code' }, JSON.stringify(info, null, 2))) : null,
         h('div', { className: 'pm-bar' }, button(t(selected ? 'pm.save' : 'pm.add'), () => arm(selected ? 'configure' : 'add'), !selected && (!module || !rowId)),

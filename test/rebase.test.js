@@ -80,6 +80,22 @@ test('matches rows nested in groups by id', () => {
   assert.deepEqual(result.rows, [{ id: 'planning', group: true, config: [{ id: 'plan', name: 'p', disabled: true, config: { a: 1 } }, { id: 'plan2', name: 'p2' }] }])
 })
 
+test('multi-level Groups recursively retain additions, deletions, values and sibling order', () => {
+  const plugin = (id, value) => ({ id, name: 'tool', config: { value } })
+  const group = (id, config) => ({ id, name: 'cordis:group', group: true, config })
+  const base = [group('outer', [group('inner', [plugin('a', 1), plugin('b', 1), plugin('gone', 1)])]), group('other', [plugin('a', 10)])]
+  const mine = [group('outer', [group('inner', [plugin('b', 7), plugin('local', 5), plugin('a', 1)]), group('local-group', [plugin('inside-local', 9)])]), group('other', [plugin('a', 10)])]
+  const latest = [group('outer', [group('inner', [plugin('a', 2), plugin('b', 2), plugin('gone', 2), plugin('new', 3)])]), group('other', [plugin('a', 11)])]
+  const result = rebase(mine, latest, base, { preserveLayout: true })
+  const inner = result.rows[0].config[0].config
+  assert.deepEqual(inner.map(r => r.id), ['b', 'local', 'a', 'new'])
+  assert.equal(inner[0].config.value, 7); assert.equal(inner[2].config.value, 2)
+  assert.equal(result.rows[1].config[0].config.value, 11, 'Repeated child IDs in other groups stay independent')
+  assert.deepEqual(result.rows[0].config[1], mine[0].config[1])
+  assert.deepEqual(rebase(result.rows, latest, latest, { preserveLayout: true }).rows, result.rows)
+  assert.equal(rebase(mine, latest, base).rows[0].config[0].config.find(r => r.id === 'local').config.value, 5)
+})
+
 test('keeps a fixed platform choice and follows an untouched platform condition', () => {
   const conditional = { id: 'bash', name: 'b', disabled: { __jsExpr: 'process.platform === "win32"' } }
   assert.equal(rebase([{ ...conditional, disabled: false }], [conditional], [conditional]).rows[0].disabled, false)

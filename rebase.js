@@ -8,8 +8,8 @@
  * latest version (one level deep inside `config`). When both sides changed the
  * same field, the user's value wins and the field is reported as a conflict.
  * New built-in rows are added in built-in order; rows the built-in list dropped
- * are dropped too, except rows `keep` accepts, which stay after their previous
- * neighbour. Without a `base` (a list saved before bases were recorded), the
+ * are dropped too unless user-modified (reported as a conflict) or accepted by
+ * `keep`. User-added rows survive at every nesting level. Without a `base`, the
  * latest rows serve as the base, so every difference counts as the user's.
  */
 
@@ -84,62 +84,48 @@ function mergeFields(base, user, latest, conflicts, id) {
  *   the merged rows, whether they differ from `userRows`, and the row ids each kind of change touched.
  */
 export function rebase(userRows, latestRows, baseRows, options = {}) {
-  const newRow = options.newRow ?? (row => row)
-  const keep = options.keep ?? (() => false)
-  const user = allRowsById(userRows)
-  const base = baseRows === undefined ? undefined : allRowsById(baseRows)
-  const latestIds = allRowsById(latestRows)
+  const newRow = options.newRow ?? (row => row), keep = options.keep ?? (() => false)
   const summary = { added: [], removed: [], updated: [], conflicts: [] }
-
-  const visit = list => list.map((latest) => {
-    const id = typeof latest?.id === 'string' ? latest.id : undefined
-    if (id === undefined) return structuredClone(latest)
-    const mine = user.get(id)
-    const original = base === undefined ? (mine === undefined ? undefined : latest) : base.get(id)
-    if (mine === undefined) {
-      if (original !== undefined) return structuredClone(latest)
-      summary.added.push(id)
-      return newRow(structuredClone(latest))
-    }
-    if (original !== undefined && !same(original, latest)) summary.updated.push(id)
-    if (isGroup(latest)) {
-      const { config: _latestRows, ...latestOwn } = latest
-      const { config: _userRows, ...userOwn } = mine
-      const { config: _baseRows, ...baseOwn } = original ?? latest
-      return { ...mergeFields(baseOwn, userOwn, latestOwn, summary.conflicts, id), config: visit(latest.config) }
-    }
-    return mergeFields(original ?? latest, mine, latest, summary.conflicts, id)
-  })
-  let rows = visit(Array.isArray(latestRows) ? latestRows : [])
-
-  let previous
-  for (const row of Array.isArray(userRows) ? userRows : []) {
-    const id = typeof row?.id === 'string' ? row.id : undefined
-    if (id !== undefined && !latestIds.has(id)) {
-      const userAdded = base !== undefined && !base.has(id)
-      if (keep(row) || userAdded) {
-        const at = previous === undefined ? -1 : rows.findIndex(candidate => candidate?.id === previous)
-        rows.splice(at + 1, 0, structuredClone(row))
-      } else {
-        summary.removed.push(id)
-        continue
+  const keyed = list => new Map((list ?? []).filter(row => typeof row?.id === 'string').map(row => [row.id, row]))
+  const merge = (mine, latest, original) => {
+    const user = keyed(mine), base = original === undefined ? undefined : keyed(original), latestIds = keyed(latest)
+    const output = []
+    for (const row of latest ?? []) {
+      const id = typeof row?.id === 'string' ? row.id : undefined
+      if (id === undefined) { output.push(structuredClone(row)); continue }
+      const own = user.get(id), before = base === undefined ? (own === undefined ? undefined : row) : base.get(id)
+      if (own === undefined) {
+        if (before !== undefined && options.preserveLayout) continue
+        if (before === undefined) summary.added.push(id)
+        output.push(before === undefined ? newRow(structuredClone(row)) : structuredClone(row)); continue
       }
+      if (before !== undefined && !same(before, row)) summary.updated.push(id)
+      if (isGroup(row) && isGroup(own)) {
+        const { config: _next, ...nextFields } = row, { config: _own, ...ownFields } = own
+        const { config: _old, ...oldFields } = before ?? row
+        output.push({ ...mergeFields(oldFields, ownFields, nextFields, summary.conflicts, id), config: merge(own.config, row.config, isGroup(before) ? before.config : undefined) })
+      } else output.push(mergeFields(before ?? row, own, row, summary.conflicts, id))
     }
-    if (id !== undefined) previous = id
-  }
-  if (options.preserveLayout && base !== undefined) {
-    const layout = (merged, mine) => {
-      const byId = new Map(merged.map(row => [row.id, row])), kept = []
-      for (const row of mine ?? []) {
-        const next = byId.get(row.id)
-        if (!next) continue
-        byId.delete(row.id)
-        kept.push(next.group === true ? { ...next, config: layout(next.config, row.config) } : next)
+    // This pass belongs to EACH sibling list; a root-only pass loses additions inside Groups.
+    let previous
+    for (const row of mine ?? []) {
+      const id = typeof row?.id === 'string' ? row.id : undefined
+      if (id !== undefined && !latestIds.has(id)) {
+        const added = base !== undefined && !base.has(id), modified = base?.has(id) && !same(base.get(id), row)
+        if (keep(row) || added || modified) {
+          const at = previous === undefined ? -1 : output.findIndex(candidate => candidate.id === previous)
+          output.splice(at + 1, 0, structuredClone(row))
+          if (modified) summary.conflicts.push(id + ':removed-upstream')
+        } else { summary.removed.push(id); continue }
       }
-      for (const next of byId.values()) if (!base.has(next.id)) kept.push(next)
-      return kept
+      if (id !== undefined) previous = id
     }
-    rows = layout(rows, userRows)
+    if (!options.preserveLayout || base === undefined) return output
+    const remaining = keyed(output), ordered = []
+    for (const row of mine ?? []) if (remaining.has(row.id)) { ordered.push(remaining.get(row.id)); remaining.delete(row.id) }
+    for (const row of output) if (typeof row.id !== 'string' || remaining.has(row.id)) { ordered.push(row); remaining.delete(row.id) }
+    return ordered
   }
+  const rows = merge(userRows, latestRows, baseRows)
   return { rows, changed: !same(rows, userRows), summary }
 }

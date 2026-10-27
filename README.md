@@ -5,7 +5,7 @@ DSH 的独立 Preset / Plugins / Skills 管理插件，基于 MIT 开源 [dsh-mo
 ## 功能
 
 - 保留 Modes 的模式卡片、能力开关、Prompt、工具描述、Skills 版本与导入、自定义 Preset，以及三方更新合并。
-- 「设置 → Preset 管理 → 模式 → 全部插件」搜索当前 Host 已安装的模块，添加、移除、启停、在同组内排序、编辑 JSON 配置，查看原生 Schema 与必需服务。目录包含未被 Preset 引用的导出候选，选择后才导入检查，工具库导出会被拒绝。
+- 「设置 → Preset 管理 → 模式 → 全部插件」搜索当前 Host 已安装的模块，添加、移除、启停、在同组内排序、编辑可可靠投影字段的原生表单与复杂配置 JSON 回退，查看原生 Schema 与必需服务。目录区分 installed / unresolved、Host-only 与 referenced；只有确认安装且可加入 Preset 的模块能够添加。选择后才导入检查，工具库导出会被拒绝。
 - 保存通过原生临时 Preset 装配验证 Schema、服务依赖与 Scope；失败不写配置。并发和旧页面保存通过修订指纹防止覆盖。
 - 「Skills」发现已安装用户目录、已知项目/自定义目录、插件 `skills/` 与已激活 Provider 的 Skills；可分配已有文件到指定 Preset，再用原有控件启停或固定版本。重复名称拒绝自动分配，原文件的调用限制继续生效。
 - 官方与 Character Bundle 的源定义只读；编辑只写当前 Profile 的 Override，自定义 Preset 由 Modes 容器管理。Worker 作为普通 Preset，使用真实 ID，不增加 Boundary，不改 Character 的 Spawn 白名单。
@@ -24,13 +24,13 @@ dsh plugin --profile <profile> add <absolute-path-to-extra/preset-manager>
 
 **与原版 dsh-modes 二选一**，不能同时启用。已有 Modes 数据不自动搬迁：先停用原版、备份 Profile，再审核自定义 Preset、模块名和状态目录后迁入；本版没有自动迁移脚本。
 
-GUI 使用原生 `settings.section`、React/主题和 Connection RPC，不是外置网页。API 只接受连接的 Owner，浏览器不能用参数声明可信身份。Web/Desktop 共用协议；本轮尚未完成真实页面点击和桌面窗口验收。
+GUI 使用原生 `settings.section`、React/主题和 Connection RPC，不是外置网页。API 只接受连接的 Owner，浏览器不能用参数声明可信身份。Web/Desktop 共用协议；Web 已完成合成数据的真实页面操作验收；Desktop 实际窗口仍未验证。
 
 ## 状态、更新与恢复
 
 Profile 的 `cordis.patch.yml` 保存 Override 与容器；`.dsh-preset-manager/` 保存合并基线、Prompt/工具/Skills 历史与分配。复用原子写入、配置锁和原生失败回滚，损坏状态会报告而不会清空。一个 Profile 只允许一个 Host 写入。
 
-- Bundle 更新后合并未改字段，保留自定义配置、移除和顺序，冲突由 Owner 核对。
+- Bundle 更新后递归合并多层 Group 的未改字段，保留用户新增、配置、移除和组内顺序，冲突由 Owner 核对。
 - 组合变化只影响新 Session，旧 Session 保留原修订；原有 Live Prompt/Skills 策略仍按 Modes 机制生效。
 - 更新前备份 Profile 和状态目录，保留旧包、锁文件；失败时恢复匹配包/配置，不覆盖 Session 或 Memory。
 - 停用 GUI 不改 Character、QQ、Memory。卸载前处理自定义 Preset；基础 Preset 中本插件添加的行保留卸载条件，避免残留缺失模块。
@@ -46,7 +46,7 @@ powershell -NoProfile -File scripts/run-host.ps1
 
 单元测试不需要 DSH。原生测试用全新 Profile、合成模型/Skills，经两个进程验证配置、权限拒绝、依赖/Scope 失败、并发、真实 Spawn 与冷恢复；不读真实 QQ、记忆或凭据。临时文件全部在忽略的 `.local/`。
 
-已在 DSH 0.2.1-rc.2 的既有 Character test.16 Profile 安装并重启验证：Owner API、Schema 投影和原生页面发布的版本化客户端资源正常，Character、Worker 与单一 QQ Gateway 保持运行，数据校验不变。隔离测试另覆盖持久化、冷恢复和装配失败回退。实际页面点击、布局、Desktop 窗口和 HMR 视觉验收仍待完成；接口与资源可用不等于已完成视觉验收。Windows 上游有一项文件符号链接测试默认跳过，跨平台 CI 保留该测试。
+当前源码 **0.1.0-test.2**；部署状态和验收边界见 [STATUS](STATUS.md)。已验证原生 Host 的配置、Profile 替换与重启、Skill 分配/版本、合并基线、失败回退和 Worker 实际工具执行。Web 在 DSH 原生设置中实际点击验收搜索、配置表单、错误提示、添加/排序/停用/移除、Skill 分配与启停；不是用资源加载成功替代 GUI。Desktop RPC 协议通过，实际桌面窗口及 HMR 视觉效果仍未验证。Windows 上游有一项文件符号链接测试默认跳过，跨平台 CI 保留。
 
 动态 Provider 激活后才能由原生 Registry 枚举；不会为了发现 Skills 自动执行未引用 Provider，也不扫描整个磁盘。无元信息的导出显示为候选，名称不证明其是插件；没有 Config 的模块无 Schema，仍需装配验证。
 

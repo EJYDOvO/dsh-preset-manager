@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 import { scopeOf } from '@deepseek-ai/dsh-scope'
-import { LlmAdapter } from '@deepseek-ai/dsh-llm'
+import { LlmAdapter, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { clientEntryFromHtml } from './client-graph.js'
 
 export const inject = ['agentPresets', 'configEditor', 'pluginPackages', 'agents', 'tools', 'skills', 'connection', 'webServer', 'llm', 'subagents']
@@ -17,7 +17,13 @@ async function run(ctx, config) {
   const hash = text => createHash('sha256').update(text).digest('hex')
   const resources = []
   try {
-    class Fixture extends LlmAdapter { async *stream() { yield { type: 'text-delta', index: 0, text: 'Isolated worker result.' }; yield { type: 'finish', reason: { kind: 'stop' } } } }
+    const attempted=new Set()
+    class Fixture extends LlmAdapter { async *stream(request) {
+      const input=request.messages.filter(m=>m.role==='user'&&!['runtime-context','time-context','skill-catalog','agent-instructions'].includes(m.source?.kind)).at(-1),key=request.sessionId+':'+input?.id
+      if(JSON.stringify(input).includes('Invoke configured tool')&&!attempted.has(key)){attempted.add(key);yield {type:'tool-call-delta',index:0,id:randomUUID(),name:'pm_fixture',argumentsDelta:'{}'}}
+      else yield { type: 'text-delta', index: 0, text: 'Isolated worker result.' }
+      yield { type: 'finish', reason: { kind: 'stop' } }
+    } }
     ctx.llm.registerAdapter(['preset-manager-fixture'], new Fixture())
     const restarted = await stat(file).then(() => true, () => false); result.phase = Number(restarted)
     const origin = ctx.webServer.getOrigin(), login = await fetch(ctx.connection.authenticatedUrl(origin + '/'), { redirect: 'manual' })
@@ -57,6 +63,7 @@ async function run(ctx, config) {
     assert(catalog.modules.some(p => p.module === 'dsh-pm-fixture/unused' && p.referenced === restarted))
     const schema = await good('inspectPlugin', { module: 'dsh-pm-fixture/unused' })
     assert(schema.hasSchema); assert(schema.required.includes('tools')); assert(schema.schema)
+    assert(schema.form.fields.some(f=>f.key==='count'&&f.type==='integer'));assert(schema.form.fields.some(f=>f.key==='enabled'&&f.type==='boolean'));assert(schema.form.fallback.includes('nested'))
     const skills = await good('installedSkills'); assert(skills.skills.some(s => s.name === 'manager-probe'))
     result.checks.push('Actual installed unreferenced plugin/Skill discovery and native Config projection')
     const sourceHash = hash(await readFile(source))
@@ -96,6 +103,10 @@ async function run(ctx, config) {
       lease = await ctx.agentPresets.acquireScope('pm-fixture')
       try { assert(!(await ctx.skills.snapshot({ scope: lease.key })).skills.some(s => s.name === 'manager-probe' && s.invocation.modelInvocable !== false)) } finally { await lease[Symbol.asyncDispose]() }
       await good('setSkillModes', { changes: [{ preset: 'pm-fixture', skill: 'manager-probe', enabled: true }] })
+      await good('skills',{refresh:true})
+      const savedVersion=await good('saveSkillVersion',{skill:'manager-probe',note:'Synthetic Profile update regression'})
+      state.skillVersion=savedVersion.effect.version;assert(state.skillVersion)
+      await good('setSkillModes',{changes:[{preset:'pm-fixture',skill:'manager-probe',pin:state.skillVersion}]})
       await good('assignSkill', { id: 'pm-fixture', base: (await preset()).pluginRevision, skill: 'no-auto', enabled: true })
       assert.equal((await ctx.get('dshModes').assignedSkill('pm-fixture', 'no-auto')).meta.invocation.modelInvocable, false)
       const invalidSkill = await call('assignSkill', { id: 'pm-fixture', base: (await preset()).pluginRevision, skill: 'invalid-policy', enabled: true })
@@ -105,6 +116,8 @@ async function run(ctx, config) {
       assert(custom.presets.some(p => p.id === 'pm-custom' && p.source === 'custom'))
       const worker = (await good('list')).presets.find(p => p.id === 'root-planner-worker')
       await good('editPlugin', { id: worker.id, base: worker.pluginRevision, op: 'add', module: 'dsh-pm-fixture/unused', rowId: 'ordinary-worker-tool', config: { count: 1 } })
+      const workerWithTool=(await good('list')).presets.find(p=>p.id===worker.id)
+      await good('editPlugin',{id:worker.id,base:workerWithTool.pluginRevision,op:'add',module:'@deepseek-ai/dsh-tool-skill',rowId:'worker-skill-loader',config:{}})
       assert((await names(worker.id)).includes('pm_fixture'), 'Worker remains an ordinary editable Preset')
       await good('create', { id: 'pm-root', name: 'Synthetic orchestrator', from: 'cordis' })
       const parent = (await good('list')).presets.find(p => p.id === 'pm-root')
@@ -116,11 +129,17 @@ async function run(ctx, config) {
     } else {
       const stored = JSON.parse(await readFile(file, 'utf8'))
       assert.equal(sourceHash, stored.sourceHash); assert.equal((await preset()).pluginRevision, stored.revision)
+      const moved=JSON.parse(await readFile(join(home,'profile-switch.json'),'utf8'));assert(moved.unchanged&&moved.copied>3)
       assert((await names('pm-fixture')).includes('pm_fixture')); assert((await names('root-planner-worker')).includes('pm_fixture'))
       assert((await good('list')).presets.some(p => p.id === 'pm-custom' && p.source === 'custom'))
       const lease = await ctx.agentPresets.acquireScope('pm-fixture')
       try { assert((await ctx.skills.snapshot({ scope: lease.key })).skills.some(s => s.name === 'manager-probe' && s.invocation.modelInvocable !== false)) } finally { await lease[Symbol.asyncDispose]() }
-      result.checks.push('Second native Host restart retains custom Presets, Overrides, order and Skill assignments')
+      const policy=await ctx.get('dshModes').skillPolicy('pm-fixture');assert.equal(policy.pins.get('manager-probe'),stored.skillVersion);assert(await ctx.get('dshModes').skillVersion('manager-probe',stored.skillVersion))
+      const beforeSync=(await preset()).rows.find(r=>r.id==='fixture-tool').config
+      await good('sync',{id:'pm-fixture'})
+      const synced=await preset();assert(synced.rows.some(r=>r.id==='upstream-new'));assert.deepEqual(synced.rows.find(r=>r.id==='fixture-tool').config,beforeSync)
+      const bases=JSON.parse(await readFile(join(home,'profiles/manager/.dsh-preset-manager/state.json'),'utf8'));assert(bases.presets['pm-fixture'].base.some(r=>r.id==='upstream-new'))
+      result.checks.push('Actual Profile replacement + Host restart retains custom Presets, Overrides, rows, Skill assignments/versions; upstream merge updates baseline')
     }
     const options = { agentOptions: { provider: 'preset-manager-fixture', model: 'fixture' }, setup: async c => { await ctx.agentPresets.mount(c, 'pm-root') } }
     const handle = await (restarted ? ctx.agents.resume({ ...options, resumeSessionId: state.parent }) : ctx.agents.create({ ...options, sessionId: randomUUID(), meta: { cwd: home, agentPreset: 'pm-root' } }))
@@ -133,7 +152,10 @@ async function run(ctx, config) {
     const child = ctx.agents.get(state.child); assert(child); await child.whenIdle()
     assert.equal(ctx.agentPresets.composedPreset(child.ctx), 'root-planner-worker')
     assert.notEqual(child.id, parentAgent.id)
+    assert(!ctx.tools.schemas(scopeOf(child.ctx)).some(tool=>tool.name==='str_replace_editor'),'Unconfigured Creator tools must not appear in the Worker')
     assert(ctx.tools.schemas(scopeOf(child.ctx)).some(tool => tool.name === 'pm_fixture'), 'No Worker Boundary is restored')
+    child.followup(createUserMessage({content:[{type:'text',text:'Invoke configured tool'}],source:{kind:'fixture'}}));await child.whenIdle()
+    const events=child.session.snapshotEvents(),callEvent=events.findLast(e=>e.type==='tool/call'&&e.data.name==='pm_fixture');assert(callEvent,'Configured Worker tool must actually be called');const returned=events.find(e=>e.type==='tool/result'&&e.data.message?.toolCallId===callEvent.data.callId)?.data.message;assert(returned&&!returned.isError);assert.deepEqual(returned.content,[{type:'text',text:'1'}],'Configured tool must return its real value')
     await ctx.subagents.drainChildren(parentAgent, [child.id])
     if (!restarted) await writeFile(file, JSON.stringify(state))
     result.checks.push('Native Spawn real ID, independent child Session and cold recovery remain compatible after Override')

@@ -26,6 +26,7 @@ try {
    while(!(Test-Path -LiteralPath (Join-Path $run.home 'preview.done')) -and (Get-Date) -lt $deadline -and !$p.HasExited){Start-Sleep -Milliseconds 250;$p.Refresh()}
   }
   $p.Refresh();if(!$p.HasExited){Stop-Process -Id $p.Id};if(!$p.WaitForExit(5000)){throw 'Isolated Host failed to stop'};$p=$null
+  if($phase -eq 0){& $node (Join-Path $PSScriptRoot 'switch-test-profile.cjs');if($LASTEXITCODE -ne 0){throw 'Isolated Profile switch failed'}}
  }
 } finally {
  try{if($p){$p.Refresh();if(!$p.HasExited){Stop-Process -Id $p.Id};$null=$p.WaitForExit(5000)}}finally{foreach($key in $saved.Keys){[Environment]::SetEnvironmentVariable($key,$saved[$key],'Process')}}

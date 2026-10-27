@@ -5,7 +5,8 @@ if (!install || !path.isAbsolute(install)) throw Error('Set DSH_INSTALL_ROOT to 
 const home = path.join(root, '.local', 'host-' + randomUUID()), dir = path.join(home, 'profiles', 'manager'), runId = randomUUID();
 const packageRoot = process.argv.includes('--packed') ? JSON.parse(fs.readFileSync(path.join(root, '.local', 'packed.json'))).dir : root;
 fs.mkdirSync(path.join(dir, 'node_modules'), { recursive: true });
-for (const [name, source] of [['dsh-preset-manager', packageRoot], ['dsh-pm-fixture', path.join(root, 'test', 'fixture')]]) fs.symlinkSync(source, path.join(dir, 'node_modules', name), 'junction');
+const fixture=path.join(home,'fixture-bundle');fs.cpSync(path.join(root,'test','fixture'),fixture,{recursive:true});
+for (const [name, source] of [['dsh-preset-manager', packageRoot], ['dsh-pm-fixture', fixture]]) fs.symlinkSync(source, path.join(dir, 'node_modules', name), 'junction');
 fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'pm-isolated', private: true, dependencies: { 'dsh-preset-manager': 'link:' + packageRoot, 'dsh-pm-fixture': 'link:' + path.join(root, 'test', 'fixture') }, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-preset-manager', 'dsh-pm-fixture'] } } }));
 const probe = pathToFileURL(path.join(root, 'test', 'native-host.js')).href;
 fs.writeFileSync(path.join(dir, 'cordis.patch.yml'), JSON.stringify([{ id: 'session-title-llm', disabled: true }, { id: 'llm-pi-ai', disabled: true }, { insert: [{ id: 'pm-probe', name: probe, config: { home, runId, preview: process.argv.includes('--preview') } }] }], null, 2));

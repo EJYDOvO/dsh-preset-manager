@@ -15,7 +15,7 @@ function clientHarness() {
     useEffect(effect, deps) { const at = cursor++; if (!values[at] || deps.some((v, i) => v !== values[at].deps[i])) { values[at]?.cleanup?.(); values[at] = { deps }; effects.push(() => { values[at].cleanup = effect() }) } },
   }
   const window = { __ModuleLoader__: { load: entry => { registrations.push(entry) } } }
-  const instrumented = source.replace("    return {\n      inject: ['slots', 'locale', 'connection']", "    window.testComponents = { InstalledPlugins, InstalledSkills };\n    return {\n      inject: ['slots', 'locale', 'connection']")
+  const instrumented = source.replace("    return {\n      inject: ['slots', 'locale', 'connection']", "    window.testComponents = { InstalledPlugins, InstalledSkills, PluginConfigForm };\n    return {\n      inject: ['slots', 'locale', 'connection']")
   assert(instrumented.includes('window.testComponents'), 'Client test hook must be installed')
   vm.runInNewContext(instrumented, { window, console, setTimeout, clearTimeout, AbortController })
   const plugin = registrations[0].factory(name => { assert.equal(name, 'react'); return React })
@@ -77,3 +77,13 @@ test('native client unload aborts pending RPC and refuses late results', async (
   await assert.rejects(pending, /unloaded/)
   await assert.rejects(api('list'), /unloaded/)
 })
+
+ test('Schema controls preserve complex JSON and do not submit mutations themselves', () => {
+  const h=clientHarness();let value;const text=JSON.stringify({count:2,enabled:true,nested:{keep:1}});
+  const tree=h.render(h.component.PluginConfigForm,{info:{form:{fields:[{key:'count',type:'integer',minimum:1,required:true},{key:'enabled',type:'boolean'}],fallback:['nested']}},text,t,busy:false,onChange:s=>{value=JSON.parse(s)}});
+  h.flatten(tree).find(n=>n.props['aria-label']==='config.count').props.onChange({target:{valueAsNumber:5}});
+  assert.equal(value.count,5);assert.equal(value.nested.keep,1);
+  h.flatten(tree).find(n=>n.props['aria-label']==='config.enabled').props.onChange({target:{checked:false}});assert.equal(value.enabled,false);
+  const complex=h.render(h.component.PluginConfigForm,{info:{form:{fields:[{key:'count',type:'integer'}],fallback:[]}},text:'{"count":{"__jsExpr":"existing"}}',t,onChange:()=>assert.fail('Must keep expression in JSON')});
+  assert.equal(h.flatten(complex).find(n=>n.props['aria-label']==='config.count').props.disabled,true);
+ });

@@ -1,6 +1,6 @@
 {
   "name": "dsh-preset-manager",
-  "version": "0.1.0-test.1",
+  "version": "0.1.0-test.2",
   "description": "Installed-only Preset, Plugin and Skills manager for DSH, forked from dsh-modes",
   "keywords": [
     "deepseek-harness",
@@ -55,7 +55,8 @@
     "locale/*.json",
     "icon.svg",
     "preset-plugins.js",
-    "UPSTREAM.md"
+    "UPSTREAM.md",
+    "schema-form.js"
   ],
   "scripts": {
     "test": "node --test \"test/*.test.js\"",

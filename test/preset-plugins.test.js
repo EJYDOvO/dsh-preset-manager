@@ -7,7 +7,7 @@ import { planPluginEdit, revision, installedCatalog, discoverSkills, validateCom
 import { rebase } from '../rebase.js'
 import { StateStore } from '../state.js'
 import { clientEntryFromHtml } from './client-graph.js'
-const catalog = [{ module: 'dsh-fixture', addable: true }]
+const catalog = [{ module: 'dsh-fixture', addable: true, availability: 'installed' }]
 const base = [{ id: 'one', name: 'dsh-fixture', config: { count: 1 } }, { id: 'two', name: 'dsh-fixture' }]
 const plan = (rows, input) => planPluginEdit(rows, { base: revision(rows), ...input }, catalog)
 test('frontend checks use the actual advertised resource and reject stale/missing/foreign URLs', () => {
@@ -49,12 +49,21 @@ test('group edits do not reorder across scope realms and update merges retain re
 test('discovers unreferenced installed exports without executing them and marks Host rows', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'pm-catalog-'))
   const manifestPath = join(dir, 'package.json')
+  await writeFile(join(dir, 'index.js'), 'export function apply() {}')
+  await writeFile(join(dir, 'unused.js'), 'export function apply() {}')
   await writeFile(manifestPath, JSON.stringify({ name: 'dsh-fixture', version: '1.2.3', exports: { '.': './index.js', './unused': './unused.js', './client': './client.js', './package.json': './package.json' } }))
   const packages = { resolution: { entries: [{ name: 'dsh-fixture' }] }, packageOf: () => ({ manifestPath }) }
   const ctx = { get: () => packages, configEditor: { documentPath: join(dir, 'cordis.patch.yml'), entries: () => [{ options: { name: 'dsh-fixture' } }] } }
   const view = await installedCatalog(ctx)
   assert.deepEqual(view.modules.map(r => r.module), ['dsh-fixture', 'dsh-fixture/unused'])
   assert.equal(view.modules[0].addable, false); assert.equal(view.modules[1].referenced, false)
+  assert.equal(view.modules[0].availability, 'installed'); assert.equal(view.modules[0].hostOnly, true)
+  const unresolved = await installedCatalog(ctx, [[{ id: 'missing', name: 'not-installed/subpath' }, { id: 'bad-export', name: 'dsh-fixture/missing-export' }]])
+  for (const name of ['not-installed/subpath','dsh-fixture/missing-export']) {
+    const row = unresolved.modules.find(r => r.module === name)
+    assert.equal(row.referenced, true); assert.equal(row.availability, 'unresolved'); assert.equal(row.addable, false)
+    assert.throws(() => planPluginEdit(base, { base: revision(base), op: 'add', rowId: 'new', module: name }, unresolved.modules), /installed/)
+  }
 })
 test('discovers flat/directory/unassigned Skills and reports ambiguous names', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'pm-skills-'))
