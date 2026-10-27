@@ -8,4 +8,4 @@
 
 Web GUI 已在 DSH 原生「设置 → Preset 管理」用合成数据实际点击搜索、配置表单/JSON、错误提示、添加、排序、启停、移除与 Skills 分配/启停及刷新。Desktop RPC 协议通过，实际桌面窗口及 HMR 视觉效果未验证；资源 200 不算 GUI 验收。测试未连接真实 QQ、未使用用户记忆或生产凭据。
 
-此前实例为 Character test.16 + 管理器 test.1。源码提交/打包不等于部署；本轮运行配置是否切换需以最终部署记录为准。回滚需恢复匹配包、锁文件、Profile patch 和完整 `.dsh-preset-manager/`，保留 Session/Memory；Character test.16 会重新启用其旧 Worker Boundary。
+已受控部署 Character test.17（运行代码 5c23b75）+ 管理器 test.2（运行代码 34db4a1）。新 Host 健康，13 个 Preset 无失败、七个 Worker 默认只有 Persona、QQ 单连接。当前 Owner API、Schema 和版本化资源可用，未登录与跨来源请求拒绝；这些运行 API 检查不等于真实 GUI 写操作验收。保留旧 Profile 与 297 文件一致性快照；Memory、绑定、路由、Schedule 和官方 DSH 文件校验一致。没有发送真实 QQ 测试消息，未在当前实例演练回滚。本提交未查到远端 Actions run，不能把本地结果视为远端 CI 已验证。回滚需恢复匹配包、锁文件、Profile patch 和完整 `.dsh-preset-manager/`，保留 Session/Memory；Character test.16 会重新启用其旧 Worker Boundary。
