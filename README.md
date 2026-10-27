@@ -14,7 +14,7 @@ DSH 的独立 Preset / Plugins / Skills 管理插件，基于 MIT 开源 [dsh-mo
 
 ## 安装与启停
 
-需要 DSH **0.2.1-rc.2** 的当前开发接口，推荐 Node 24。使用原生 Profile 安装本地目录或打包产物：
+需要 DSH **0.2.1-rc.2 / rc.3** 的当前开发接口，推荐 Node 24。使用原生 Profile 安装本地目录或打包产物：
 
 ```powershell
 dsh plugin --profile <profile> add <absolute-path-to-extra/preset-manager>
@@ -24,7 +24,7 @@ dsh plugin --profile <profile> add <absolute-path-to-extra/preset-manager>
 
 **与原版 dsh-modes 二选一**，不能同时启用。已有 Modes 数据不自动搬迁：先停用原版、备份 Profile，再审核自定义 Preset、模块名和状态目录后迁入；本版没有自动迁移脚本。
 
-GUI 使用原生 `settings.section`、React/主题和 Connection RPC，不是外置网页。API 只接受连接的 Owner，浏览器不能用参数声明可信身份。Web/Desktop 共用协议；Web 已完成合成数据的真实页面操作验收；Desktop 实际窗口仍未验证。
+GUI 使用原生 `settings.section`、React/主题和 Connection RPC，不是外置网页。API 只接受连接的 Owner，浏览器不能用参数声明可信身份。Web/Desktop 共用协议；Web 已完成合成数据的真实页面操作验收；Desktop 只读入口已验证，写操作及 HMR 仍未验证。
 
 ## 状态、更新与恢复
 

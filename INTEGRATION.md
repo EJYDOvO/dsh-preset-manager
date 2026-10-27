@@ -47,3 +47,7 @@ Before replacing a package, retain package manifest/lock, Profile patch and `.ds
 `inspectPlugin.form` projects primitive fields, finite enums, local refs and native nullable/expression wrappers. Unsupported unions, nested structures and projection limitations retain JSON editing. Existing expressions remain inert and cannot be created or modified through this editor. Forms preserve unrelated JSON keys, support omission/defaults and never replace Host Config/dependency/Scope checks. No second schema validator or service is introduced.
 
 Character test.17 removes default Worker Boundary. The manager itself neither strips arbitrary guards nor grants Root identity; only native Preset assembly determines tools/Skills. Configure the native Skill loading tool explicitly when needed. Keep Character and manager as independent native Bundles; no Core/Extras duplication. Profile updates must preserve patch plus the complete sidecar directory, including Skill versions and merge bases. Character candidate migration removes only its exact old Boundary module and refreshes unchanged old Worker Personas.
+
+## Runtime selection
+
+The rc.3 official installer may place DSH outside the existing data/toolkit directory. Tests accept `DSH_CHARACTER_HOST_ROOT` for the selected executable/SDK, while `DSH_INSTALL_ROOT` remains the existing data/tool runtime root. Windows CLI paths are explicitly quoted. No Character dependency or runtime plugin change is needed; native rc.3 Config/Scope/Owner RPC contracts passed the existing two-process regression.
