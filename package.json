@@ -1,8 +1,15 @@
 {
   "name": "dsh-modes",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Mode manager for DeepSeek Harness (dsh): switch what each agent mode can do, edit its system prompt and tool descriptions, manage skills per mode with versions and imports from Codex and Claude Code, create modes from templates, and merge built-in updates after a dsh upgrade.",
-  "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "cordis", "agent-preset", "system-prompt"],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "agent-preset",
+    "system-prompt"
+  ],
   "author": "xiaohai-78",
   "license": "MIT",
   "repository": {
@@ -27,7 +34,28 @@
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "install-guard.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "skill-policy.js", "skill-store.js", "skill-files.js", "skill-import.js", "fs-retry.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg", "CHANGELOG.md"],
+  "files": [
+    "index.js",
+    "install-guard.js",
+    "container.js",
+    "live-persona.js",
+    "prompt-tool.js",
+    "tool-descriptions.js",
+    "tool-edit.js",
+    "update.js",
+    "skill-policy.js",
+    "skill-store.js",
+    "skill-files.js",
+    "skill-import.js",
+    "fs-retry.js",
+    "rebase.js",
+    "state.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "test": "node --test \"test/*.test.js\""
   },
@@ -40,7 +68,10 @@
     },
     "client": {
       "platform": "web",
-      "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings"]
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
     }
   }
 }
