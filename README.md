@@ -301,6 +301,10 @@ Runs the unit tests of the three-way merge, the tool description planner, the de
 
 </details>
 
+## Changes
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 [MIT](LICENSE)

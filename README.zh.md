@@ -301,6 +301,10 @@ npm test
 
 </details>
 
+## 更新记录
+
+见 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 许可证
 
 [MIT](LICENSE)

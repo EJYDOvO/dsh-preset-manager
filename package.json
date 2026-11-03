@@ -27,7 +27,7 @@
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "install-guard.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "skill-policy.js", "skill-store.js", "skill-files.js", "skill-import.js", "fs-retry.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "files": ["index.js", "install-guard.js", "container.js", "live-persona.js", "prompt-tool.js", "tool-descriptions.js", "tool-edit.js", "update.js", "skill-policy.js", "skill-store.js", "skill-files.js", "skill-import.js", "fs-retry.js", "rebase.js", "state.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg", "CHANGELOG.md"],
   "scripts": {
     "test": "node --test \"test/*.test.js\""
   },

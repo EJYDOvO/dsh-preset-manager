@@ -148,12 +148,14 @@ Verified items were checked on DSH versions installed into an isolated `DSH_HOME
 - The page says when a newer release is out and installs it through DSH's plugin manager after the user confirms ([ADR 0004](adr/0004-plugin-updates-itself-through-dsh-plugin-manager.md)).
 - Only the `latest` release is offered, and its tarball address must be this package's file on the registry that answered.
 - The automatic check can be turned off; a development install is never checked.
+- An answer from DSH's plugin manager that cannot be read ends the upgrade as failed, and DSH keeps running.
 
 **Verified**
 
 - A build labelled `0.5.0` found the real latest release on npm and upgraded to it through DSH's installer. The dependency became the registry tarball address and the plugin stayed enabled. `0.2.0-rc.2` asked for a restart, and `0.2.1-rc.1` replaced the plugin on the spot.
 - The same kind of install from the Plugins page was checked across a restart: a custom mode created before the upgrade still worked. A failed install left the manifest, lockfile, and files as they were.
 - The latest-release answers of npm and of the China mirror pass the tarball address check. The switch, the manual check, and the development install were checked in the page.
+- The tests answer an install with nothing: the upgrade is reported as failed, and no rejection is left for DSH to end the process on.
 
 ### When the page fails
 
