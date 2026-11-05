@@ -1,7 +1,7 @@
 # Upstream and fork
 
 - Upstream: [xiaohai-78/dsh-modes](https://github.com/xiaohai-78/dsh-modes)
-- Based on version **0.9.1**, commit `c6d00b9da814328c27b1e9cf5b8f50c85814dfa9`.
+- Based on version **0.9.2**, commit `a67235ab3cc273cb7ef8f831f7983449a23d67ec`.
 - Fork: [EJYDOvO/dsh-preset-manager](https://github.com/EJYDOvO/dsh-preset-manager).
 - MIT license; upstream copyright and [LICENSE](LICENSE) retained. Original manuals are [English](README.upstream.md) and [Chinese](README.upstream.zh.md), describing upstream rather than this fork's current installation names.
 

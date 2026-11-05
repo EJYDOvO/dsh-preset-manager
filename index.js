@@ -1630,7 +1630,8 @@ async function startUpgrade(m, body) {
       ...applied || result.application === 'cancelled' ? {} : { failure: upgradeFailure(result) },
     })
     if (!applied) return forgetUpgrade(m, upgrade.to)
-  }, (error) => {
+  }).catch((error) => {
+    // Also reached when the answer cannot be read: DSH ends its process on a rejection nobody handles.
     Object.assign(upgrade, { state: 'failed', endedAt: Date.now(), failure: { message: error instanceof Error ? error.message : String(error) } })
     return forgetUpgrade(m, upgrade.to)
   }).finally(stop)

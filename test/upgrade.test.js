@@ -295,6 +295,26 @@ test('a plugin manager that throws at once is reported as a failed upgrade, and 
   assert.equal(attempts, 2)
 })
 
+test('an install answer that cannot be read fails the upgrade instead of rejecting unhandled', async () => {
+  registry()
+  const stub = manager()
+  const { call } = await mount({ pluginManager: stub.value })
+  const unhandled = []
+  const onUnhandled = error => unhandled.push(error)
+  process.on('unhandledRejection', onUnhandled)
+  try {
+    await call({ action: 'upgrade', version: '0.99.0' })
+    stub.resolve(null)
+    await settled()
+    await settled()
+    const failed = (await call({ action: 'upgradeStatus' })).value
+    assert.equal(failed.state, 'failed')
+    assert.deepEqual(unhandled, [])
+  } finally {
+    process.off('unhandledRejection', onUnhandled)
+  }
+})
+
 test('refuses an upgrade that is not allowed: a second one, a stale confirmation, an install that is not from a registry, or no manager', async () => {
   registry()
   const stub = manager()

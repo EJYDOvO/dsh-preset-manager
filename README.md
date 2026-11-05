@@ -1,6 +1,6 @@
 # Preset Manager
 
-DSH 的独立 Preset / Plugins / Skills 管理插件，基于 MIT 开源 [dsh-modes 0.9.1](https://github.com/xiaohai-78/dsh-modes) 的 Fork。源码、内嵌 GUI、测试和集成脚本均在本目录，独立于 Character Core/Extras。[上游版本与差异](UPSTREAM.md)。
+DSH 的独立 Preset / Plugins / Skills 管理插件，基于 MIT 开源 [dsh-modes 0.9.2](https://github.com/xiaohai-78/dsh-modes) 的 Fork。源码、内嵌 GUI、测试和集成脚本均在本目录，独立于 Character Core/Extras。[上游版本与差异](UPSTREAM.md)。
 
 ## 功能
 
